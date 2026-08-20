@@ -1,0 +1,91 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { GoogleLogo } from '@/components/auth-ui';
+import { useVendorSignup, type VendorSignupMethod } from '@/contexts/vendor-signup-context';
+
+const OPTIONS = [
+  { id: 'phone' as const, title: 'Numéro de téléphone', subtitle: 'Recommandé' },
+  { id: 'email' as const, title: 'Adresse e-mail' },
+  { id: 'google' as const, title: 'Continuer avec Google' },
+];
+
+export default function VendorSignupMethodScreen() {
+  const { data, update } = useVendorSignup();
+  const [selected, setSelected] = useState<VendorSignupMethod>(data.method);
+
+  const next = () => {
+    update({ method: selected });
+    router.push('/auth/signup/vendor/step1');
+  };
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <StatusBar style="dark" />
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Comment souhaitez-vous{"\n"}créer votre compte vendeur ?</Text>
+        <View style={styles.options}>
+          {OPTIONS.map((option) => {
+            const active = selected === option.id;
+            return (
+              <Pressable key={option.id} onPress={() => setSelected(option.id)} style={[styles.card, active && styles.active]}>
+                <View style={styles.icon}>
+                  {option.id === 'google' ? (
+                    <GoogleLogo size={27} />
+                  ) : (
+                    <Ionicons
+                      color={active ? '#0D347C' : '#64748B'}
+                      name={option.id === 'phone' ? 'call' : 'mail-outline'}
+                      size={24}
+                    />
+                  )}
+                </View>
+                <View style={styles.copy}>
+                  <Text style={[styles.cardText, active && styles.blue]}>{option.title}</Text>
+                  {option.subtitle && <Text style={[styles.subtitle, active && styles.blue]}>{option.subtitle}</Text>}
+                </View>
+                <View style={[styles.radio, active && styles.radioActive]}>
+                  {active && <View style={styles.dot} />}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
+      <View style={styles.footer}>
+        <Pressable onPress={next} style={styles.button}>
+          <Text style={styles.buttonText}>Continuer</Text>
+        </Pressable>
+        <Text style={styles.login}>Vous avez déjà un compte ?</Text>
+        <Pressable onPress={() => router.replace('/auth')}>
+          <Text style={styles.link}>Se connecter</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#FFF' },
+  content: { paddingHorizontal: 24, paddingTop: 42 },
+  title: { color: '#0D347C', fontSize: 27, lineHeight: 36, fontWeight: '800', textAlign: 'center', marginBottom: 34 },
+  options: { gap: 14 },
+  card: { minHeight: 92, flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1.3, borderColor: '#E1E6EF' },
+  active: { borderColor: '#3478F6', backgroundColor: '#F3F7FF' },
+  icon: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F1F4F8', alignItems: 'center', justifyContent: 'center' },
+  copy: { flex: 1, marginLeft: 15 },
+  cardText: { color: '#17233F', fontSize: 17, fontWeight: '700' },
+  blue: { color: '#174AC7' },
+  subtitle: { color: '#174AC7', fontSize: 14, marginTop: 3 },
+  radio: { width: 23, height: 23, borderRadius: 12, borderWidth: 2, borderColor: '#B7C1D1', alignItems: 'center', justifyContent: 'center' },
+  radioActive: { borderColor: '#1C59E8' },
+  dot: { width: 11, height: 11, borderRadius: 6, backgroundColor: '#1C59E8' },
+  footer: { padding: 24, paddingBottom: 30, alignItems: 'center' },
+  button: { width: '100%', height: 58, borderRadius: 16, backgroundColor: '#E30613', alignItems: 'center', justifyContent: 'center' },
+  buttonText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  login: { color: '#17233F', fontSize: 16, marginTop: 16 },
+  link: { color: '#1758E7', fontSize: 17, fontWeight: '800', marginTop: 8 },
+});
+

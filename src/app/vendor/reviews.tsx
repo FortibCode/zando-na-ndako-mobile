@@ -1,0 +1,122 @@
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { ArrowLeft, RefreshCw, Star } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { useVendor } from '@/contexts/vendor-context';
+import { useTheme } from '@/contexts/theme-context';
+import { useLanguage } from '@/contexts/language-context';
+
+function Stars({ value, color }: { value: number; color: string }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 2 }}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <Star key={i} color={color} fill={i < value ? color : 'none'} size={15} />
+      ))}
+    </View>
+  );
+}
+
+export default function VendorReviewsScreen() {
+  const { boutique, reviews, reviewsLoading, refreshReviews } = useVendor();
+  const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
+
+  const AVATAR_COLORS = [colors.warning + '40', colors.info + '40', colors.accent + '40', colors.freshSoft];
+
+  return (
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Animated.View entering={FadeInDown.duration(300).springify()} style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.primarySoft }]}>
+          <ArrowLeft color={colors.primary} size={22} />
+        </Pressable>
+        <Text style={[styles.title, { color: colors.text }]}>{t('vendorReviews.title', 'Avis clients')}</Text>
+        <Pressable onPress={() => refreshReviews()} style={[styles.backBtn, { backgroundColor: colors.primarySoft }]}>
+          <RefreshCw color={colors.primary} size={18} />
+        </Pressable>
+      </Animated.View>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Animated.View entering={FadeInUp.duration(400).delay(60).springify()} style={styles.summaryRow}>
+          <Text style={[styles.summaryValue, { color: colors.text }]}>{boutique.note.toFixed(1).replace('.', ',')}</Text>
+          <Stars value={Math.round(boutique.note)} color={colors.gold} />
+          <Text style={[styles.summaryCount, { color: colors.textSecondary }]}>{boutique.avisCount} {t('vendorReviews.reviewsSuffix', 'avis')}</Text>
+        </Animated.View>
+
+        {reviewsLoading && reviews.length === 0 ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : reviews.length === 0 ? (
+          <Animated.View entering={FadeInUp.duration(400).springify()} style={styles.empty}>
+            <Text style={styles.emptyEmoji}>⭐</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('vendorReviews.emptyTitle', 'Aucun avis pour le moment')}</Text>
+            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>{t('vendorReviews.emptyDesc', 'Les avis laissés par vos clients après une livraison apparaîtront ici.')}</Text>
+          </Animated.View>
+        ) : (
+          reviews.map((r, i) => {
+            const initials = r.client.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+            return (
+              <Animated.View key={r.id} entering={FadeInDown.duration(350).delay(120 + i * 80).springify()} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow }]}>
+                <View style={styles.cardHeader}>
+                  {r.clientPhoto ? (
+                    <Image source={{ uri: r.clientPhoto }} contentFit="cover" style={styles.avatar} />
+                  ) : (
+                    <View style={[styles.avatar, { backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }]}>
+                      <Text style={[styles.avatarText, { color: colors.text }]}>{initials}</Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.clientName, { color: colors.text }]}>{r.client}</Text>
+                    <Stars value={r.note} color={colors.gold} />
+                  </View>
+                  <Text style={[styles.date, { color: colors.textTertiary }]}>{r.date}</Text>
+                </View>
+                {r.commentaire ? <Text style={[styles.comment, { color: colors.textSecondary }]}>{r.commentaire}</Text> : null}
+                {r.numeroCommande ? (
+                  <Text style={[styles.orderRef, { color: colors.textTertiary }]}>{t('vendorReviews.orderPrefix', 'Commande')} #{r.numeroCommande}</Text>
+                ) : null}
+              </Animated.View>
+            );
+          })
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    padding: 20, borderBottomWidth: 1,
+  },
+  backBtn: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 19, fontWeight: '900', flex: 1 },
+  content: { padding: 20, gap: 14, paddingBottom: 30 },
+
+  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  summaryValue: { fontSize: 30, fontWeight: '900' },
+  summaryCount: { fontSize: 14, fontWeight: '600' },
+
+  loadingBox: { paddingVertical: 40, alignItems: 'center' },
+  empty: { alignItems: 'center', paddingVertical: 48, gap: 8 },
+  emptyEmoji: { fontSize: 48 },
+  emptyTitle: { fontSize: 18, fontWeight: '900' },
+  emptySub: { fontSize: 14, textAlign: 'center' },
+
+  card: {
+    borderRadius: 18, padding: 16, gap: 10,
+    borderWidth: 1,
+    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 13, fontWeight: '900' },
+  clientName: { fontSize: 15, fontWeight: '800' },
+  date: { fontSize: 12 },
+  comment: { fontSize: 14, lineHeight: 20 },
+  orderRef: { fontSize: 11.5, fontWeight: '700' },
+});
