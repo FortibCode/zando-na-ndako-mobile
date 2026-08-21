@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Bell, Wallet, Store, MessageCircle, Percent, Check, CheckCheck } from 'lucide-react-native';
-import { useVendor, type VendorNotification } from '@/contexts/vendor-context';
+import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 
@@ -12,7 +12,7 @@ export default function VendorNotificationsScreen() {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
 
-  const unreadCount = notifications.filter((n) => !n.lu).length;
+  const unreadCount = notifications.filter((n) => !n.statut_lecture).length;
 
   const handleMarkAllRead = () => {
     if (unreadCount === 0) {
@@ -29,7 +29,7 @@ export default function VendorNotificationsScreen() {
     );
   };
 
-  const TYPE_STYLE: Record<VendorNotification['type'], { icon: any; bg: string }> = {
+  const TYPE_STYLE: Record<string, { icon: any; bg: string }> = {
     commande: { icon: Bell, bg: colors.primary },
     paiement: { icon: Wallet, bg: colors.warning },
     stock: { icon: Store, bg: colors.warning },
@@ -54,7 +54,10 @@ export default function VendorNotificationsScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {notifications.map((n, i) => {
-          const { icon: Icon, bg } = TYPE_STYLE[n.type];
+          const config = TYPE_STYLE[n.type] || { icon: Bell, bg: colors.primary };
+          const Icon = config.icon;
+          const bg = config.bg;
+          const timeStr = n.created_at ? new Date(n.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
           return (
             <Animated.View key={n.id} entering={FadeInUp.duration(350).delay(i * 50).springify()}>
               <Pressable
@@ -62,7 +65,7 @@ export default function VendorNotificationsScreen() {
                   markNotificationRead(n.id);
                   if (n.type === 'commande') router.push('/vendor/orders/new' as any);
                 }}
-                style={[styles.row, { borderBottomColor: colors.border }, !n.lu && { backgroundColor: colors.backgroundAlt }]}
+                style={[styles.row, { borderBottomColor: colors.border }, !n.statut_lecture && { backgroundColor: colors.backgroundAlt }]}
               >
                 <View style={[styles.icon, { backgroundColor: bg }]}>
                   <Icon color={colors.white} size={20} />
@@ -71,7 +74,7 @@ export default function VendorNotificationsScreen() {
                   <Text style={[styles.notifTitle, { color: colors.text }]}>{n.titre}</Text>
                   <Text style={[styles.notifMessage, { color: colors.textSecondary }]}>{n.message}</Text>
                 </View>
-                <Text style={[styles.time, { color: colors.textTertiary }]}>{n.heure}</Text>
+                <Text style={[styles.time, { color: colors.textTertiary }]}>{timeStr}</Text>
               </Pressable>
             </Animated.View>
           );

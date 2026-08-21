@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { Image } from 'expo-image';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -10,8 +9,6 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { DashboardSkeleton } from '@/components/delivery/skeleton-loader';
 import { DeliveryErrorState } from '@/components/delivery/error-boundary';
-
-const driverImage = require('@/assets/images/onboarding-delivery.png');
 
 export default function DeliveryHome() {
   const { driver, dashboard, dashboardLoading, dashboardError, fetchDashboard, missions, fetchMissions, isAvailable, availabilityLoading, toggleAvailability } = useDelivery();
@@ -67,49 +64,37 @@ export default function DeliveryHome() {
     <DeliveryScreen refreshing={refreshing} onRefresh={onRefresh}>
       <DriverTop onBell={() => router.push('/delivery/notifications' as any)} showThemeToggle />
 
-      {/* Availability Toggle */}
-      <Animated.View entering={FadeInDown.duration(350).springify()}>
-        <Pressable
-          onPress={toggleAvailability}
-          disabled={availabilityLoading}
-          style={[
-            styles.availBar,
-            { backgroundColor: isAvailable ? colors.freshSoft : colors.backgroundAlt },
-          ]}
-        >
-          <View style={[styles.availDot, { backgroundColor: isAvailable ? colors.fresh : colors.textTertiary }]} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.availTitle, { color: colors.text }]}>
-              {isAvailable ? t('deliveryHome.onlineTitle', 'Vous êtes en ligne') : t('deliveryHome.offlineTitle', 'Vous êtes hors ligne')}
-            </Text>
-            <Text style={[styles.availSub, { color: colors.textSecondary }]}>
-              {isAvailable ? t('deliveryHome.onlineSub', 'Vous recevez les nouvelles missions en temps réel') : t('deliveryHome.offlineSub', 'Activez pour recevoir des missions')}
-            </Text>
-          </View>
-          <View style={[styles.availBtn, { backgroundColor: isAvailable ? colors.fresh : colors.textTertiary }]}>
-            <Power color="#FFF" size={18} />
-          </View>
-        </Pressable>
-      </Animated.View>
-
-      {/* Hero Banner */}
+      {/* Hero Banner avec statut de disponibilité et performances */}
       <Animated.View entering={FadeInUp.duration(400).delay(60).springify()} style={[styles.hero, { backgroundColor: colors.primary }]}>
         <View style={styles.heroCopy}>
-          <View style={styles.heroPill}>
-            <Text style={styles.heroPillText}>{t('deliveryHome.performancesPill', 'VOS PERFORMANCES')}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={styles.heroPill}>
+              <Text style={styles.heroPillText}>{t('deliveryHome.performancesPill', 'ESPACE LIVREUR ZANDO')}</Text>
+            </View>
+            <Pressable
+              onPress={toggleAvailability}
+              disabled={availabilityLoading}
+              style={[styles.miniAvailBtn, { backgroundColor: isAvailable ? '#B4F1C9' : 'rgba(255,255,255,0.2)' }]}
+            >
+              <View style={[styles.availDot, { backgroundColor: isAvailable ? '#059669' : '#FFF' }]} />
+              <Text style={[styles.miniAvailText, { color: isAvailable ? '#065F46' : '#FFF' }]}>
+                {isAvailable ? t('deliveryHome.onlineShort', 'En ligne') : t('deliveryHome.offlineShort', 'Hors ligne')}
+              </Text>
+            </Pressable>
           </View>
+
           <Text style={styles.heroTitle}>
-            {t('deliveryHome.heroTitle', 'Une belle journée\npour livrer.')}
+            {t('deliveryHome.heroTitle', 'Prêt pour vos livraisons.')}
           </Text>
+
           <View style={styles.heroVerified}>
-            {isValide ? <CheckCircle2 color="#B4F1C9" size={18} /> : <ShieldAlert color="#FFD18A" size={18} />}
-            <View>
+            {isValide ? <CheckCircle2 color="#B4F1C9" size={16} /> : <ShieldAlert color="#FFD18A" size={16} />}
+            <View style={{ flex: 1 }}>
               <Text style={styles.heroVerifiedTitle}>{isValide ? t('deliveryHome.verifiedProfile', 'Profil vérifié') : t('deliveryHome.pendingValidation', 'Validation en attente')}</Text>
-              <Text style={styles.heroVerifiedSub}>{missionsLivrees} {missionsLivrees > 1 ? t('deliveryHome.deliveryWordPlural', 'livraisons') : t('deliveryHome.deliveryWord', 'livraison')} {missionsLivrees > 1 ? t('deliveryHome.doneWordPlural', 'effectuées') : t('deliveryHome.doneWord', 'effectuée')}</Text>
+              <Text style={styles.heroVerifiedSub}>{missionsLivrees} {missionsLivrees > 1 ? t('deliveryHome.deliveryWordPlural', 'livraisons') : t('deliveryHome.deliveryWord', 'livraison')} {t('deliveryHome.doneWordPlural', 'effectuées')}</Text>
             </View>
           </View>
         </View>
-        <Image source={driverImage} contentFit="cover" style={styles.heroImage} />
       </Animated.View>
 
       {/* Stats Cards */}
@@ -117,25 +102,23 @@ export default function DeliveryHome() {
         <Card index={1} style={[styles.statCard, { backgroundColor: colors.surface }]}>
           <View style={styles.statHeader}>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('deliveryHome.revenueTodayLabel', 'REVENU DU JOUR')}</Text>
-            <ArrowUpRight color={colors.fresh} size={18} />
+            <ArrowUpRight color={colors.fresh} size={16} />
           </View>
-          <Text style={[styles.big, { color: colors.text, fontSize: 29, marginTop: 13 }]}>{revenuJour.toLocaleString('fr-FR')}</Text>
-          <Text style={[styles.muted, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>FCFA</Text>
+          <Text style={[styles.big, { color: colors.text, fontSize: 22, marginTop: 8 }]}>{revenuJour.toLocaleString('fr-FR')} <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>FCFA</Text></Text>
           <View style={deliveryStyles.trendPill}>
-            <ArrowUpRight color={colors.primary} size={15} strokeWidth={3} />
+            <ArrowUpRight color={colors.primary} size={13} strokeWidth={3} />
             <Text style={[deliveryStyles.trendText, { color: colors.primary }]}>{missionsAujourdhui} {t('deliveryHome.todaySuffix', "aujourd'hui")}</Text>
           </View>
         </Card>
         <Card index={2} style={[styles.statCard, { backgroundColor: colors.surface }]}>
           <View style={styles.statHeader}>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('deliveryHome.ongoingLabel', 'EN COURS')}</Text>
-            <Bike color={colors.fresh} size={18} />
+            <Bike color={colors.fresh} size={16} />
           </View>
-          <Text style={[styles.big, { color: colors.text, fontSize: 29, marginTop: 13 }]}>{missionsEnCours}</Text>
-          <Text style={[styles.muted, { color: colors.textSecondary, fontSize: 13, marginTop: 2 }]}>{missionsEnCours > 1 ? t('deliveryHome.missionWordPlural', 'missions') : t('deliveryHome.missionWord', 'mission')}</Text>
+          <Text style={[styles.big, { color: colors.text, fontSize: 22, marginTop: 8 }]}>{missionsEnCours} <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>{missionsEnCours > 1 ? t('deliveryHome.missionWordPlural', 'missions') : t('deliveryHome.missionWord', 'mission')}</Text></Text>
           <View style={[deliveryStyles.trendPill, { backgroundColor: colors.freshSoft }]}>
-            <CheckCircle2 color={colors.fresh} size={15} strokeWidth={3} />
-            <Text style={[deliveryStyles.trendText, { color: colors.fresh }]}>{missionsLivrees} {t('deliveryHome.deliveredThisMonth', 'livrées ce mois')}</Text>
+            <CheckCircle2 color={colors.fresh} size={13} strokeWidth={3} />
+            <Text style={[deliveryStyles.trendText, { color: colors.fresh }]}>{missionsLivrees} {t('deliveryHome.deliveredThisMonth', 'ce mois')}</Text>
           </View>
         </Card>
       </View>
@@ -143,22 +126,22 @@ export default function DeliveryHome() {
       {/* Missions disponibles */}
       <Card index={3} style={[styles.missionCard, { backgroundColor: colors.surface }]}>
         <View style={styles.missionHead}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('deliveryHome.missionsAvailableLabel', 'MISSIONS DISPONIBLES')}</Text>
-            <Text style={[styles.muted, { color: colors.textSecondary, fontSize: 14, marginTop: 5 }]}>
+            <Text style={[styles.muted, { color: colors.textSecondary, fontSize: 13, marginTop: 3 }]}>
               {missionsDisponibles > 0
-                ? `${missionsDisponibles} ${missionsDisponibles > 1 ? t('deliveryHome.orderWordPlural', 'commandes') : t('deliveryHome.orderWord', 'commande')} ${t('deliveryHome.waitingForDriverSuffix', "en attente d'un livreur")}`
+                ? `${missionsDisponibles} ${missionsDisponibles > 1 ? t('deliveryHome.orderWordPlural', 'commandes') : t('deliveryHome.orderWord', 'commande')} ${t('deliveryHome.waitingForDriverSuffix', "en attente")}`
                 : isAvailable ? t('deliveryHome.noMissionsNow', 'Aucune mission pour le moment') : t('deliveryHome.goOnlineToReceive', 'Passez en ligne pour recevoir des missions')}
             </Text>
           </View>
           <View style={[styles.missionPill, { backgroundColor: missionsDisponibles > 0 ? colors.freshSoft : colors.backgroundAlt }]}>
-            <Package color={missionsDisponibles > 0 ? colors.fresh : colors.textTertiary} size={16} />
+            <Package color={missionsDisponibles > 0 ? colors.fresh : colors.textTertiary} size={15} />
             <Text style={[styles.missionPillText, { color: missionsDisponibles > 0 ? colors.fresh : colors.textTertiary }]}>{missionsDisponibles}</Text>
           </View>
         </View>
-        <View style={{ paddingHorizontal: 18, paddingBottom: 18 }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
           <PrimaryButton onPress={() => router.push(missionsDisponibles > 0 ? '/delivery/mission' as any : '/delivery/(tabs)/missions' as any)}>
-            {missionsDisponibles > 0 ? t('deliveryHome.viewAvailableMission', 'Voir la mission disponible') : t('deliveryHome.viewMyMissions', 'Voir mes missions')} <ChevronRight color="#FFF" size={18} />
+            {missionsDisponibles > 0 ? t('deliveryHome.viewAvailableMission', 'Voir la mission disponible') : t('deliveryHome.viewMyMissions', 'Voir mes missions')} <ChevronRight color="#FFF" size={16} />
           </PrimaryButton>
         </View>
       </Card>
@@ -173,7 +156,7 @@ export default function DeliveryHome() {
               onPress={() => router.push(path as any)}
               style={[deliveryStyles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border }]}
             >
-              <Icon color={colors.primary} size={22} />
+              <Icon color={colors.primary} size={20} />
               <Text style={[deliveryStyles.quickLabel, { color: colors.text }]}>{label}</Text>
             </Pressable>
           ))}
@@ -184,33 +167,30 @@ export default function DeliveryHome() {
 }
 
 const styles = StyleSheet.create({
-  availBar: { borderRadius: 18, padding: 16, marginTop: 14, flexDirection: 'row', alignItems: 'center' },
-  availDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
-  availTitle: { fontSize: 16, fontWeight: '900' },
-  availSub: { fontSize: 12, marginTop: 3, fontWeight: '600' },
-  availBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
-  hero: { height: 226, borderRadius: 28, overflow: 'hidden', marginTop: 10, flexDirection: 'row' },
-  heroCopy: { padding: 21, flex: 1, zIndex: 2 },
-  heroPill: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,.15)', borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7 },
-  heroPillText: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
-  heroTitle: { color: '#FFF', fontSize: 27, lineHeight: 32, fontWeight: '900', marginTop: 15 },
-  heroVerified: { flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 7 },
-  heroVerifiedTitle: { color: '#FFF', fontSize: 13, fontWeight: '800' },
-  heroVerifiedSub: { color: '#C8DBFF', fontSize: 11, marginTop: 2 },
-  heroImage: { position: 'absolute', right: -17, bottom: -48, width: 285, height: 300, opacity: 0.96 },
+  hero: { borderRadius: 20, overflow: 'hidden', marginTop: 12, padding: 18 },
+  heroCopy: { flex: 1 },
+  heroPill: { backgroundColor: 'rgba(255,255,255,.18)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  heroPillText: { color: '#FFF', fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
+  miniAvailBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  availDot: { width: 7, height: 7, borderRadius: 4 },
+  miniAvailText: { fontSize: 11, fontWeight: '900' },
+  heroTitle: { color: '#FFF', fontSize: 21, lineHeight: 26, fontWeight: '900', marginTop: 12 },
+  heroVerified: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 },
+  heroVerifiedTitle: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  heroVerifiedSub: { color: '#C8DBFF', fontSize: 11, marginTop: 1 },
 
-  statsRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  statCard: { flex: 1, padding: 16 },
-  statHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-  statLabel: { fontSize: 11, fontWeight: '900' },
+  statsRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  statCard: { flex: 1, padding: 14 },
+  statHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  statLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
   big: { fontWeight: '900' },
   muted: { fontWeight: '600' },
 
-  missionCard: { marginTop: 16, padding: 0, overflow: 'hidden' },
-  missionHead: { padding: 18, paddingBottom: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 16, fontWeight: '900', letterSpacing: 0.3 },
-  missionPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  missionPillText: { fontWeight: '900', fontSize: 13 },
+  missionCard: { marginTop: 12, padding: 0, overflow: 'hidden' },
+  missionHead: { padding: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: '900', letterSpacing: 0.2 },
+  missionPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  missionPillText: { fontWeight: '900', fontSize: 12 },
 
-  quickRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 9 },
+  quickRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
 });

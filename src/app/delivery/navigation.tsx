@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Location from 'expo-location';
-import { LocateFixed, Navigation2 } from 'lucide-react-native';
+import { AlertTriangle, LocateFixed, Navigation2, RefreshCw } from 'lucide-react-native';
 import { Card, DeliveryScreen, Header, OutlineButton, PrimaryButton, RouteCard, styles } from '@/components/delivery-ui';
 import { LiveRouteMap, type LatLng } from '@/components/delivery/live-route-map';
 import { useDelivery } from '@/contexts/delivery-context';
@@ -15,6 +15,8 @@ export default function Navigation() {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [driverPosition, setDriverPosition] = useState<LatLng | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
   // Position affichée sur la carte pendant le trajet vers le vendeur — usage local uniquement
   // (contrairement au trajet vers le client, cette étape n'est pas remontée au backend).
@@ -22,21 +24,29 @@ export default function Navigation() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted' || cancelled) return;
-      const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      if (!cancelled) setDriverPosition({ latitude: initial.coords.latitude, longitude: initial.coords.longitude });
-      watchRef.current = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, timeInterval: 8000, distanceInterval: 25 },
-        (pos) => setDriverPosition({ latitude: pos.coords.latitude, longitude: pos.coords.longitude })
-      );
+      setLocationError(null);
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          if (!cancelled) setLocationError(t('deliveryNav.locationPermissionDenied', 'Localisation refusée — autorisez-la dans les réglages pour voir votre position.'));
+          return;
+        }
+        const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (!cancelled) setDriverPosition({ latitude: initial.coords.latitude, longitude: initial.coords.longitude });
+        watchRef.current = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, timeInterval: 8000, distanceInterval: 25 },
+          (pos) => setDriverPosition({ latitude: pos.coords.latitude, longitude: pos.coords.longitude })
+        );
+      } catch {
+        if (!cancelled) setLocationError(t('deliveryNav.locationError', 'Impossible de récupérer votre position.'));
+      }
     })();
     return () => {
       cancelled = true;
       watchRef.current?.remove();
       watchRef.current = null;
     };
-  }, []);
+  }, [retryToken, t]);
 
   const handleStartNav = useCallback(() => {
     router.push('/delivery/pickup' as any);
@@ -88,6 +98,16 @@ export default function Navigation() {
           destinationLabel={destination ?? t('deliveryNav.pickupPoint', 'Point de collecte')}
           originLabel={t('deliveryNav.yourPosition', 'Votre position')}
         />
+        {locationError ? (
+          <Pressable
+            onPress={() => setRetryToken((n) => n + 1)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: colors.error + '14' }}
+          >
+            <AlertTriangle color={colors.error} size={18} />
+            <Text style={{ flex: 1, color: colors.error, fontSize: 12.5, fontWeight: '700' }}>{locationError}</Text>
+            <RefreshCw color={colors.error} size={16} />
+          </Pressable>
+        ) : null}
       </Animated.View>
       <Animated.View entering={FadeInUp.duration(350).delay(80).springify()}>
         <Card style={{ marginTop: 14, padding: 20 }}>

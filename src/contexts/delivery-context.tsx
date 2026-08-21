@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useCallback, useMemo, useReducer, type ReactNode } from 'react';
-import api, { DELIVERY_ENDPOINTS, clearAuthToken, setDeliveryUser, getDeliveryUser, fetchDeliveryNavigation } from '@/services/api';
+import api, { DELIVERY_ENDPOINTS, clearAuthToken, setDeliveryUser, getDeliveryUser, fetchDeliveryNavigation, fetchLivreurAvis } from '@/services/api';
 import { AppState } from 'react-native';
 import type {
   DeliveryContextType,
@@ -28,6 +28,9 @@ const initialState: DeliveryState = {
   supportError: null,
   isAvailable: true,
   availabilityLoading: false,
+  avis: null,
+  avisLoading: false,
+  avisError: null,
 };
 
 // ─── Reducer ───
@@ -79,6 +82,12 @@ function deliveryReducer(state: DeliveryState, action: any): DeliveryState {
       return { ...state, isAvailable: action.payload, availabilityLoading: false };
     case 'SET_AVAILABILITY_LOADING':
       return { ...state, availabilityLoading: action.payload };
+    case 'SET_AVIS':
+      return { ...state, avis: action.payload, avisLoading: false, avisError: null };
+    case 'SET_AVIS_LOADING':
+      return { ...state, avisLoading: action.payload };
+    case 'SET_AVIS_ERROR':
+      return { ...state, avisError: action.payload, avisLoading: false };
     case 'RESET':
       return initialState;
     default:
@@ -286,11 +295,22 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ─── Signaler Problème ───
-  const signalerProbleme = useCallback(async (motif: string, categorie: string) => {
+  const signalerProbleme = useCallback(async (motif: string, categorie: string, photo?: string) => {
     const livraisonId = state.currentMission?.livraison_id;
     if (!livraisonId) throw new Error('Aucune mission active.');
     try {
-      await api.post(DELIVERY_ENDPOINTS.LIVRAISON_PROBLEME(livraisonId), { motif: `${categorie}: ${motif}` });
+      const formData = new FormData();
+      formData.append('motif', `${categorie}: ${motif}`);
+      if (photo) {
+        formData.append('photo_incident', {
+          uri: photo,
+          name: `incident_${Date.now()}.jpg`,
+          type: 'image/jpeg',
+        } as any);
+      }
+      await api.post(DELIVERY_ENDPOINTS.LIVRAISON_PROBLEME(livraisonId), formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
     } catch (err: any) {
       throw new Error(err.message || 'Erreur envoi signalement');
     }
@@ -330,6 +350,17 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
       });
     } catch (err: any) {
       dispatch({ type: 'SET_REVENUE_ERROR', payload: err.message || 'Erreur chargement revenus' });
+    }
+  }, []);
+
+  // ─── Avis reçus (notations clients laissées via /commandes/{id}/notation, exposées ici via /livreur/avis) ───
+  const fetchAvis = useCallback(async () => {
+    dispatch({ type: 'SET_AVIS_LOADING', payload: true });
+    try {
+      const resume = await fetchLivreurAvis();
+      dispatch({ type: 'SET_AVIS', payload: resume });
+    } catch (err: any) {
+      dispatch({ type: 'SET_AVIS_ERROR', payload: err.message || 'Erreur chargement avis' });
     }
   }, []);
 
@@ -412,6 +443,7 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
       fetchRevenue,
       toggleAvailability,
       sendMessage,
+      fetchAvis,
       logout,
     }),
     [
@@ -428,6 +460,7 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
       fetchRevenue,
       toggleAvailability,
       sendMessage,
+      fetchAvis,
       logout,
     ]
   );

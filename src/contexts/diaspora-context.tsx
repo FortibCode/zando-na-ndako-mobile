@@ -11,15 +11,18 @@ const BENEFICIARIES_KEY = '@zando_diaspora_beneficiaries';
 const SELECTED_BENEFICIARY_KEY = '@zando_diaspora_selected_beneficiary';
 const SETTINGS_KEY = '@zando_diaspora_settings';
 const SHIPMENTS_KEY = '@zando_diaspora_shipments';
+const LAST_ORDER_KEY = '@zando_diaspora_last_order';
 
-// Taux FCFA/EUR fixe (parité officielle XAF/EUR, ne varie jamais)
+// Taux FCFA/EUR de repli (parité officielle XAF/EUR) si le taux du jour (`/diaspora/convertir`)
+// est indisponible — en pratique le backend renvoie la même valeur, la parité étant fixe.
 export const FCFA_PER_EUR = 655.957;
 // Taux FCFA/USD de repli si le taux du jour (`/diaspora/convertir`) est indisponible
 export const FCFA_PER_USD_FALLBACK = 600;
 
+let liveFcfaPerEur = FCFA_PER_EUR;
 let liveFcfaPerUsd = FCFA_PER_USD_FALLBACK;
 export function fcfaToEur(fcfa: number): number {
-  return fcfa / FCFA_PER_EUR;
+  return fcfa / liveFcfaPerEur;
 }
 export function fcfaToUsd(fcfa: number): number {
   return fcfa / liveFcfaPerUsd;
@@ -113,6 +116,11 @@ function mapInputToApiPayload(input: BeneficiaryInput): BeneficiaireInputPayload
   };
 }
 
+// `id` = UUID réel de la commande (nécessaire pour /commandes/{id}/notation, /commandes/{id}) ;
+// `numeroCommande` = code humain (nécessaire pour /diaspora/suivi/{numeroCommande} et l'affichage).
+// Les deux ont longtemps été confondus sous un seul champ `id`, cassant selon l'usage l'un ou l'autre.
+export type LastOrder = { id: string; numeroCommande: string; montantFcfa: number };
+
 export type ShipmentStatus = 'livree' | 'en_cours' | 'annulee';
 
 export type ShipmentItem = {
@@ -123,6 +131,9 @@ export type ShipmentItem = {
 
 export type Shipment = {
   id: string;
+  // UUID réel de la commande (clé primaire backend) — distinct de `id` (numero_commande, utilisé
+  // pour l'affichage et la navigation) : /commandes/{id}/notation attend cet UUID, jamais le numéro.
+  rawId: string;
   beneficiaireNom: string;
   quartier: string;
   montantFcfa: number;
@@ -136,6 +147,7 @@ export type Shipment = {
   paiementDetail?: string;
   vendeur?: string;
   livreur?: string;
+  needsRating: boolean;
 };
 
 function mapApiCommandeToShipment(c: ApiCommande): Shipment {
@@ -150,8 +162,16 @@ function mapApiCommandeToShipment(c: ApiCommande): Shipment {
   const montantTotal = typeof c.montant_sous_total === 'string' ? parseFloat(c.montant_sous_total) : (c.montant_sous_total || 0);
   const fraisLivraison = typeof c.frais_livraison === 'string' ? parseFloat(c.frais_livraison) : (c.frais_livraison || 0);
 
+  // Une commande livrée reste "à noter" tant que le vendeur ET/OU le livreur présents n'ont pas
+  // encore reçu de note de ce client (mêmes règles que orders.tsx côté local).
+  const notations = c.notations || [];
+  const vendeurNote = notations.some((n) => n.type_cible === 'vendeur');
+  const livreurNote = notations.some((n) => n.type_cible === 'livreur');
+  const needsRating = statut === 'livree' && ((!!c.vendeur && !vendeurNote) || (!!c.livreur && !livreurNote));
+
   return {
     id: c.numero_commande || `ZNND-DIAS-${c.id.slice(0, 6)}`,
+    rawId: c.id,
     beneficiaireNom: c.client?.user?.nom_complet || 'Bénéficiaire',
     quartier: c.adresse_livraison || 'Brazzaville',
     montantFcfa: montantTotal,
@@ -167,7 +187,9 @@ function mapApiCommandeToShipment(c: ApiCommande): Shipment {
     creneau: '08h - 18h',
     paiementMethode: c.paiement?.methode || 'Carte bancaire / MoMo',
     paiementDetail: c.paiement?.reference || undefined,
+    vendeur: c.vendeur?.nom_commerce || c.vendeur?.user?.nom_complet || undefined,
     livreur: c.livreur?.user?.nom_complet || undefined,
+    needsRating,
   };
 }
 
@@ -209,13 +231,14 @@ type DiasporaContextValue = {
   getShipment: (id: string) => Shipment | undefined;
   addShipment: (shipment: Shipment) => Promise<void>;
 
-  lastOrder: { id: string; montantFcfa: number } | null;
-  setLastOrder: (order: { id: string; montantFcfa: number } | null) => void;
+  lastOrder: LastOrder | null;
+  setLastOrder: (order: LastOrder | null) => void;
 
   settings: DiasporaSettings;
   updateSettings: (input: Partial<DiasporaSettings>) => Promise<void>;
 
   usdRate: number;
+  eurRate: number;
   deliveryInstructions: string;
   setDeliveryInstructions: (value: string) => void;
 };
@@ -228,9 +251,10 @@ export function DiasporaProvider({ children }: { children: ReactNode }) {
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>(DEFAULT_BENEFICIARIES);
   const [selectedBeneficiary, setSelectedBeneficiaryState] = useState<Beneficiary | null>(null);
   const [shipments, setShipments] = useState<Shipment[]>(DEFAULT_SHIPMENTS);
-  const [lastOrder, setLastOrder] = useState<{ id: string; montantFcfa: number } | null>(null);
+  const [lastOrder, setLastOrderState] = useState<LastOrder | null>(null);
   const [settings, setSettings] = useState<DiasporaSettings>(DEFAULT_SETTINGS);
   const [usdRate, setUsdRate] = useState(FCFA_PER_USD_FALLBACK);
+  const [eurRate, setEurRate] = useState(FCFA_PER_EUR);
   const [deliveryInstructions, setDeliveryInstructions] = useState('');
 
   // Si l'utilisateur n'est PAS un client diaspora, on réinitialise le bénéficiaire sélectionné
@@ -283,6 +307,13 @@ export function DiasporaProvider({ children }: { children: ReactNode }) {
         }
       } catch { /* taux du jour indisponible : on garde le taux de repli */ }
       try {
+        const conversion = await convertirDevise(1, 'EUR');
+        if (conversion.taux_applique > 0) {
+          liveFcfaPerEur = conversion.taux_applique;
+          setEurRate(conversion.taux_applique);
+        }
+      } catch { /* taux du jour indisponible : on garde la parité fixe de repli */ }
+      try {
         const apiShipments = await fetchDiasporaHistorique();
         if (apiShipments && apiShipments.length > 0) {
           const mapped = apiShipments.map(mapApiCommandeToShipment);
@@ -301,6 +332,12 @@ export function DiasporaProvider({ children }: { children: ReactNode }) {
       try {
         const rawSel = await AsyncStorage.getItem(SELECTED_BENEFICIARY_KEY);
         if (rawSel) setSelectedBeneficiaryState(JSON.parse(rawSel));
+      } catch { /* ignore */ }
+      try {
+        // Restaure la dernière commande diaspora après relance de l'app — sans ça, l'écran de
+        // suivi et le lien "Noter cette commande" perdaient tout accès dès que l'app était fermée.
+        const rawLastOrder = await AsyncStorage.getItem(LAST_ORDER_KEY);
+        if (rawLastOrder) setLastOrderState(JSON.parse(rawLastOrder));
       } catch { /* ignore */ }
     })();
   }, []);
@@ -380,6 +417,12 @@ export function DiasporaProvider({ children }: { children: ReactNode }) {
     else AsyncStorage.removeItem(SELECTED_BENEFICIARY_KEY).catch(() => {});
   }, []);
 
+  const setLastOrder = useCallback((order: LastOrder | null) => {
+    setLastOrderState(order);
+    if (order) AsyncStorage.setItem(LAST_ORDER_KEY, JSON.stringify(order)).catch(() => {});
+    else AsyncStorage.removeItem(LAST_ORDER_KEY).catch(() => {});
+  }, []);
+
   const getShipment = useCallback((id: string) => shipments.find((s) => s.id === id), [shipments]);
 
   const addShipment = useCallback(async (shipment: Shipment) => {
@@ -423,13 +466,14 @@ export function DiasporaProvider({ children }: { children: ReactNode }) {
     settings,
     updateSettings,
     usdRate,
+    eurRate,
     deliveryInstructions,
     setDeliveryInstructions,
   }), [
     diasporaModeActive, activateDiasporaMode, beneficiaries, addBeneficiary,
     editBeneficiary, removeBeneficiary, toggleFavoriteBeneficiary,
     selectedBeneficiary, setSelectedBeneficiary, shipments, getShipment, addShipment,
-    lastOrder, settings, updateSettings, usdRate, deliveryInstructions,
+    lastOrder, settings, updateSettings, usdRate, eurRate, deliveryInstructions,
   ]);
 
   return <DiasporaContext.Provider value={value}>{children}</DiasporaContext.Provider>;

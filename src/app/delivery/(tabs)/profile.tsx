@@ -42,7 +42,7 @@ export default function Profile() {
     { icon: FileText, label: t('deliveryProfileTab.documents', 'Documents'), path: '/delivery/documents' },
     { icon: Clock3, label: t('deliveryProfileTab.history', 'Historique'), path: '/delivery/history' },
     { icon: Wallet, label: t('deliveryProfileTab.statistics', 'Statistiques'), path: '/delivery/(tabs)/revenue' },
-    { icon: Star, label: t('deliveryProfileTab.myRating', 'Ma note'), value: `${rating > 0 ? rating.toFixed(1) : '—'} ★`, path: '/delivery/(tabs)/revenue' },
+    { icon: Star, label: t('deliveryProfileTab.myRating', 'Ma note'), value: `${rating > 0 ? rating.toFixed(1) : '—'} ★`, path: '/delivery/reviews' },
     { icon: Settings, label: t('deliveryProfileTab.settings', 'Paramètres'), comingSoon: true },
     { icon: HelpCircle, label: t('deliveryProfileTab.helpSupport', 'Aide et support'), path: '/delivery/support' },
     { icon: ShieldCheck, label: t('deliveryProfileTab.security', 'Sécurité'), comingSoon: true },
@@ -74,20 +74,23 @@ export default function Profile() {
         </Animated.View>
 
         <View style={{ padding: 20, marginTop: -14 }}>
-          {/* Rating banner */}
-          <Animated.View entering={FadeInUp.duration(350).delay(60).springify()} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 16, marginBottom: 16 }}>
-            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.goldSoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Star color={colors.gold} size={24} fill={colors.gold} />
-            </View>
-            <View style={{ flex: 1, marginLeft: 14 }}>
-              <Text style={[styles.sectionTitle, { fontSize: 18, color: colors.text }]}>
-                {rating > 0 ? rating.toFixed(1) : '—'} <Text style={{ color: colors.gold }}>★</Text>
-              </Text>
-              <Text style={[styles.muted, { fontSize: 13, marginTop: 3, color: colors.textSecondary }]}>
-                {t('deliveryProfileTab.avgRating', 'Note moyenne')} · {dashboard?.missions_livrees ?? 0} {t('deliveryProfileTab.deliveriesCompleted', 'livraisons réalisées')}
-              </Text>
-            </View>
-          </Animated.View>
+          {/* Rating banner — mène aux vrais avis clients (/livreur/avis) */}
+          <Pressable onPress={() => router.push('/delivery/reviews' as any)}>
+            <Animated.View entering={FadeInUp.duration(350).delay(60).springify()} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 16, marginBottom: 16 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.goldSoft, alignItems: 'center', justifyContent: 'center' }}>
+                <Star color={colors.gold} size={24} fill={colors.gold} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 14 }}>
+                <Text style={[styles.sectionTitle, { fontSize: 18, color: colors.text }]}>
+                  {rating > 0 ? rating.toFixed(1) : '—'} <Text style={{ color: colors.gold }}>★</Text>
+                </Text>
+                <Text style={[styles.muted, { fontSize: 13, marginTop: 3, color: colors.textSecondary }]}>
+                  {t('deliveryProfileTab.avgRating', 'Note moyenne')} · {dashboard?.missions_livrees ?? 0} {t('deliveryProfileTab.deliveriesCompleted', 'livraisons réalisées')}
+                </Text>
+              </View>
+              <ChevronRight color={colors.textTertiary} size={20} />
+            </Animated.View>
+          </Pressable>
 
           <Animated.View
             entering={FadeInUp.duration(350).delay(120).springify()}

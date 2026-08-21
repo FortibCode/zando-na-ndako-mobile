@@ -13,6 +13,18 @@ export function SignupOtpFields({ onComplete, initialCode }: { onComplete?: (cod
   const inputs = useRef<Array<TextInput | null>>([]);
   const completedRef = useRef(false);
 
+  const autoTriggeredRef = useRef(false);
+
+  // Auto-soumettre si le code initial est complet (otp_dev reçu du backend)
+  useEffect(() => {
+    if (initialCode && initialCode.replace(/\D/g, '').length === CODE_LENGTH && onComplete && !autoTriggeredRef.current) {
+      autoTriggeredRef.current = true;
+      const cleanCode = initialCode.replace(/\D/g, '').slice(0, CODE_LENGTH);
+      const timer = setTimeout(() => onComplete(cleanCode), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [initialCode, onComplete]);
+
   useEffect(() => {
     completedRef.current = false;
   }, [code]);
@@ -38,6 +50,7 @@ export function SignupOtpFields({ onComplete, initialCode }: { onComplete?: (cod
       onComplete(fullCode);
     }
   }, [code, onComplete]);
+
 
   const handleKeyPress = useCallback((key: string, index: number) => {
     if (key === 'Backspace' && !code[index] && index > 0) {

@@ -7,17 +7,19 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withSpring,
 } from 'react-native-reanimated';
 import { ArrowLeft, Plus, UserPlus, Phone, MapPin, Check, Search, Trash2, Pencil } from 'lucide-react-native';
-import { BLUE, RED } from '@/components/client-ui';
+import { Palette } from '@/design/tokens';
+import { useTheme } from '@/contexts/theme-context';
 import { useDiaspora, type Beneficiary } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
 import BeneficiaryFormModal from '@/components/beneficiary-form-modal';
 import { EmptyState } from '@/components/lottie-animations';
+import type { ThemeColors } from '@/design/theme';
 
 const AVATAR_COLORS = ['#FDE68A', '#BFDBFE', '#FBCFE8', '#C7F9E5', '#FED7AA'];
 
-function BeneficiaryCard({ beneficiary, index, selected, onSelect, onEdit, onDelete }: {
+function BeneficiaryCard({ beneficiary, index, selected, onSelect, onEdit, onDelete, colors }: {
   beneficiary: Beneficiary; index: number; selected: boolean; onSelect: () => void;
-  onEdit: () => void; onDelete: () => void;
+  onEdit: () => void; onDelete: () => void; colors: ThemeColors;
 }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -32,30 +34,30 @@ function BeneficiaryCard({ beneficiary, index, selected, onSelect, onEdit, onDel
         onPressIn={() => { scale.value = withSpring(0.98); }}
         onPressOut={() => { scale.value = withSpring(1); }}
         onPress={onSelect}
-        style={[styles.card, selected && styles.cardSelected]}
+        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow }, selected && { borderColor: colors.primary, borderWidth: 2 }]}
       >
         <View style={[styles.avatar, { backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] }]}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={styles.copy}>
-          <Text style={styles.name}>{beneficiary.nom}</Text>
+          <Text style={[styles.name, { color: colors.text }]}>{beneficiary.nom}</Text>
           <View style={styles.metaRow}>
-            <Phone color="#94A3B8" size={12} />
-            <Text style={styles.metaText}>{beneficiary.telephone}</Text>
+            <Phone color={colors.textTertiary} size={12} />
+            <Text style={[styles.metaText, { color: colors.textSecondary }]}>{beneficiary.telephone}</Text>
           </View>
           <View style={styles.metaRow}>
-            <MapPin color="#94A3B8" size={12} />
-            <Text style={styles.metaText}>{beneficiary.ville}</Text>
+            <MapPin color={colors.textTertiary} size={12} />
+            <Text style={[styles.metaText, { color: colors.textSecondary }]}>{beneficiary.ville}</Text>
           </View>
         </View>
-        <Pressable onPress={onEdit} style={styles.actionBtn} accessibilityLabel="Modifier">
-          <Pencil color={BLUE} size={15} />
+        <Pressable onPress={onEdit} style={[styles.actionBtn, { backgroundColor: colors.primarySoft }]} accessibilityLabel="Modifier">
+          <Pencil color={colors.primary} size={15} />
         </Pressable>
-        <Pressable onPress={onDelete} style={[styles.actionBtn, styles.actionDanger]} accessibilityLabel="Supprimer">
-          <Trash2 color={RED} size={15} />
+        <Pressable onPress={onDelete} style={[styles.actionBtn, { backgroundColor: colors.error + '18' }]} accessibilityLabel="Supprimer">
+          <Trash2 color={colors.error} size={15} />
         </Pressable>
-        <View style={[styles.radio, selected && styles.radioSelected]}>
-          {selected && <Check color="#FFF" size={14} strokeWidth={3} />}
+        <View style={[styles.radio, { borderColor: colors.border }, selected && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+          {selected && <Check color={colors.textInverse} size={14} strokeWidth={3} />}
         </View>
       </Pressable>
     </Animated.View>
@@ -64,6 +66,7 @@ function BeneficiaryCard({ beneficiary, index, selected, onSelect, onEdit, onDel
 
 export default function ChooseBeneficiaryScreen() {
   const { beneficiaries, selectedBeneficiary, setSelectedBeneficiary, removeBeneficiary } = useDiaspora();
+  const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Beneficiary | null>(null);
@@ -105,27 +108,27 @@ export default function ChooseBeneficiaryScreen() {
   }, [beneficiaries, query]);
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      <Animated.View entering={FadeInDown.duration(300).springify()} style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft color={BLUE} size={22} />
+      <Animated.View entering={FadeInDown.duration(300).springify()} style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.primarySoft }]}>
+          <ArrowLeft color={colors.primary} size={22} />
         </Pressable>
-        <Text style={styles.title}>{t('diaspora.beneficiaries.title', 'Choisir un bénéficiaire')}</Text>
-        <Pressable onPress={() => setModalVisible(true)} style={styles.addBtn}>
-          <Plus color={BLUE} size={22} />
+        <Text style={[styles.title, { color: colors.text }]}>{t('diaspora.beneficiaries.title', 'Choisir un bénéficiaire')}</Text>
+        <Pressable onPress={() => setModalVisible(true)} style={[styles.addBtn, { backgroundColor: colors.primarySoft }]}>
+          <Plus color={colors.primary} size={22} />
         </Pressable>
       </Animated.View>
 
-<View style={styles.searchWrap}>
-        <Search color="#94A3B8" size={18} />
+      <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Search color={colors.textTertiary} size={18} />
         <TextInput
           value={query}
           onChangeText={setQuery}
           placeholder={t('diaspora.beneficiaries.searchPlaceholder', 'Rechercher un bénéficiaire…')}
-          placeholderTextColor="#94A3B8"
-          style={styles.searchInput}
+          placeholderTextColor={colors.textTertiary}
+          style={[styles.searchInput, { color: colors.text }]}
           autoCapitalize="words"
         />
       </View>
@@ -133,7 +136,7 @@ export default function ChooseBeneficiaryScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 ? (
           <Animated.View entering={FadeInUp.duration(400).springify()}>
-            <View style={styles.emptyBox}>
+            <View style={[styles.emptyBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <EmptyState
                 title={query ? t('diaspora.beneficiaries.emptyResultsTitle', 'Aucun résultat') : t('diaspora.beneficiaries.emptyTitle', 'Aucun bénéficiaire')}
                 message={query ? t('diaspora.beneficiaries.emptyResultsDesc', 'Aucun bénéficiaire ne correspond à votre recherche.') : t('diaspora.beneficiaries.emptyDesc', 'Ajoutez la personne qui recevra vos courses au Congo.')}
@@ -151,30 +154,31 @@ export default function ChooseBeneficiaryScreen() {
               onSelect={() => setLocalSelected(b)}
               onEdit={() => { setEditing(b); setModalVisible(true); }}
               onDelete={() => handleDelete(b)}
+              colors={colors}
             />
           ))
         )}
 
         <Animated.View entering={FadeInUp.duration(400).delay(300).springify()}>
-          <Pressable onPress={() => { setEditing(null); setModalVisible(true); }} style={styles.addCard}>
-            <View style={styles.addIcon}>
-              <UserPlus color="#FFF" size={20} />
+          <Pressable onPress={() => { setEditing(null); setModalVisible(true); }} style={[styles.addCard, { borderColor: colors.border }]}>
+            <View style={[styles.addIcon, { backgroundColor: colors.primary }]}>
+              <UserPlus color={colors.textInverse} size={20} />
             </View>
-            <Text style={styles.addText}>{t('diaspora.beneficiaries.addButton', 'Ajouter un bénéficiaire')}</Text>
+            <Text style={[styles.addText, { color: colors.primary }]}>{t('diaspora.beneficiaries.addButton', 'Ajouter un bénéficiaire')}</Text>
           </Pressable>
         </Animated.View>
       </ScrollView>
 
-      <Animated.View entering={FadeInUp.duration(400).delay(400).springify()} style={styles.footer}>
+      <Animated.View entering={FadeInUp.duration(400).delay(400).springify()} style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <Pressable
           onPress={() => {
             if (!localSelected) return;
             setSelectedBeneficiary(localSelected);
             router.push('/client/(tabs)' as any);
           }}
-          style={[styles.button, !localSelected && styles.buttonDisabled]}
+          style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }, !localSelected && { backgroundColor: colors.border, shadowOpacity: 0 }]}
         >
-          <Text style={styles.buttonText}>{t('diaspora.beneficiaries.continueButton', 'Continuer')}</Text>
+          <Text style={[styles.buttonText, { color: colors.textInverse }]}>{t('diaspora.beneficiaries.continueButton', 'Continuer')}</Text>
         </Pressable>
       </Animated.View>
 
@@ -189,60 +193,56 @@ export default function ChooseBeneficiaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F8FAFE' },
+  screen: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 20, backgroundColor: '#FFF',
-    borderBottomWidth: 1, borderBottomColor: '#E8ECF2',
+    padding: 20,
+    borderBottomWidth: 1,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center' },
-  title: { color: BLUE, fontSize: 19, fontWeight: '900', flex: 1 },
-addBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 19, fontWeight: '900', flex: 1 },
+  addBtn: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   searchWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginHorizontal: 20, marginTop: 14, height: 50,
-    backgroundColor: '#FFF', borderRadius: 14, paddingHorizontal: 14,
-    borderWidth: 1.5, borderColor: '#E8ECF2',
+    borderRadius: 14, paddingHorizontal: 14,
+    borderWidth: 1.5,
   },
-  searchInput: { flex: 1, color: BLUE, fontSize: 14.5, fontWeight: '500' },
+  searchInput: { flex: 1, fontSize: 14.5, fontWeight: '500' },
   content: { padding: 20, gap: 12, paddingBottom: 20 },
 
   emptyBox: {
-    backgroundColor: '#FFF', borderRadius: 20, padding: 10,
-    borderWidth: 1, borderColor: '#EEF2FA', alignItems: 'center',
+    borderRadius: 20, padding: 10,
+    borderWidth: 1, alignItems: 'center',
   },
 
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#FFF', borderRadius: 18, padding: 14,
-    borderWidth: 1.5, borderColor: '#E8ECF2',
-    shadowColor: '#1A2744', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    borderRadius: 18, padding: 14,
+    borderWidth: 1.5,
+    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
-  cardSelected: { borderColor: RED, borderWidth: 2 },
   avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: BLUE, fontSize: 17, fontWeight: '900' },
+  avatarText: { color: Palette.navy, fontSize: 17, fontWeight: '900' },
   copy: { flex: 1, gap: 3 },
-  name: { color: BLUE, fontSize: 16, fontWeight: '800' },
+  name: { fontSize: 16, fontWeight: '800' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  metaText: { color: '#64748B', fontSize: 12.5 },
+  metaText: { fontSize: 12.5 },
   radio: {
     width: 26, height: 26, borderRadius: 13,
-    borderWidth: 2, borderColor: '#C8D0DE',
+    borderWidth: 2,
     alignItems: 'center', justifyContent: 'center',
   },
-  radioSelected: { backgroundColor: RED, borderColor: RED },
-  actionBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center' },
-  actionDanger: { backgroundColor: '#FFF0F0' },
+  actionBtn: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 
   addCard: {
-    height: 60, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#CBD5E1',
+    height: 60, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed',
     flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16,
   },
-  addIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center' },
-  addText: { color: BLUE, fontSize: 14.5, fontWeight: '800' },
+  addIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  addText: { fontSize: 14.5, fontWeight: '800' },
 
-  footer: { padding: 20, paddingBottom: 26, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EEF2FA' },
-  button: { height: 60, borderRadius: 18, backgroundColor: RED, alignItems: 'center', justifyContent: 'center', shadowColor: RED, shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  buttonDisabled: { backgroundColor: '#CBD5E1', shadowOpacity: 0 },
-  buttonText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  footer: { padding: 20, paddingBottom: 26, borderTopWidth: 1 },
+  button: { height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  buttonText: { fontSize: 18, fontWeight: '800' },
 });

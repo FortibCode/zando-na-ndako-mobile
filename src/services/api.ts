@@ -263,32 +263,6 @@ export async function registerVendor(input: VendorSignupInput): Promise<SignupRe
   return response.data.data;
 }
 
-export type VendeurDocumentUpload = { uri: string; fileName?: string | null; type?: string | null };
-
-// POST /vendeur/documents — pièces justificatives (photo boutique, pièce d'identité, registre de
-// commerce). Nécessite d'être authentifié : appelé une fois le compte créé et connecté (voir
-// vendor/verify-*.tsx), jamais pendant l'inscription elle-même (POST /register reste un JSON pur).
-export async function uploaderDocumentsVendeur(docs: {
-  photo_boutique?: VendeurDocumentUpload;
-  document_identite?: VendeurDocumentUpload;
-  registre_commerce?: VendeurDocumentUpload;
-}): Promise<void> {
-  const form = new FormData();
-  (['photo_boutique', 'document_identite', 'registre_commerce'] as const).forEach((champ) => {
-    const doc = docs[champ];
-    if (doc?.uri) {
-      form.append(champ, {
-        uri: doc.uri,
-        name: doc.fileName || `${champ}_${Date.now()}.jpg`,
-        type: doc.type || 'image/jpeg',
-      } as any);
-    }
-  });
-  const response = await api.post<ApiResponse>('/vendeur/documents', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  if (!response.data.success) throw new ApiError(response.data.message || "Erreur lors de l'envoi des documents.");
-}
 
 // ─── Adresses de livraison (Client) ───
 export type DeliveryAddress = {
@@ -735,6 +709,9 @@ export interface ApiPaiement {
   montant: number;
   devise: string;
   statut: string;
+  reference_id?: string;
+  external_id?: string;
+  mode?: string;
 }
 
 export async function confirmerPaiementLivraison(commandeId: string): Promise<ApiPaiement> {
@@ -753,14 +730,33 @@ export async function confirmerCarteLocale(paiementId: string, reference: string
   await api.post<ApiResponse>('/payment/carte-locale/confirm', { paiement_id: paiementId, reference });
 }
 
-export async function initierMtnMoMo(commandeId: string): Promise<ApiPaiement> {
-  const response = await api.post<ApiResponse<ApiPaiement>>('/payment/mtn-momo/init', { commande_id: commandeId });
+export async function initierMtnMoMo(commandeId: string, telephone?: string): Promise<ApiPaiement> {
+  const response = await api.post<ApiResponse<ApiPaiement>>('/payment/mtn-momo/init', {
+    commande_id: commandeId,
+    telephone,
+  });
   if (!response.data.data) throw new ApiError(response.data.message || 'Erreur de paiement.');
   return response.data.data;
 }
 
-export async function confirmerMtnMoMo(paiementId: string, reference: string): Promise<void> {
-  await api.post<ApiResponse>('/payment/mtn-momo/confirm', { paiement_id: paiementId, reference });
+export interface MtnMomoConfirmResult {
+  status: 'valide' | 'en_attente' | 'echoue';
+  message: string;
+  reason?: string;
+}
+
+// Interrogeable en polling — tant que le paiement n'a pas de statut définitif côté MTN, l'API
+// renvoie status:'en_attente' (HTTP 200, ce n'est pas une erreur) plutôt que de valider par défaut.
+export async function confirmerMtnMoMo(paiementId: string): Promise<MtnMomoConfirmResult> {
+  const response = await api.post<ApiResponse & { status: MtnMomoConfirmResult['status']; reason?: string }>(
+    '/payment/mtn-momo/confirm',
+    { paiement_id: paiementId }
+  );
+  return {
+    status: response.data.status,
+    message: response.data.message || '',
+    reason: response.data.reason,
+  };
 }
 
 export async function initierAirtelMoney(commandeId: string): Promise<ApiPaiement> {
@@ -773,18 +769,28 @@ export async function confirmerAirtelMoney(paiementId: string, reference: string
   await api.post<ApiResponse>('/payment/airtel-money/confirm', { paiement_id: paiementId, reference });
 }
 
-export async function initierStripe(commandeId: string): Promise<{ url: string }> {
-  const response = await api.post<ApiResponse & { data?: { url: string } }>('/payment/stripe/init', { commande_id: commandeId });
-  return response.data.data || { url: '' };
+export async function initierStripe(commandeId: string, successUrl: string, cancelUrl: string): Promise<{ url: string; session_id: string | null }> {
+  const response = await api.post<ApiResponse & { data?: { url: string; session_id: string | null } }>('/payment/stripe/init', {
+    commande_id: commandeId,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  });
+  if (!response.data.data) throw new ApiError(response.data.message || 'Erreur de paiement.');
+  return response.data.data;
 }
 
-export async function confirmerStripe(commandeId: string, paymentIntentId: string): Promise<void> {
-  await api.post<ApiResponse>('/payment/stripe/confirm', { commande_id: commandeId, payment_intent_id: paymentIntentId });
+export async function confirmerStripe(commandeId: string, sessionId: string): Promise<void> {
+  await api.post<ApiResponse>('/payment/stripe/confirm', { commande_id: commandeId, session_id: sessionId });
 }
 
-export async function initierPayPal(commandeId: string): Promise<{ url: string }> {
-  const response = await api.post<ApiResponse & { data?: { url: string } }>('/payment/paypal/init', { commande_id: commandeId });
-  return response.data.data || { url: '' };
+export async function initierPayPal(commandeId: string, returnUrl: string, cancelUrl: string): Promise<{ url: string; order_id: string | null }> {
+  const response = await api.post<ApiResponse & { data?: { url: string; order_id: string | null } }>('/payment/paypal/init', {
+    commande_id: commandeId,
+    return_url: returnUrl,
+    cancel_url: cancelUrl,
+  });
+  if (!response.data.data) throw new ApiError(response.data.message || 'Erreur de paiement.');
+  return response.data.data;
 }
 
 export async function confirmerPayPal(commandeId: string, paypalOrderId: string): Promise<void> {
@@ -985,6 +991,15 @@ export interface ApiVendeurDashboard {
   solde_disponible: string | number;
   note_moyenne: string | number;
   statut_validation: string;
+  // Champs exposés par dashboard() en plus des statistiques : c'est l'appel de chargement initial
+  // du contexte vendeur mobile, donc le seul endroit d'où hydrater l'état réel de la boutique
+  // (statut ouverte/pause/fermée, horaires, coordonnées de paiement, documents KYC) au démarrage.
+  statut_boutique?: 'ouverte' | 'pause' | 'fermee';
+  horaires_ouverture?: string | null;
+  numero_mobile_money_reception?: string | null;
+  photo_boutique?: string | null;
+  document_identite?: string | null;
+  registre_commerce?: string | null;
   commandes_aujourd_hui: number;
   commandes_en_cours: number;
   commandes_livrees: number;
@@ -1000,11 +1015,48 @@ export async function fetchVendeurDashboard(): Promise<ApiVendeurDashboard> {
   return response.data.data;
 }
 
-// Nom de la boutique + position GPS du point de collecte (sert au calcul du prix de livraison
-// à la distance réelle parcourue par le livreur).
-export async function updateVendeurProfil(input: Partial<{ nom_commerce: string; coordonnees_gps: { lat: number; lng: number } }>): Promise<void> {
+// Nom de la boutique, position GPS du point de collecte (sert au calcul du prix de livraison à la
+// distance réelle parcourue par le livreur), coordonnées de paiement mobile money et horaires
+// d'ouverture (chaîne libre, ex: "Lun-Ven 08:00-18:00, Sam 09:00-13:00, Dim Fermé").
+export async function updateVendeurProfil(input: Partial<{
+  nom_commerce: string;
+  coordonnees_gps: { lat: number; lng: number };
+  numero_mobile_money_reception: string;
+  horaires_ouverture: string;
+}>): Promise<void> {
   const response = await api.put<ApiResponse>('/vendeur/profil', input);
   if (!response.data.success) throw new ApiError(response.data.message || 'Impossible de mettre à jour le profil boutique.');
+}
+
+// PUT /vendeur/statut-boutique — contrairement au reste du profil, ce champ conditionne réellement
+// la réception de nouvelles commandes côté serveur (voir CommandeController::valider) : "pause" et
+// "fermee" bloquent désormais la validation d'une commande pour ce vendeur.
+export async function updateStatutBoutiqueVendeur(statut: 'ouverte' | 'pause' | 'fermee'): Promise<void> {
+  const response = await api.put<ApiResponse>('/vendeur/statut-boutique', { statut_boutique: statut });
+  if (!response.data.success) throw new ApiError(response.data.message || 'Impossible de mettre à jour le statut de la boutique.');
+}
+
+// ─── Documents KYC du vendeur (photo boutique, pièce d'identité, registre de commerce) ───
+export type VendeurDocumentKey = 'photo_boutique' | 'document_identite' | 'registre_commerce';
+
+export async function uploaderDocumentsVendeur(
+  docs: Partial<Record<VendeurDocumentKey, { uri: string; fileName?: string | null; type?: string | null }>>
+): Promise<Partial<Record<VendeurDocumentKey, string | null>>> {
+  const form = new FormData();
+  (Object.keys(docs) as VendeurDocumentKey[]).forEach((key) => {
+    const file = docs[key];
+    if (!file?.uri) return;
+    form.append(key, {
+      uri: file.uri,
+      name: file.fileName || `${key}_${Date.now()}.jpg`,
+      type: file.type || 'image/jpeg',
+    } as any);
+  });
+  const response = await api.post<ApiResponse<Partial<Record<VendeurDocumentKey, string | null>>>>('/vendeur/documents', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  if (!response.data.success) throw new ApiError(response.data.message || "Erreur lors de l'envoi des documents.");
+  return response.data.data || {};
 }
 
 export interface ApiCommandeLigne {
@@ -1032,6 +1084,10 @@ export interface ApiCommande {
   vendeur?: { id?: string; nom_commerce?: string | null; user?: { nom_complet: string; telephone: string } | null } | null;
   livreur?: { id?: string; user?: { nom_complet: string; telephone: string } | null; vehicule?: string | null; note_moyenne?: number | null } | null;
   litige?: { id: string; numero: string | null; statut: string } | null;
+  // Notations déjà laissées par CE client pour cette commande (voir CommandeController::index /
+  // DiasporaController::historique) — permet de savoir si une commande livrée reste "à noter"
+  // sans requête supplémentaire par commande.
+  notations?: { type_cible: 'vendeur' | 'livreur'; note: number }[];
 }
 
 export type ApiVendeurCommandesPage = { commandes: ApiCommande[]; currentPage: number; lastPage: number };
@@ -1131,6 +1187,7 @@ export interface ApiVendeurRevenus {
   revenus_nets: string | number;
   mois: number;
   annee: number;
+  panier_moyen?: string | number;
   ventes_semaine?: { jour: string; montant: string | number }[];
   produits_plus_vendus?: { nom: string; ventes: number }[];
 }

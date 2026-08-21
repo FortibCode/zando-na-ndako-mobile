@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import { ArrowLeft, Clock, Truck, User } from 'lucide-react-native';
-import { BLUE, RED } from '@/components/client-ui';
+import { useTheme } from '@/contexts/theme-context';
 import { useDiaspora } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useClient, computeSlotDates } from '@/contexts/client-context';
@@ -14,6 +14,7 @@ const FALLBACK_DELIVERY_FEE = 2000;
 
 export default function DiasporaSlotScreen() {
   const { selectedBeneficiary } = useDiaspora();
+  const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const { setSelectedSlot: setGlobalSlot, resolveZoneForQuartier } = useClient();
   const [selectedDay, setSelectedDay] = useState<'today' | 'tomorrow'>('today');
@@ -23,32 +24,32 @@ export default function DiasporaSlotScreen() {
   const deliveryFee = zone ? Number(zone.frais_livraison_base) || FALLBACK_DELIVERY_FEE : FALLBACK_DELIVERY_FEE;
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="dark" />
-      <Animated.View entering={FadeInDown.duration(300).springify()} style={styles.header}>
-        <Pressable onPress={() => router.back()}><ArrowLeft color={BLUE} size={27} /></Pressable>
-        <Text style={styles.title}>{t('diaspora.slot.title', 'Choisissez un créneau')}</Text>
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Animated.View entering={FadeInDown.duration(300).springify()} style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Pressable onPress={() => router.back()}><ArrowLeft color={colors.primary} size={27} /></Pressable>
+        <Text style={[styles.title, { color: colors.text }]}>{t('diaspora.slot.title', 'Choisissez un créneau')}</Text>
       </Animated.View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Bénéficiaire */}
-        <Animated.View entering={FadeInDown.duration(350).delay(60).springify()} style={styles.beneficiaryCard}>
-          <View style={styles.beneficiaryIcon}>
-            <User color="#FFF" size={20} />
+        <Animated.View entering={FadeInDown.duration(350).delay(60).springify()} style={[styles.beneficiaryCard, { backgroundColor: colors.primarySoft, borderColor: colors.border, shadowColor: colors.shadow }]}>
+          <View style={[styles.beneficiaryIcon, { backgroundColor: colors.primary }]}>
+            <User color={colors.textInverse} size={20} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.beneficiaryLabel}>{selectedBeneficiary?.nom || t('diaspora.slot.defaultBeneficiary', 'Bénéficiaire')}</Text>
-            <Text style={styles.beneficiaryText}>{selectedBeneficiary?.ville || 'Brazzaville'}</Text>
+            <Text style={[styles.beneficiaryLabel, { color: colors.text }]}>{selectedBeneficiary?.nom || t('diaspora.slot.defaultBeneficiary', 'Bénéficiaire')}</Text>
+            <Text style={[styles.beneficiaryText, { color: colors.textSecondary }]}>{selectedBeneficiary?.ville || 'Brazzaville'}</Text>
           </View>
         </Animated.View>
 
         {/* Days */}
         <Animated.View entering={FadeInDown.duration(350).delay(100).springify()} style={styles.days}>
-          <Pressable onPress={() => setSelectedDay('today')} style={[styles.day, selectedDay === 'today' && styles.dayActive]}>
-            <Text style={[styles.dayText, selectedDay === 'today' && styles.dayTextActive]}>{t('diaspora.slot.today', "Aujourd'hui")}</Text>
+          <Pressable onPress={() => setSelectedDay('today')} style={[styles.day, { backgroundColor: colors.surface, borderColor: colors.border }, selectedDay === 'today' && { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primarySoft }]}>
+            <Text style={[styles.dayText, { color: colors.text }, selectedDay === 'today' && { fontWeight: '800' }]}>{t('diaspora.slot.today', "Aujourd'hui")}</Text>
           </Pressable>
-          <Pressable onPress={() => setSelectedDay('tomorrow')} style={[styles.day, selectedDay === 'tomorrow' && styles.dayActive]}>
-            <Text style={[styles.dayText, selectedDay === 'tomorrow' && styles.dayTextActive]}>{t('diaspora.slot.tomorrow', 'Demain')}</Text>
+          <Pressable onPress={() => setSelectedDay('tomorrow')} style={[styles.day, { backgroundColor: colors.surface, borderColor: colors.border }, selectedDay === 'tomorrow' && { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primarySoft }]}>
+            <Text style={[styles.dayText, { color: colors.text }, selectedDay === 'tomorrow' && { fontWeight: '800' }]}>{t('diaspora.slot.tomorrow', 'Demain')}</Text>
           </Pressable>
         </Animated.View>
 
@@ -56,29 +57,36 @@ export default function DiasporaSlotScreen() {
           const isSelected = selectedSlot === slot;
           return (
             <Animated.View key={slot} entering={FadeInLeft.duration(350).delay(150 + index * 60).springify()}>
-              <Pressable onPress={() => setSelectedSlot(slot)} style={[styles.slot, isSelected && styles.slotSelected]}>
-                <Clock color={isSelected ? '#FFF' : BLUE} size={20} />
-                <Text style={[styles.slotText, isSelected && styles.slotTextSelected]}>{slot}</Text>
+              <Pressable
+                onPress={() => setSelectedSlot(slot)}
+                style={[
+                  styles.slot,
+                  { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow },
+                  isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                ]}
+              >
+                <Clock color={isSelected ? colors.textInverse : colors.text} size={20} />
+                <Text style={[styles.slotText, { color: colors.text }, isSelected && { color: colors.textInverse, fontWeight: '800' }]}>{slot}</Text>
                 {isSelected && (
-                  <View style={styles.slotCheck}><Text style={styles.slotCheckText}>✓</Text></View>
+                  <View style={styles.slotCheck}><Text style={[styles.slotCheckText, { color: colors.textInverse }]}>✓</Text></View>
                 )}
               </Pressable>
             </Animated.View>
           );
         })}
 
-        <Animated.View entering={FadeInUp.duration(400).delay(500).springify()} style={styles.deliveryInfo}>
+        <Animated.View entering={FadeInUp.duration(400).delay(500).springify()} style={[styles.deliveryInfo, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow }]}>
           <View style={styles.infoRow}>
-            <Truck color="#607095" size={20} />
-            <Text style={styles.infoText}>
+            <Truck color={colors.textSecondary} size={20} />
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               {t('diaspora.slot.deliveryPrefix', 'Livraison')} {selectedDay === 'today' ? t('diaspora.slot.todayInline', "aujourd'hui") : t('diaspora.slot.tomorrowInline', 'demain')} {t('diaspora.slot.deliveryInWord', 'en')}{' '}
-              <Text style={styles.infoHighlight}>{selectedSlot}</Text>
+              <Text style={[styles.infoHighlight, { color: colors.primary }]}>{selectedSlot}</Text>
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Truck color="#607095" size={20} />
-            <Text style={styles.infoText}>
-              {t('diaspora.slot.deliveryFeeLabel', 'Frais de livraison :')} <Text style={styles.infoHighlight}>{deliveryFee.toLocaleString('fr-FR')} FCFA</Text>
+            <Truck color={colors.textSecondary} size={20} />
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              {t('diaspora.slot.deliveryFeeLabel', 'Frais de livraison :')} <Text style={[styles.infoHighlight, { color: colors.primary }]}>{deliveryFee.toLocaleString('fr-FR')} FCFA</Text>
             </Text>
           </View>
         </Animated.View>
@@ -90,9 +98,9 @@ export default function DiasporaSlotScreen() {
               setGlobalSlot({ day: selectedDay, label: selectedSlot, debut, fin });
               router.push('/client/diaspora/checkout/payment' as any);
             }}
-            style={styles.button}
+            style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
           >
-            <Text style={styles.buttonText}>{t('diaspora.slot.continueButton', 'Continuer')}</Text>
+            <Text style={[styles.buttonText, { color: colors.textInverse }]}>{t('diaspora.slot.continueButton', 'Continuer')}</Text>
           </Pressable>
         </Animated.View>
       </ScrollView>
@@ -101,49 +109,45 @@ export default function DiasporaSlotScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F8FAFE' },
+  screen: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 15, padding: 20,
-    backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E8ECF2',
+    borderBottomWidth: 1,
   },
-  title: { color: BLUE, fontSize: 25, fontWeight: '800' },
+  title: { fontSize: 25, fontWeight: '800' },
   content: { padding: 20, paddingTop: 10, gap: 12 },
 
   beneficiaryCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#F0F6FF', borderRadius: 18, padding: 14,
-    borderWidth: 1.5, borderColor: '#D0E1FF',
-    shadowColor: '#1A2744', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    borderRadius: 18, padding: 14,
+    borderWidth: 1.5,
+    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
-  beneficiaryIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center' },
-  beneficiaryLabel: { color: BLUE, fontSize: 15, fontWeight: '900' },
-  beneficiaryText: { color: '#475569', fontSize: 13, marginTop: 3 },
+  beneficiaryIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  beneficiaryLabel: { fontSize: 15, fontWeight: '900' },
+  beneficiaryText: { fontSize: 13, marginTop: 3 },
 
   days: { flexDirection: 'row', gap: 12, marginBottom: 8 },
-  day: { flex: 1, padding: 18, backgroundColor: '#FFF', borderRadius: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#E8ECF2' },
-  dayActive: { borderColor: BLUE, borderWidth: 2, backgroundColor: '#F0F6FF' },
-  dayText: { color: BLUE, fontSize: 17, fontWeight: '600' },
-  dayTextActive: { fontWeight: '800' },
+  day: { flex: 1, padding: 18, borderRadius: 16, alignItems: 'center', borderWidth: 1.5 },
+  dayText: { fontSize: 17, fontWeight: '600' },
   slot: {
-    height: 64, backgroundColor: '#FFF', borderRadius: 16, flexDirection: 'row',
-    alignItems: 'center', gap: 14, paddingHorizontal: 18, borderWidth: 1.5, borderColor: '#E8ECF2',
-    shadowColor: '#1A2744', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
+    height: 64, borderRadius: 16, flexDirection: 'row',
+    alignItems: 'center', gap: 14, paddingHorizontal: 18, borderWidth: 1.5,
+    shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
   },
-  slotSelected: { backgroundColor: BLUE, borderColor: BLUE },
-  slotText: { color: BLUE, fontSize: 18, fontWeight: '600', flex: 1 },
-  slotTextSelected: { color: '#FFF', fontWeight: '800' },
+  slotText: { fontSize: 18, fontWeight: '600', flex: 1 },
   slotCheck: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-  slotCheckText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  slotCheckText: { fontSize: 16, fontWeight: '800' },
   deliveryInfo: {
-    backgroundColor: '#FFF', borderRadius: 18, padding: 18, gap: 14, marginTop: 4,
-    borderWidth: 1, borderColor: '#F0F3F8', shadowColor: '#1A2744', shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
+    borderRadius: 18, padding: 18, gap: 14, marginTop: 4,
+    borderWidth: 1, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
   },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  infoText: { color: '#607095', fontSize: 16 },
-  infoHighlight: { color: BLUE, fontWeight: '800' },
+  infoText: { fontSize: 16 },
+  infoHighlight: { fontWeight: '800' },
   button: {
-    height: 60, borderRadius: 18, backgroundColor: RED, alignItems: 'center', justifyContent: 'center',
-    marginTop: 8, shadowColor: RED, shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+    marginTop: 8, shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
-  buttonText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  buttonText: { fontSize: 18, fontWeight: '800' },
 });

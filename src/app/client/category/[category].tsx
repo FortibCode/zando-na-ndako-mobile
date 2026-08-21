@@ -15,10 +15,11 @@ import { useLanguage } from '@/contexts/language-context';
 type SortMode = 'relevance' | 'price_asc' | 'price_desc' | 'rating';
 type PriceBand = 'all' | 'under1000' | '1000to3000' | 'over3000';
 type AvailMode = 'all' | 'inStock' | 'outOfStock';
+type FraicheurMode = 'all' | 'frais' | 'fume' | 'congele';
 
 function FilterModal({
   visible, onClose, category, setCategory, categories,
-  priceBand, setPriceBand, avail, setAvail, sort, setSort, onApply,
+  priceBand, setPriceBand, avail, setAvail, fraicheur, setFraicheur, sort, setSort, onApply,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -29,6 +30,8 @@ function FilterModal({
   setPriceBand: (p: PriceBand) => void;
   avail: AvailMode;
   setAvail: (a: AvailMode) => void;
+  fraicheur: FraicheurMode;
+  setFraicheur: (f: FraicheurMode) => void;
   sort: SortMode;
   setSort: (s: SortMode) => void;
   onApply: () => void;
@@ -47,6 +50,13 @@ function FilterModal({
     { id: 'all', label: t('catalogFilter.availAll', 'Tous') },
     { id: 'inStock', label: t('catalogFilter.availInStock', 'En stock') },
     { id: 'outOfStock', label: t('catalogFilter.availOutOfStock', 'En rupture') },
+  ];
+
+  const fraicheurOptions: { id: FraicheurMode; label: string }[] = [
+    { id: 'all', label: t('catalogFilter.fraicheurAll', 'Toutes') },
+    { id: 'frais', label: t('catalogFilter.fraicheurFrais', 'Frais') },
+    { id: 'fume', label: t('catalogFilter.fraicheurFume', 'Fumé') },
+    { id: 'congele', label: t('catalogFilter.fraicheurCongele', 'Congelé') },
   ];
 
   const sortOptions: { id: SortMode; label: string }[] = [
@@ -114,6 +124,20 @@ function FilterModal({
               })}
             </View>
 
+            {/* Fraîcheur */}
+            <Text style={[styles.modalSection, { color: colors.textTertiary }]}>{t('catalogFilter.fraicheur', 'FRAÎCHEUR')}</Text>
+            <View style={styles.modalOptions}>
+              {fraicheurOptions.map((f) => {
+                const selected = fraicheur === f.id;
+                return (
+                  <Pressable key={f.id} onPress={() => setFraicheur(f.id)} style={[styles.optionRow, { borderColor: colors.border }, selected && { borderColor: colors.primary }]}>
+                    <Text style={[styles.optionText, { color: colors.text }, selected && { color: colors.primary, fontWeight: '800' }]}>{f.label}</Text>
+                    {selected && <Check color={colors.primary} size={18} />}
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {/* Tri */}
             <Text style={[styles.modalSection, { color: colors.textTertiary }]}>{t('catalogFilter.sortBy', 'TRIER PAR')}</Text>
             <View style={styles.modalOptions}>
@@ -150,6 +174,7 @@ export default function CategoryProductsScreen() {
   const [category, setCategory] = useState(title === 'Populaires' ? 'all' : title);
   const [priceBand, setPriceBand] = useState<PriceBand>('all');
   const [avail, setAvail] = useState<AvailMode>('all');
+  const [fraicheur, setFraicheur] = useState<FraicheurMode>('all');
   const [sort, setSort] = useState<SortMode>('relevance');
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -174,20 +199,24 @@ export default function CategoryProductsScreen() {
     if (avail === 'inStock') result = result.filter((p) => p.stock !== false);
     if (avail === 'outOfStock') result = result.filter((p) => p.stock === false);
 
+    // Fraîcheur
+    if (fraicheur !== 'all') result = result.filter((p) => p.fraicheur === fraicheur);
+
     // Tri
     if (sort === 'price_asc') result.sort((a, b) => a.price - b.price);
     else if (sort === 'price_desc') result.sort((a, b) => b.price - a.price);
     else if (sort === 'rating') result.sort((a, b) => b.rating - a.rating);
 
     return result;
-  }, [products, title, category, priceBand, avail, sort]);
+  }, [products, title, category, priceBand, avail, fraicheur, sort]);
 
-  const hasActiveFilters = priceBand !== 'all' || avail !== 'all' || sort !== 'relevance' || (category !== 'all' && category !== title);
+  const hasActiveFilters = priceBand !== 'all' || avail !== 'all' || fraicheur !== 'all' || sort !== 'relevance' || (category !== 'all' && category !== title);
 
   const resetFilters = () => {
     setCategory(title === 'Populaires' ? 'all' : title);
     setPriceBand('all');
     setAvail('all');
+    setFraicheur('all');
     setSort('relevance');
   };
 
@@ -269,6 +298,8 @@ export default function CategoryProductsScreen() {
         setPriceBand={setPriceBand}
         avail={avail}
         setAvail={setAvail}
+        fraicheur={fraicheur}
+        setFraicheur={setFraicheur}
         sort={sort}
         setSort={setSort}
         onApply={() => setModalVisible(false)}

@@ -7,11 +7,11 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming, Easing,
 } from 'react-native-reanimated';
 import { ArrowLeft, Globe2, ShieldCheck, Truck, Radar, MapPin, Info } from 'lucide-react-native';
-import { BLUE, RED, GREEN } from '@/components/client-ui';
 import { useDiaspora } from '@/contexts/diaspora-context';
+import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 
-function OrbitDot({ delay = 0 }: { delay?: number }) {
+function OrbitDot({ delay = 0, color }: { delay?: number; color: string }) {
   const scale = useSharedValue(0.6);
   const opacity = useSharedValue(0.3);
 
@@ -35,11 +35,12 @@ function OrbitDot({ delay = 0 }: { delay?: number }) {
   }, []);
 
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }], opacity: opacity.value }));
-  return <Animated.View style={[styles.orbitDot, style]} />;
+  return <Animated.View style={[styles.orbitDot, { backgroundColor: color }, style]} />;
 }
 
 export default function DiasporaIntroScreen() {
   const { activateDiasporaMode } = useDiaspora();
+  const { colors, isDark } = useTheme();
   const { t } = useLanguage();
 
   const FEATURES = [
@@ -57,41 +58,41 @@ export default function DiasporaIntroScreen() {
   }));
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       <Animated.View entering={FadeInDown.duration(300).springify()} style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft color={BLUE} size={22} />
+        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.primarySoft }]}>
+          <ArrowLeft color={colors.primary} size={22} />
         </Pressable>
-        <Pressable onPress={() => router.push('/client/diaspora/about' as any)} style={styles.infoBtn}>
-          <Info color={BLUE} size={20} />
+        <Pressable onPress={() => router.push('/client/diaspora/about' as any)} style={[styles.infoBtn, { backgroundColor: colors.primarySoft }]}>
+          <Info color={colors.primary} size={20} />
         </Pressable>
       </Animated.View>
 
       <View style={styles.content}>
         {/* Illustration */}
         <Animated.View entering={ZoomIn.duration(600).springify()} style={styles.illusWrap}>
-          <View style={styles.orbitRing}>
-            <OrbitDot />
+          <View style={[styles.orbitRing, { borderColor: colors.border }]}>
+            <OrbitDot color={colors.success} />
           </View>
-          <Animated.View style={[styles.globeCircle, globeStyle]}>
-            <Globe2 color="#FFF" size={64} strokeWidth={1.4} />
+          <Animated.View style={[styles.globeCircle, { backgroundColor: colors.primary, shadowColor: colors.primary, borderColor: colors.primarySoft }, globeStyle]}>
+            <Globe2 color={colors.textInverse} size={64} strokeWidth={1.4} />
           </Animated.View>
 
-          <Animated.View entering={FadeIn.duration(500).delay(300)} style={styles.routeDash} />
+          <Animated.View entering={FadeIn.duration(500).delay(300)} style={[styles.routeDash, { backgroundColor: colors.primary }]} />
 
           <Animated.View entering={ZoomIn.duration(500).delay(350).springify()} style={styles.avatarCard}>
-            <View style={styles.avatarCircle}>
+            <View style={[styles.avatarCircle, { backgroundColor: colors.surface, borderColor: colors.primary, shadowColor: colors.shadow }]}>
               <Text style={styles.avatarEmoji}>🧑🏾</Text>
             </View>
-            <View style={styles.avatarPin}>
-              <MapPin color="#FFF" size={13} />
+            <View style={[styles.avatarPin, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
+              <MapPin color={colors.textInverse} size={13} />
             </View>
           </Animated.View>
         </Animated.View>
 
-        <Animated.Text entering={FadeInUp.duration(450).delay(150).springify()} style={styles.title}>
+        <Animated.Text entering={FadeInUp.duration(450).delay(150).springify()} style={[styles.title, { color: colors.text }]}>
           {t('diaspora.intro.title', 'Envoyez des courses\nà vos proches au Congo')}
         </Animated.Text>
 
@@ -102,10 +103,10 @@ export default function DiasporaIntroScreen() {
               entering={FadeInUp.duration(400).delay(320 + i * 90).springify()}
               style={styles.featureRow}
             >
-              <View style={styles.featureCheck}>
-                <Icon color={GREEN} size={16} />
+              <View style={[styles.featureCheck, { backgroundColor: colors.freshSoft }]}>
+                <Icon color={colors.success} size={16} />
               </View>
-              <Text style={styles.featureText}>{text}</Text>
+              <Text style={[styles.featureText, { color: colors.textSecondary }]}>{text}</Text>
             </Animated.View>
           ))}
         </Animated.View>
@@ -117,12 +118,12 @@ export default function DiasporaIntroScreen() {
             activateDiasporaMode();
             router.push('/client/diaspora/beneficiaries' as any);
           }}
-          style={styles.cta}
+          style={[styles.cta, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
         >
-          <Text style={styles.ctaText}>{t('diaspora.intro.cta', 'Activer le Mode Diaspora')}</Text>
+          <Text style={[styles.ctaText, { color: colors.textInverse }]}>{t('diaspora.intro.cta', 'Activer le Mode Diaspora')}</Text>
         </Pressable>
         <Pressable onPress={() => router.back()} style={styles.later}>
-          <Text style={styles.laterText}>{t('diaspora.intro.later', 'Plus tard')}</Text>
+          <Text style={[styles.laterText, { color: colors.textSecondary }]}>{t('diaspora.intro.later', 'Plus tard')}</Text>
         </Pressable>
       </Animated.View>
     </SafeAreaView>
@@ -130,18 +131,18 @@ export default function DiasporaIntroScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F8FAFE' },
+  screen: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 8,
   },
   backBtn: {
     width: 40, height: 40, borderRadius: 13,
-    backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   infoBtn: {
     width: 40, height: 40, borderRadius: 13,
-    backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
 
   content: { flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center', gap: 8 },
@@ -151,22 +152,21 @@ const styles = StyleSheet.create({
   },
   orbitRing: {
     position: 'absolute', width: 220, height: 220, borderRadius: 110,
-    borderWidth: 1.5, borderColor: '#D8E5FF', borderStyle: 'dashed',
+    borderWidth: 1.5, borderStyle: 'dashed',
     alignItems: 'center', justifyContent: 'flex-start',
   },
   orbitDot: {
     position: 'absolute', top: -6, width: 14, height: 14, borderRadius: 7,
-    backgroundColor: GREEN,
   },
   globeCircle: {
     width: 156, height: 156, borderRadius: 78,
-    backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center',
-    shadowColor: BLUE, shadowOpacity: 0.35, shadowRadius: 24, elevation: 10,
-    borderWidth: 4, borderColor: '#EEF4FF',
+    alignItems: 'center', justifyContent: 'center',
+    shadowOpacity: 0.35, shadowRadius: 24, elevation: 10,
+    borderWidth: 4,
   },
   routeDash: {
     position: 'absolute', width: 2, height: 60, top: 100, right: 24,
-    backgroundColor: RED, opacity: 0.35, borderRadius: 2,
+    opacity: 0.35, borderRadius: 2,
     transform: [{ rotate: '35deg' }],
   },
   avatarCard: {
@@ -175,35 +175,35 @@ const styles = StyleSheet.create({
   },
   avatarCircle: {
     width: 58, height: 58, borderRadius: 20,
-    backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2.5, borderColor: BLUE,
-    shadowColor: '#0D1B3E', shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2.5,
+    shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
   },
   avatarEmoji: { fontSize: 30 },
   avatarPin: {
     position: 'absolute', bottom: -8, alignSelf: 'center',
-    width: 24, height: 24, borderRadius: 12, backgroundColor: RED,
+    width: 24, height: 24, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#FFF',
+    borderWidth: 2,
   },
 
-  title: { color: BLUE, fontSize: 25, fontWeight: '900', textAlign: 'center', lineHeight: 32 },
+  title: { fontSize: 25, fontWeight: '900', textAlign: 'center', lineHeight: 32 },
 
   featureList: { width: '100%', gap: 14, marginTop: 22 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   featureCheck: {
     width: 30, height: 30, borderRadius: 15,
-    backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  featureText: { color: '#334155', fontSize: 15, fontWeight: '600', flex: 1 },
+  featureText: { fontSize: 15, fontWeight: '600', flex: 1 },
 
   footer: { padding: 20, paddingBottom: 26, gap: 12 },
   cta: {
-    height: 60, borderRadius: 18, backgroundColor: RED,
+    height: 60, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: RED, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 5,
+    shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 5,
   },
-  ctaText: { color: '#FFF', fontSize: 18, fontWeight: '900' },
+  ctaText: { fontSize: 18, fontWeight: '900' },
   later: { alignItems: 'center', paddingVertical: 4 },
-  laterText: { color: '#64748B', fontSize: 15, fontWeight: '700' },
+  laterText: { fontSize: 15, fontWeight: '700' },
 });

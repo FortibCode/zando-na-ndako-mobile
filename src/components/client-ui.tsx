@@ -171,6 +171,16 @@ export function ProductCard({ product, onAdd, compact = false }: { product: Prod
 
   const unitLabel = product.unit.replace(/^FCFA\/?/, '');
 
+  // Badge affichant la vraie fraîcheur du produit (frais/fumé/congelé) : auparavant toujours
+  // affiché "FRAIS" quelle que soit la valeur réelle, ce qui induisait les clients en erreur.
+  const fraicheurBadge = product.fraicheur === 'frais'
+    ? { label: t('productExtra.fraicheurFrais', 'FRAIS'), bg: colors.freshSoft, color: colors.fresh }
+    : product.fraicheur === 'fume'
+    ? { label: t('productExtra.fraicheurFume', 'FUMÉ'), bg: colors.goldSoft, color: colors.gold }
+    : product.fraicheur === 'congele'
+    ? { label: t('productExtra.fraicheurCongele', 'CONGELÉ'), bg: colors.info + '22', color: colors.info }
+    : null;
+
   return (
     <Animated.View
       style={[
@@ -198,9 +208,11 @@ export function ProductCard({ product, onAdd, compact = false }: { product: Prod
             source={{ uri: product.image }}
             style={styles.productPhoto}
           />
-          <View style={[styles.freshBadge, { backgroundColor: colors.freshSoft }]}>
-            <Text style={[styles.freshBadgeText, { color: colors.fresh }]}>FRAIS</Text>
-          </View>
+          {fraicheurBadge && (
+            <View style={[styles.freshBadge, { backgroundColor: fraicheurBadge.bg }]}>
+              <Text style={[styles.freshBadgeText, { color: fraicheurBadge.color }]}>{fraicheurBadge.label}</Text>
+            </View>
+          )}
           <Pressable
             onPress={handleFavorite}
             hitSlop={8}

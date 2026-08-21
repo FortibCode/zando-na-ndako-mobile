@@ -27,6 +27,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useTheme } from '@/contexts/theme-context';
+import { useLanguage } from '@/contexts/language-context';
 import { Spacing, Radii, Shadows, TextSizes, FontWeights } from './tokens';
 
 /**
@@ -143,6 +144,40 @@ export function ThemeToggle() {
   );
 }
 
+// ─── LanguageToggle ───────────────────────────────────────────────────────────
+export function LanguageToggle() {
+  const { colors, isDark } = useTheme();
+  const { language, setLanguage } = useLanguage();
+
+  const cycleLanguage = () => {
+    const langs: ('fr' | 'lingala' | 'kituba' | 'en')[] = ['fr', 'lingala', 'kituba', 'en'];
+    const nextIdx = (langs.indexOf(language) + 1) % langs.length;
+    void setLanguage(langs[nextIdx]);
+  };
+
+  const label = language === 'lingala' ? 'LN' : language === 'kituba' ? 'KG' : language === 'en' ? 'EN' : 'FR';
+
+  return (
+    <Pressable
+      accessibilityLabel="Changer de langue"
+      accessibilityRole="button"
+      hitSlop={8}
+      onPress={cycleLanguage}
+      style={({ pressed }) => [
+        styles.themeToggle,
+        {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+          borderColor: colors.border,
+          shadowColor: colors.shadow,
+        },
+        pressed && styles.themeTogglePressed,
+      ]}
+    >
+      <Text style={{ fontSize: 11, fontWeight: '900', color: colors.primary }}>{label}</Text>
+    </Pressable>
+  );
+}
+
 // ─── App Header ───────────────────────────────────────────────────────────────
 export function AppHeader({ title, subtitle, back = true, right, onBack }: {
   title: string;
@@ -176,7 +211,12 @@ export function AppHeader({ title, subtitle, back = true, right, onBack }: {
           </Text>
         ) : null}
       </View>
-      {right || <ThemeToggle />}
+      {right || (
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <LanguageToggle />
+          <ThemeToggle />
+        </View>
+      )}
     </View>
   );
 }

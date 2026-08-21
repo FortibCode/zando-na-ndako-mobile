@@ -20,7 +20,7 @@ import { useScalePress } from '@/hooks/use-animation';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
-import { ThemeToggle } from '@/design/components';
+import { ThemeToggle, LanguageToggle } from '@/design/components';
 
 const CATEGORY_COLORS = ['#EAF4FF', '#FFEDE8', '#FFF6E8', '#E8F9EE', '#FFF0E8', '#F3EEFF'];
 
@@ -65,6 +65,7 @@ export default function ClientHomeScreen() {
             </Pressable>
           </View>
           <View style={styles.actions}>
+            <LanguageToggle />
             <ThemeToggle />
             <Pressable
               onPress={() => router.push('/client/notifications' as any)}

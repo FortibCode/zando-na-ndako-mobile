@@ -17,7 +17,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 import { EmptyState } from '@/components/lottie-animations';
-import { ApiError, sharePanier } from '@/services/api';
+import { ApiError, sharePanier, viderPanier, ajouterAuPanier } from '@/services/api';
 
 const FALLBACK_DELIVERY_FEE = 800;
 
@@ -103,6 +103,12 @@ export default function CartScreen() {
       const destinataire = selectedBeneficiary?.nom ? ` à ${selectedBeneficiary.nom}` : '';
       let messageText = '';
       try {
+        // Le panier partagé côté serveur doit refléter le panier local avant de générer le lien,
+        // sinon le lien pointe vers un panier serveur vide ou périmé (même correctif que web).
+        await viderPanier().catch(() => {});
+        for (const { product, quantity } of items) {
+          await ajouterAuPanier(product.id, quantity);
+        }
         const { lien } = await sharePanier();
         messageText = `Voici le panier que je souhaite vous envoyer${destinataire} via Zando na Ndako (${total.toLocaleString('fr-FR')} FCFA) : ${lien}`;
       } catch (_apiErr) {

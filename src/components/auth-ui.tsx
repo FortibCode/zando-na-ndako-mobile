@@ -482,6 +482,18 @@ export function OtpFields({
   const inputs = useRef<(TextInput | null)[]>([]);
   const completedRef = useRef(false);
 
+  const autoTriggeredRef = useRef(false);
+
+  // Auto-soumettre si le code initial est complet (otp_dev reçu du backend)
+  useEffect(() => {
+    if (initialCode && initialCode.replace(/\D/g, '').length === 6 && onComplete && !autoTriggeredRef.current) {
+      autoTriggeredRef.current = true;
+      const cleanCode = initialCode.replace(/\D/g, '').slice(0, 6);
+      const timer = setTimeout(() => onComplete(cleanCode), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [initialCode, onComplete]);
+
   useEffect(() => {
     completedRef.current = false;
   }, [code]);
@@ -514,6 +526,7 @@ export function OtpFields({
       onComplete(fullCode);
     }
   }, [code, onComplete, onChangeCode]);
+
 
   const handleKeyPress = useCallback(
     (key: string, index: number) => {

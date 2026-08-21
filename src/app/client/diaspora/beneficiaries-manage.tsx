@@ -6,18 +6,20 @@ import Animated, {
   FadeInDown, FadeInUp, FadeInLeft,
   useAnimatedStyle, useSharedValue, withSpring,
 } from 'react-native-reanimated';
-import { ArrowLeft, Plus, Pencil, Trash2, Star, ShoppingBag, Search } from 'lucide-react-native';
-import { BLUE, RED, GOLD } from '@/components/client-ui';
+import { ArrowLeft, Plus, Pencil, Trash2, ShoppingBag, Search } from 'lucide-react-native';
+import { Palette } from '@/design/tokens';
+import { useTheme } from '@/contexts/theme-context';
 import { useDiaspora, type Beneficiary } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
 import BeneficiaryFormModal from '@/components/beneficiary-form-modal';
 import { EmptyState } from '@/components/lottie-animations';
+import type { ThemeColors } from '@/design/theme';
 
 const AVATAR_COLORS = ['#FDE68A', '#BFDBFE', '#FBCFE8', '#C7F9E5', '#FED7AA'];
 
-function BeneficiaryRow({ beneficiary, index, onEdit, onDelete, onToggleFavorite }: {
+function BeneficiaryRow({ beneficiary, index, onEdit, onDelete, onToggleFavorite, colors }: {
   beneficiary: Beneficiary; index: number;
-  onEdit: () => void; onDelete: () => void; onToggleFavorite: () => void;
+  onEdit: () => void; onDelete: () => void; onToggleFavorite: () => void; colors: ThemeColors;
 }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -33,26 +35,26 @@ function BeneficiaryRow({ beneficiary, index, onEdit, onDelete, onToggleFavorite
         onPressIn={() => { scale.value = withSpring(0.98); }}
         onPressOut={() => { scale.value = withSpring(1); }}
         onLongPress={onToggleFavorite}
-        style={styles.row}
+        style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow }]}
       >
         <View style={[styles.avatar, { backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] }]}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={styles.copy}>
-          <Text style={styles.name}>{beneficiary.nom}</Text>
-          <Text style={styles.meta}>{beneficiary.telephone}</Text>
-          <Text style={styles.meta}>{beneficiary.ville}</Text>
+          <Text style={[styles.name, { color: colors.text }]}>{beneficiary.nom}</Text>
+          <Text style={[styles.meta, { color: colors.textSecondary }]}>{beneficiary.telephone}</Text>
+          <Text style={[styles.meta, { color: colors.textSecondary }]}>{beneficiary.ville}</Text>
         </View>
         {beneficiary.favori && (
-          <View style={styles.favBadge}>
-            <Text style={styles.favBadgeText}>{t('diaspora.beneficiariesManage.favBadge', 'Favori')}</Text>
+          <View style={[styles.favBadge, { backgroundColor: colors.goldSoft }]}>
+            <Text style={[styles.favBadgeText, { color: colors.gold }]}>{t('diaspora.beneficiariesManage.favBadge', 'Favori')}</Text>
           </View>
         )}
-        <Pressable onPress={onEdit} style={styles.actionBtn} accessibilityLabel={t('diaspora.beneficiariesManage.edit', 'Modifier')}>
-          <Pencil color={BLUE} size={16} />
+        <Pressable onPress={onEdit} style={[styles.actionBtn, { backgroundColor: colors.primarySoft }]} accessibilityLabel={t('diaspora.beneficiariesManage.edit', 'Modifier')}>
+          <Pencil color={colors.primary} size={16} />
         </Pressable>
-        <Pressable onPress={onDelete} style={[styles.actionBtn, styles.actionDanger]} accessibilityLabel={t('diaspora.beneficiariesManage.delete', 'Supprimer')}>
-          <Trash2 color={RED} size={16} />
+        <Pressable onPress={onDelete} style={[styles.actionBtn, { backgroundColor: colors.error + '18' }]} accessibilityLabel={t('diaspora.beneficiariesManage.delete', 'Supprimer')}>
+          <Trash2 color={colors.error} size={16} />
         </Pressable>
       </Pressable>
     </Animated.View>
@@ -61,6 +63,7 @@ function BeneficiaryRow({ beneficiary, index, onEdit, onDelete, onToggleFavorite
 
 export default function ManageBeneficiariesScreen() {
   const { beneficiaries, removeBeneficiary, toggleFavoriteBeneficiary } = useDiaspora();
+  const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Beneficiary | null>(null);
@@ -89,27 +92,27 @@ export default function ManageBeneficiariesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      <Animated.View entering={FadeInDown.duration(300).springify()} style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft color={BLUE} size={22} />
+      <Animated.View entering={FadeInDown.duration(300).springify()} style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.primarySoft }]}>
+          <ArrowLeft color={colors.primary} size={22} />
         </Pressable>
-        <Text style={styles.title}>{t('diaspora.beneficiariesManage.title', 'Mes bénéficiaires')}</Text>
-        <Pressable onPress={() => { setEditing(null); setModalVisible(true); }} style={styles.addBtn}>
-          <Plus color={BLUE} size={22} />
+        <Text style={[styles.title, { color: colors.text }]}>{t('diaspora.beneficiariesManage.title', 'Mes bénéficiaires')}</Text>
+        <Pressable onPress={() => { setEditing(null); setModalVisible(true); }} style={[styles.addBtn, { backgroundColor: colors.primarySoft }]}>
+          <Plus color={colors.primary} size={22} />
         </Pressable>
       </Animated.View>
 
-      <View style={styles.searchWrap}>
-        <Search color="#94A3B8" size={18} />
+      <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Search color={colors.textTertiary} size={18} />
         <TextInput
           value={query}
           onChangeText={setQuery}
           placeholder={t('diaspora.beneficiaries.searchPlaceholder', 'Rechercher un bénéficiaire…')}
-          placeholderTextColor="#94A3B8"
-          style={styles.searchInput}
+          placeholderTextColor={colors.textTertiary}
+          style={[styles.searchInput, { color: colors.text }]}
           autoCapitalize="words"
         />
       </View>
@@ -117,7 +120,7 @@ export default function ManageBeneficiariesScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 ? (
           <Animated.View entering={FadeInUp.duration(400).springify()}>
-            <View style={styles.emptyBox}>
+            <View style={[styles.emptyBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <EmptyState
                 title={query ? t('diaspora.beneficiaries.emptyResultsTitle', 'Aucun résultat') : t('diaspora.beneficiaries.emptyTitle', 'Aucun bénéficiaire')}
                 message={query ? t('diaspora.beneficiaries.emptyResultsDesc', 'Aucun bénéficiaire ne correspond à votre recherche.') : t('diaspora.beneficiaries.emptyDesc', 'Ajoutez la personne qui recevra vos courses au Congo.')}
@@ -134,21 +137,22 @@ export default function ManageBeneficiariesScreen() {
               onEdit={() => { setEditing(b); setModalVisible(true); }}
               onDelete={() => handleDelete(b)}
               onToggleFavorite={() => toggleFavoriteBeneficiary(b.id)}
+              colors={colors}
             />
           ))
         )}
 
         <Animated.View entering={FadeInUp.duration(400).delay(300).springify()}>
-          <Pressable onPress={() => { setEditing(null); setModalVisible(true); }} style={styles.addCard}>
-            <Plus color={BLUE} size={20} />
-            <Text style={styles.addText}>{t('diaspora.beneficiariesManage.addButton', 'Ajouter un bénéficiaire')}</Text>
+          <Pressable onPress={() => { setEditing(null); setModalVisible(true); }} style={[styles.addCard, { borderColor: colors.border }]}>
+            <Plus color={colors.primary} size={20} />
+            <Text style={[styles.addText, { color: colors.primary }]}>{t('diaspora.beneficiariesManage.addButton', 'Ajouter un bénéficiaire')}</Text>
           </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeInUp.duration(400).delay(360).springify()}>
-          <Pressable onPress={() => router.push('/client/diaspora/beneficiaries' as any)} style={styles.reorder}>
-            <ShoppingBag color="#FFF" size={18} />
-            <Text style={styles.reorderText}>{t('diaspora.beneficiariesManage.reorderButton', 'Commander à nouveau')}</Text>
+          <Pressable onPress={() => router.push('/client/diaspora/beneficiaries' as any)} style={[styles.reorder, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
+            <ShoppingBag color={colors.textInverse} size={18} />
+            <Text style={[styles.reorderText, { color: colors.textInverse }]}>{t('diaspora.beneficiariesManage.reorderButton', 'Commander à nouveau')}</Text>
           </Pressable>
         </Animated.View>
       </ScrollView>
@@ -163,53 +167,52 @@ export default function ManageBeneficiariesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F8FAFE' },
+  screen: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 20, backgroundColor: '#FFF',
-    borderBottomWidth: 1, borderBottomColor: '#E8ECF2',
+    padding: 20,
+    borderBottomWidth: 1,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center' },
-  title: { color: BLUE, fontSize: 19, fontWeight: '900', flex: 1 },
-  addBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 19, fontWeight: '900', flex: 1 },
+  addBtn: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   searchWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginHorizontal: 20, marginTop: 14, height: 50,
-    backgroundColor: '#FFF', borderRadius: 14, paddingHorizontal: 14,
-    borderWidth: 1.5, borderColor: '#E8ECF2',
+    borderRadius: 14, paddingHorizontal: 14,
+    borderWidth: 1.5,
   },
-  searchInput: { flex: 1, color: BLUE, fontSize: 14.5, fontWeight: '500' },
+  searchInput: { flex: 1, fontSize: 14.5, fontWeight: '500' },
   content: { padding: 20, gap: 12, paddingBottom: 30 },
 
-  emptyBox: { backgroundColor: '#FFF', borderRadius: 20, padding: 10, borderWidth: 1, borderColor: '#EEF2FA', alignItems: 'center' },
+  emptyBox: { borderRadius: 20, padding: 10, borderWidth: 1, alignItems: 'center' },
 
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#FFF', borderRadius: 18, padding: 14,
-    borderWidth: 1, borderColor: '#E8ECF2',
-    shadowColor: '#1A2744', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    borderRadius: 18, padding: 14,
+    borderWidth: 1,
+    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: BLUE, fontSize: 15, fontWeight: '900' },
+  avatarText: { color: Palette.navy, fontSize: 15, fontWeight: '900' },
   copy: { flex: 1, gap: 2 },
-  name: { color: BLUE, fontSize: 15.5, fontWeight: '800' },
-  meta: { color: '#64748B', fontSize: 12 },
-  favBadge: { backgroundColor: '#FEF9C3', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  favBadgeText: { color: '#92400E', fontSize: 10.5, fontWeight: '900' },
-  actionBtn: { width: 34, height: 34, borderRadius: 11, backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center' },
-  actionDanger: { backgroundColor: '#FFF0F0' },
+  name: { fontSize: 15.5, fontWeight: '800' },
+  meta: { fontSize: 12 },
+  favBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  favBadgeText: { fontSize: 10.5, fontWeight: '900' },
+  actionBtn: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
 
   addCard: {
-    height: 60, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#CBD5E1',
+    height: 60, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
-  addText: { color: BLUE, fontSize: 14.5, fontWeight: '800' },
+  addText: { fontSize: 14.5, fontWeight: '800' },
 
   reorder: {
-    height: 58, borderRadius: 18, backgroundColor: RED,
+    height: 58, borderRadius: 18,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    shadowColor: RED, shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
     marginTop: 4,
   },
-  reorderText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  reorderText: { fontSize: 16, fontWeight: '800' },
 });

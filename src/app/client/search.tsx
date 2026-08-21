@@ -28,6 +28,7 @@ import {
   Package,
 } from 'lucide-react-native';
 import { useClient, type Product } from '@/contexts/client-context';
+import { useDiaspora, formatEur, formatUsd } from '@/contexts/diaspora-context';
 import { useTheme } from '@/contexts/theme-context';
 
 const RECENT_SEARCHES_KEY = '@zando_recent_searches';
@@ -46,6 +47,7 @@ function ResultCard({
   onPress: () => void;
 }) {
   const { colors, isDark } = useTheme();
+  const { diasporaModeActive } = useDiaspora();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -71,6 +73,11 @@ function ResultCard({
           <Text style={[styles.resultPrice, { color: colors.primary }]}>
             {product.price.toLocaleString('fr-FR')} <Text style={[styles.resultUnit, { color: colors.textSecondary }]}>FCFA</Text>
           </Text>
+          {diasporaModeActive && (
+            <Text numberOfLines={1} style={[styles.resultUnit, { color: colors.textSecondary }]}>
+              {formatEur(product.price)} · {formatUsd(product.price)}
+            </Text>
+          )}
           <Pressable onPress={onAdd} style={[styles.resultAddBtn, { backgroundColor: colors.primarySoft }]}>
             <Text style={[styles.resultAddText, { color: colors.primary }]}>+ Panier</Text>
           </Pressable>
@@ -83,6 +90,7 @@ function ResultCard({
 export default function SearchScreen() {
   const { q: initialQuery } = useLocalSearchParams<{ q?: string }>();
   const { products, recentProducts, categories, addToCart } = useClient();
+  const { diasporaModeActive } = useDiaspora();
   const { colors, isDark } = useTheme();
   const inputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState(initialQuery || '');
@@ -249,6 +257,11 @@ export default function SearchScreen() {
                   />
                   <Text style={[styles.trendingName, { color: colors.text }]} numberOfLines={1}>{product.name}</Text>
                   <Text style={[styles.trendingPrice, { color: colors.primary }]}>{product.price.toLocaleString('fr-FR')} FCFA</Text>
+                  {diasporaModeActive && (
+                    <Text numberOfLines={1} style={[styles.trendingPrice, { color: colors.textSecondary, fontSize: 9.5, fontWeight: '700', marginTop: 1 }]}>
+                      {formatEur(product.price)} · {formatUsd(product.price)}
+                    </Text>
+                  )}
                 </Pressable>
               ))}
             </ScrollView>

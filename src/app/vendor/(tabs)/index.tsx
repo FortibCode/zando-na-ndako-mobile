@@ -7,7 +7,7 @@ import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Radii } from '@/design/tokens';
-import { ThemeToggle } from '@/design/components';
+import { ThemeToggle, LanguageToggle } from '@/design/components';
 import { VendorMenu } from '@/components/vendor-ui';
 
 export default function VendorHomeScreen() {
@@ -33,6 +33,7 @@ export default function VendorHomeScreen() {
           <VendorMenu />
           <Text style={[styles.greeting, { color: colors.text }]} numberOfLines={1}>{t('vendorHome.greeting', 'Bonjour')}, {vendorFirstName} 👋</Text>
           <View style={styles.topRight}>
+            <LanguageToggle />
             <ThemeToggle />
             <View style={[styles.statusPill, { backgroundColor: colors.freshSoft }, !isOpen && { backgroundColor: colors.error + '1A' }]}>
               <Text style={[styles.statusPillText, { color: colors.fresh }, !isOpen && { color: colors.error }]}>

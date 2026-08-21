@@ -227,10 +227,10 @@ export default function Mission() {
         </Card>
       ) : null}
 
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 4, opacity: accepting ? 0.6 : 1 }}>
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14, opacity: accepting ? 0.6 : 1 }}>
         <View style={{ flex: 1 }}>
           <OutlineButton red onPress={accepting ? undefined : handleRefuse}>
-            <X color={D.red} size={18} /> {t('deliveryMission.refuse', 'Refuser')}
+            <X color={D.red} size={16} /> {t('deliveryMission.refuse', 'Refuser')}
           </OutlineButton>
         </View>
         <View style={{ flex: 1 }}>
@@ -239,7 +239,7 @@ export default function Mission() {
       </View>
 
       <Animated.View style={pulseStyle}>
-        <Text style={{ textAlign: 'center', color: colors.textSecondary, fontSize: 14, marginTop: 18 }}>
+        <Text style={{ textAlign: 'center', color: colors.textSecondary, fontSize: 13, marginTop: 14 }}>
           {t('deliveryMission.expiresIn', 'Cette mission expirera dans')}{' '}
           <Text style={{ color: timer <= 10 ? colors.error : colors.primary, fontWeight: '900' }}>
             {String(timerMinutes).padStart(2, '0')}:{String(timerSeconds).padStart(2, '0')}

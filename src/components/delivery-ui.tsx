@@ -10,7 +10,7 @@ import { PremiumButton, PremiumCard, PremiumPressable } from '@/components/premi
 import { useDelivery } from '@/contexts/delivery-context';
 import { resolveMediaUrl } from '@/services/api';
 import { Palette } from '@/design/tokens';
-import { ThemeToggle } from '@/design/components';
+import { ThemeToggle, LanguageToggle } from '@/design/components';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 
@@ -191,46 +191,55 @@ export const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '900', letterSpacing: -0.4 },
   eyebrow: { fontSize: 10, letterSpacing: 1.2, fontWeight: '900', marginBottom: 2 },
   sectionTitle: { fontSize: 22, fontWeight: '900' },
-  outline: { borderWidth: 1.5, borderRadius: 16, minHeight: 58, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 14 },
-  outlineText: { fontSize: 18, fontWeight: '800' },
-  nav: { height: 78, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: 4 },
-  navItem: { alignItems: 'center', gap: 3, minWidth: 70 },
-  navLabel: { fontSize: 12, fontWeight: '700' },
-  actionRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 24 },
+  outline: { borderWidth: 1.5, borderRadius: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 10 },
+  outlineText: { fontSize: 15, fontWeight: '800' },
+  nav: { height: 72, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: 4 },
+  navItem: { alignItems: 'center', gap: 3, minWidth: 65 },
+  navLabel: { fontSize: 11, fontWeight: '700' },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 18 },
   actionButton: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8 },
-  actionText: { fontSize: 15, fontWeight: '700' },
-  missionCard: { marginTop: 24 },
-  muted: { fontSize: 17 },
-  big: { fontSize: 43, fontWeight: '900' },
-  divider: { height: 1, marginVertical: 18 },
-  badge: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  badgeText: { fontWeight: '800' },
+  actionText: { fontSize: 14, fontWeight: '700' },
+  missionCard: { marginTop: 18 },
+  muted: { fontSize: 15 },
+  big: { fontSize: 28, fontWeight: '900' },
+  divider: { height: 1, marginVertical: 14 },
+  badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badgeText: { fontWeight: '800', fontSize: 12 },
   bell: { padding: 8 },
-  menuButton: { width: 44, height: 44, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  menuButton: { width: 40, height: 40, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   onlineDot: { width: 8, height: 8, borderRadius: 4 },
   drawerRoot: { flex: 1, flexDirection: 'row' },
   drawerBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5, 20, 52, .48)' },
-  drawer: { width: '87%', maxWidth: 380, paddingHorizontal: 20, paddingTop: 34, paddingBottom: 22, shadowOpacity: .26, shadowRadius: 26, elevation: 16 },
-  drawerBrand: { minHeight: 86, borderRadius: 24, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center' },
-  drawerBrandMark: { width: 44, height: 44, borderRadius: 15, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
-  drawerBrandMarkText: { fontSize: 25, fontWeight: '900' },
-  drawerBrandTitle: { color: '#FFF', fontSize: 17, fontWeight: '900' },
-  drawerBrandSub: { color: '#FFF', opacity: 0.85, fontSize: 12, marginTop: 3, fontWeight: '700' },
-  drawerClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,.16)', alignItems: 'center', justifyContent: 'center' },
-  drawerProfile: { flexDirection: 'row', alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1 },
-  drawerAvatar: { width: 52, height: 52, borderRadius: 18 },
-  drawerName: { fontSize: 18, fontWeight: '900', marginLeft: 13 },
-  drawerOnline: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 13, marginTop: 5 },
-  drawerOnlineText: { fontSize: 13, fontWeight: '800' },
-  drawerSection: { paddingTop: 20 },
-  drawerSectionLabel: { fontSize: 10, letterSpacing: 1.3, fontWeight: '900', marginBottom: 8 },
-  drawerItem: { minHeight: 52, borderRadius: 14, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 13 },
-  drawerItemText: { fontSize: 15, fontWeight: '800', flex: 1 },
-  drawerFooter: { marginTop: 'auto', paddingTop: 16, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  drawerFooterText: { fontSize: 12, fontWeight: '600' },
+  drawer: { width: '82%', maxWidth: 340, paddingHorizontal: 18, paddingTop: 30, paddingBottom: 20, shadowOpacity: .2, shadowRadius: 20, elevation: 12 },
+  drawerBrand: { minHeight: 76, borderRadius: 20, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' },
+  drawerBrandMark: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  drawerBrandMarkText: { fontSize: 22, fontWeight: '900' },
+  drawerBrandTitle: { color: '#FFF', fontSize: 16, fontWeight: '900' },
+  drawerBrandSub: { color: '#FFF', opacity: 0.85, fontSize: 11, marginTop: 2, fontWeight: '700' },
+  drawerClose: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,.16)', alignItems: 'center', justifyContent: 'center' },
+  drawerProfile: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1 },
+  drawerAvatar: { width: 46, height: 46, borderRadius: 16 },
+  drawerAvatarFallback: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  drawerAvatarText: { fontSize: 16, fontWeight: '900' },
+  drawerName: { fontSize: 16, fontWeight: '900', marginLeft: 12 },
+  drawerOnline: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 12, marginTop: 4 },
+  drawerOnlineText: { fontSize: 12, fontWeight: '800' },
+  drawerSection: { paddingTop: 16 },
+  drawerSectionLabel: { fontSize: 10, letterSpacing: 1.2, fontWeight: '900', marginBottom: 6 },
+  drawerItem: { minHeight: 46, borderRadius: 12, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  drawerItemText: { fontSize: 14, fontWeight: '800', flex: 1 },
+  drawerFooter: { marginTop: 'auto', paddingTop: 14, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  drawerFooterText: { fontSize: 11, fontWeight: '600' },
 });
 
-const driverImage = require('@/assets/images/onboarding-delivery.png');
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 function DeliveryDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { driver } = useDelivery();
@@ -238,7 +247,7 @@ function DeliveryDrawer({ visible, onClose }: { visible: boolean; onClose: () =>
   const { t } = useLanguage();
   const driverName = driver ? `${driver.prenom ?? ''} ${driver.nom ?? ''}`.trim() || t('deliveryUi.defaultDriverName', 'Livreur') : t('deliveryUi.defaultDriverName', 'Livreur');
   const resolvedPhoto = resolveMediaUrl(driver?.photo_profil);
-  const avatar = resolvedPhoto ? { uri: resolvedPhoto } : driverImage;
+  const initials = getInitials(driverName) || 'LV';
   const isOnline = driver?.statut_disponibilite === 'disponible';
 
   const items = [
@@ -267,7 +276,13 @@ function DeliveryDrawer({ visible, onClose }: { visible: boolean; onClose: () =>
             </Pressable>
           </View>
           <View style={[styles.drawerProfile, { borderBottomColor: colors.border }]}>
-            <Image source={avatar} contentFit="cover" style={[styles.drawerAvatar, { backgroundColor: colors.primarySoft }]} />
+            {resolvedPhoto ? (
+              <Image source={{ uri: resolvedPhoto }} contentFit="cover" style={[styles.drawerAvatar, { backgroundColor: colors.primarySoft }]} />
+            ) : (
+              <View style={[styles.drawerAvatarFallback, { backgroundColor: colors.primarySoft }]}>
+                <Text style={[styles.drawerAvatarText, { color: colors.primary }]}>{initials}</Text>
+              </View>
+            )}
             <View>
               <Text style={[styles.drawerName, { color: colors.text }]}>{driverName}</Text>
               <View style={styles.drawerOnline}>
@@ -330,7 +345,12 @@ export function DriverTop({ onBell, showThemeToggle = false }: { onBell?: () => 
           <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.fresh : colors.textTertiary }]} />
           <Text style={[styles.badgeText, { color: isOnline ? colors.fresh : colors.textTertiary }]}>{isOnline ? t('deliveryUi.online', 'En ligne') : t('deliveryUi.offline', 'Hors ligne')}</Text>
         </View>
-{showThemeToggle ? <ThemeToggle /> : null}
+        {showThemeToggle ? (
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <LanguageToggle />
+            <ThemeToggle />
+          </View>
+        ) : null}
         <Pressable onPress={onBell ?? (() => router.push('/delivery/notifications' as any))} style={styles.bell} hitSlop={8}>
           <Bell color={colors.primary} size={24} />
         </Pressable>

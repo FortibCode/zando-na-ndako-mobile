@@ -1,3 +1,5 @@
+import type { ApiAvisResume } from '@/services/api';
+
 // ─── Mission / Commande ───
 export interface DeliveryMission {
   id: string;
@@ -189,6 +191,11 @@ export interface DeliveryState {
   // Availability
   isAvailable: boolean;
   availabilityLoading: boolean;
+
+  // Avis reçus (notations clients)
+  avis: ApiAvisResume | null;
+  avisLoading: boolean;
+  avisError: string | null;
 }
 
 // ─── Action Types ───
@@ -213,6 +220,9 @@ export type DeliveryAction =
   | { type: 'SET_SUPPORT_ERROR'; payload: string | null }
   | { type: 'SET_AVAILABILITY'; payload: boolean }
   | { type: 'SET_AVAILABILITY_LOADING'; payload: boolean }
+  | { type: 'SET_AVIS'; payload: ApiAvisResume }
+  | { type: 'SET_AVIS_LOADING'; payload: boolean }
+  | { type: 'SET_AVIS_ERROR'; payload: string | null }
   | { type: 'RESET' };
 
 // ─── Context Type ───
@@ -227,9 +237,10 @@ export interface DeliveryContextType extends DeliveryState {
   confirmDepart: () => Promise<void>;
   confirmLivraison: (photo?: string) => Promise<void>;
   clearCurrentMission: () => void;
-  signalerProbleme: (motif: string, categorie: string) => Promise<void>;
+  signalerProbleme: (motif: string, categorie: string, photo?: string) => Promise<void>;
   fetchRevenue: (mois?: number, annee?: number) => Promise<void>;
   toggleAvailability: () => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
+  fetchAvis: () => Promise<void>;
   logout: () => Promise<void>;
 }

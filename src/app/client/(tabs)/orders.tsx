@@ -7,7 +7,7 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withSpring,
 } from 'react-native-reanimated';
 import {
-  Receipt, Package, Truck, CheckCircle, XCircle, Search, RefreshCw,
+  Receipt, Package, Truck, CheckCircle, XCircle, Search, RefreshCw, Star,
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -21,14 +21,25 @@ export type UiOrder = {
   total: string;
   status: 'En route' | 'Livrée' | 'Annulée';
   statutCode: string;
+  needsRating: boolean;
 };
 
+// Une commande livrée reste "à noter" tant que le vendeur ET/OU le livreur présents sur la
+// commande n'ont pas encore reçu de note de ce client — les deux cibles sont indépendantes.
+function commandeNeedsRating(c: ApiCommande): boolean {
+  if (c.statut_commande !== 'livree') return false;
+  const notations = c.notations || [];
+  const vendeurNote = notations.some((n) => n.type_cible === 'vendeur');
+  const livreurNote = notations.some((n) => n.type_cible === 'livreur');
+  return (!!c.vendeur && !vendeurNote) || (!!c.livreur && !livreurNote);
+}
+
 const DEMO_ORDERS: UiOrder[] = [
-  { id: '#ZNND-2024-000123', rawId: 'demo-1', date: "Aujourd'hui, 10h - 12h", total: '7 000 FCFA', status: 'En route', statutCode: 'en_route' },
-  { id: '#ZNND-2024-000122', rawId: 'demo-2', date: 'Hier, 14h - 16h', total: '6 500 FCFA', status: 'Livrée', statutCode: 'livree' },
-  { id: '#ZNND-2024-000121', rawId: 'demo-3', date: '09 Mai 2024, 10h - 12h', total: '8 300 FCFA', status: 'Livrée', statutCode: 'livree' },
-  { id: '#ZNND-2024-000120', rawId: 'demo-4', date: '02 Mai 2024, 08h - 10h', total: '4 200 FCFA', status: 'Annulée', statutCode: 'annulee' },
-  { id: '#ZNND-2024-000119', rawId: 'demo-5', date: '28 Avril 2024, 16h - 18h', total: '9 500 FCFA', status: 'Livrée', statutCode: 'livree' },
+  { id: '#ZNND-2024-000123', rawId: 'demo-1', date: "Aujourd'hui, 10h - 12h", total: '7 000 FCFA', status: 'En route', statutCode: 'en_route', needsRating: false },
+  { id: '#ZNND-2024-000122', rawId: 'demo-2', date: 'Hier, 14h - 16h', total: '6 500 FCFA', status: 'Livrée', statutCode: 'livree', needsRating: false },
+  { id: '#ZNND-2024-000121', rawId: 'demo-3', date: '09 Mai 2024, 10h - 12h', total: '8 300 FCFA', status: 'Livrée', statutCode: 'livree', needsRating: false },
+  { id: '#ZNND-2024-000120', rawId: 'demo-4', date: '02 Mai 2024, 08h - 10h', total: '4 200 FCFA', status: 'Annulée', statutCode: 'annulee', needsRating: false },
+  { id: '#ZNND-2024-000119', rawId: 'demo-5', date: '28 Avril 2024, 16h - 18h', total: '9 500 FCFA', status: 'Livrée', statutCode: 'livree', needsRating: false },
 ];
 
 const STATUS_ICONS = {
@@ -65,6 +76,7 @@ function mapApiToUiOrder(c: ApiCommande): UiOrder {
     total: totalFormatted,
     status,
     statutCode: c.statut_commande,
+    needsRating: commandeNeedsRating(c),
   };
 }
 
@@ -103,9 +115,17 @@ function OrderCard({ order, index }: { order: UiOrder; index: number }) {
         <View style={styles.copy}>
           <Text style={[styles.id, { color: colors.text }]}>{order.id}</Text>
           <Text style={[styles.date, { color: colors.textSecondary }]}>{order.date}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '18' }]}>
-            <StatusIcon color={statusColor} size={14} />
-            <Text style={[styles.status, { color: statusColor }]}>{statusLabel(order.status, t)}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            <View style={[styles.statusBadge, { backgroundColor: statusColor + '18' }]}>
+              <StatusIcon color={statusColor} size={14} />
+              <Text style={[styles.status, { color: statusColor }]}>{statusLabel(order.status, t)}</Text>
+            </View>
+            {order.needsRating && (
+              <View style={[styles.statusBadge, { backgroundColor: colors.goldSoft }]}>
+                <Star color={colors.gold} size={14} fill={colors.gold} />
+                <Text style={[styles.status, { color: colors.gold }]}>{t('ordersList.needsRating', 'À noter')}</Text>
+              </View>
+            )}
           </View>
         </View>
         <Text style={[styles.total, { color: colors.text }]}>{order.total}</Text>

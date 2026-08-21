@@ -11,25 +11,24 @@ const RESEND_DELAY = 165;
 /** Verification du code OTP envoye au numero de telephone. */
 export default function PhoneOtpScreen() {
   const { phone } = useLocalSearchParams<{ phone?: string }>();
-  const phoneNumber = phone || '+242 06 123 45 67';
+  // Décoder l'URL et normaliser : garder uniquement chiffres + indicatif
+  const rawPhone = phone ? decodeURIComponent(phone) : '+242061234567';
+  const phoneNumber = rawPhone.startsWith('+') ? rawPhone : `+242${rawPhone.replace(/\D/g, '')}`;
+  // Credential propre (chiffres uniquement) envoyé au backend
+  const phoneCredential = phoneNumber.replace(/[^0-9]/g, '');
   const [resendTimer, setResendTimer] = useState(RESEND_DELAY);
   const [canResend, setCanResend] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [devCode, setDevCode] = useState('');
 
   useEffect(() => {
     // Envoyer le code OTP automatiquement au chargement
     if (!otpSent) {
       setOtpSent(true);
-      sendOtp(phoneNumber, 'sms')
-        .then((devCode) => {
-          if (devCode) {
-            Alert.alert(
-              '🛠 Code OTP (dev)',
-              `Code de vérification : ${devCode}`,
-              [{ text: 'OK' }],
-            );
-          }
+      sendOtp(phoneCredential, 'sms')
+        .then((code) => {
+          if (code) setDevCode(code);
         })
         .catch(() => {});
     }
@@ -49,7 +48,7 @@ export default function PhoneOtpScreen() {
     setResendTimer(RESEND_DELAY);
     setCanResend(false);
     try {
-      await resendOtp(phoneNumber, 'sms');
+      await resendOtp(phoneCredential, 'sms');
       Alert.alert('Code renvoye', 'Un nouveau code de verification vous a ete envoye par SMS.');
     } catch {
       Alert.alert('Erreur', 'Impossible de renvoyer le code. Veuillez reessayer.');
@@ -59,7 +58,7 @@ export default function PhoneOtpScreen() {
   const handleComplete = useCallback(async (code: string) => {
     setVerifying(true);
     try {
-      const result = await verifyOtp(phoneNumber, code);
+      const result = await verifyOtp(phoneCredential, code);
 
       // Mode dev sans backend et sans user local : sélecteur de rôle
       if ((result as any).__devMode) {
@@ -110,6 +109,7 @@ export default function PhoneOtpScreen() {
         <OtpVerificationLayout
           accentLabel="numero de telephone"
           canResend={canResend}
+          initialCode={devCode}
           description={
             <>
               Nous avons envoye un code de verification par SMS au{' '}

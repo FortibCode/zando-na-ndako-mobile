@@ -1351,6 +1351,8 @@ export const translations = {
       arriveAt: 'Arriver à',
       startNav: 'Démarrer la navigation',
       launchGoogleMaps: 'Lancer avec Google Maps',
+      locationPermissionDenied: 'Localisation refusée — autorisez-la dans les réglages pour voir votre position.',
+      locationError: 'Impossible de récupérer votre position.',
     },
     deliveryToClient: {
       title: 'Vers le client',
@@ -2898,6 +2900,8 @@ export const translations = {
       arriveAt: 'Kokoma na',
       startNav: 'Banda navigation',
       launchGoogleMaps: 'Fungola na Google Maps',
+      locationPermissionDenied: 'Ndingisa te esika na yo — fungola yango na ba paramètres mpo na komona esika na yo.',
+      locationError: 'Ekoki te kozwa esika na yo.',
     },
     deliveryToClient: {
       title: 'Epai ya client',
@@ -4421,6 +4425,8 @@ export const translations = {
       arriveAt: 'Kulunga na',
       startNav: 'Yantika navigation',
       launchGoogleMaps: 'Fungula na Google Maps',
+      locationPermissionDenied: 'Ndinga ve esika na nge — fungula yawu na ba paramètres sambu na kumona esika na nge.',
+      locationError: 'Ke buakisa ve na kubaka esika na nge.',
     },
     deliveryToClient: {
       title: 'Na client',
@@ -5968,6 +5974,8 @@ export const translations = {
       arriveAt: 'Arrive at',
       startNav: 'Start navigation',
       launchGoogleMaps: 'Launch with Google Maps',
+      locationPermissionDenied: 'Location denied — enable it in settings to see your position.',
+      locationError: 'Could not retrieve your position.',
     },
     deliveryToClient: {
       title: 'To the customer',

@@ -53,6 +53,7 @@ export type Product = {
   description?: string;
   origin?: string;
   stock?: boolean;
+  fraicheur?: 'frais' | 'fume' | 'congele' | null;
 };
 
 function mapApiProduitToProduct(p: ApiProduit): Product {
@@ -68,6 +69,7 @@ function mapApiProduitToProduct(p: ApiProduit): Product {
     image: resolveMediaUrl(p.photo_produit),
     description: p.description || undefined,
     stock: p.statut_disponibilite === 'disponible' && p.quantite_stock > 0,
+    fraicheur: p.type_fraicheur,
   };
 }
 

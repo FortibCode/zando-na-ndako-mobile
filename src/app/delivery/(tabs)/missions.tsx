@@ -121,10 +121,10 @@ export default function Missions() {
 
   const ListHeader = (
     <>
-      <View style={{ marginTop: 10, marginBottom: 22 }}>
+      <View style={{ marginTop: 10, marginBottom: 16 }}>
         <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>{t('deliveryMissions.eyebrow', 'VOTRE ACTIVITÉ')}</Text>
-        <Text style={[styles.headerTitle, { fontSize: 30, marginTop: 3, color: colors.text }]}>{t('deliveryMissions.title', 'Mes missions')}</Text>
-        <Text style={[styles.muted, { fontSize: 14, marginTop: 7, color: colors.textSecondary }]}>{t('deliveryMissions.subtitle', "Suivez chaque livraison en un coup d'œil.")}</Text>
+        <Text style={[styles.headerTitle, { fontSize: 22, marginTop: 2, color: colors.text }]}>{t('deliveryMissions.title', 'Mes missions')}</Text>
+        <Text style={[styles.muted, { fontSize: 13, marginTop: 4, color: colors.textSecondary }]}>{t('deliveryMissions.subtitle', "Suivez chaque livraison en un coup d'œil.")}</Text>
       </View>
 
       <FlatList
@@ -132,11 +132,11 @@ export default function Missions() {
         showsHorizontalScrollIndicator={false}
         data={FILTER_KEYS}
         keyExtractor={(x) => x}
-        contentContainerStyle={{ gap: 8, marginBottom: 20 }}
+        contentContainerStyle={{ gap: 8, marginBottom: 16 }}
         renderItem={({ item: x }) => (
           <Pressable
             onPress={() => setFilter(x)}
-            style={[deliveryStyles.filter, { minWidth: 96, paddingHorizontal: 16, borderColor: colors.border }, filter === x && [deliveryStyles.filterActive, { borderColor: colors.primary, backgroundColor: colors.primary }]]}
+            style={[deliveryStyles.filter, { minWidth: 84, paddingHorizontal: 14, borderColor: colors.border }, filter === x && [deliveryStyles.filterActive, { borderColor: colors.primary, backgroundColor: colors.primary }]]}
           >
             <Text style={[deliveryStyles.filterText, { color: filter === x ? '#FFF' : colors.textSecondary }, filter === x && deliveryStyles.filterTextActive]}>{FILTER_LABELS[x]}</Text>
           </Pressable>

@@ -70,25 +70,25 @@ const historique = revenue?.historique ?? [];
 
   return (
     <DeliveryScreen refreshing={refreshing} onRefresh={onRefresh}>
-      <Animated.View entering={FadeInDown.duration(350).springify()} style={{ marginTop: 12, marginBottom: 22 }}>
+      <Animated.View entering={FadeInDown.duration(350).springify()} style={{ marginTop: 12, marginBottom: 16 }}>
         <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>{t('deliveryRevenueTab.eyebrow', 'VOTRE PERFORMANCE')}</Text>
-        <Text style={[styles.headerTitle, { fontSize: 30, marginTop: 3, color: colors.text }]}>{t('deliveryRevenueTab.title', 'Mes revenus')}</Text>
-        <Text style={[styles.muted, { fontSize: 14, marginTop: 7, color: colors.textSecondary }]}>{t('deliveryRevenueTab.subtitle', 'Une vue claire de vos gains.')}</Text>
+        <Text style={[styles.headerTitle, { fontSize: 22, marginTop: 2, color: colors.text }]}>{t('deliveryRevenueTab.title', 'Mes revenus')}</Text>
+        <Text style={[styles.muted, { fontSize: 13, marginTop: 4, color: colors.textSecondary }]}>{t('deliveryRevenueTab.subtitle', 'Une vue claire de vos gains.')}</Text>
       </Animated.View>
 
       <Animated.View entering={FadeInUp.duration(350).delay(30).springify()}>
         <Pressable
           onPress={() => router.push('/delivery/withdraw' as any)}
-          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.freshSoft, borderRadius: 18, padding: 16, marginBottom: 16 }}
+          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.freshSoft, borderRadius: 16, padding: 14, marginBottom: 14 }}
         >
-          <View style={{ width: 44, height: 44, borderRadius: 15, backgroundColor: colors.fresh, alignItems: 'center', justifyContent: 'center' }}>
-            <Wallet color="#FFF" size={21} />
+          <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: colors.fresh, alignItems: 'center', justifyContent: 'center' }}>
+            <Wallet color="#FFF" size={19} />
           </View>
-          <View style={{ flex: 1, marginLeft: 13 }}>
-            <Text style={{ fontSize: 12, fontWeight: '900', color: colors.fresh, letterSpacing: .4 }}>{t('deliveryRevenueTab.availableBalance', 'SOLDE DISPONIBLE')}</Text>
-            <Text style={[styles.sectionTitle, { fontSize: 20, marginTop: 2, color: colors.text }]}>{(revenue?.solde_disponible ?? 0).toLocaleString('fr-FR')} FCFA</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '900', color: colors.fresh, letterSpacing: .4 }}>{t('deliveryRevenueTab.availableBalance', 'SOLDE DISPONIBLE')}</Text>
+            <Text style={[styles.sectionTitle, { fontSize: 18, marginTop: 2, color: colors.text }]}>{(revenue?.solde_disponible ?? 0).toLocaleString('fr-FR')} FCFA</Text>
           </View>
-          <Text style={{ color: colors.fresh, fontSize: 13, fontWeight: '900' }}>{t('deliveryRevenueTab.withdraw', 'Retirer ›')}</Text>
+          <Text style={{ color: colors.fresh, fontSize: 12, fontWeight: '900' }}>{t('deliveryRevenueTab.withdraw', 'Retirer ›')}</Text>
         </Pressable>
       </Animated.View>
 
@@ -104,17 +104,17 @@ const historique = revenue?.historique ?? [];
         ))}
       </Animated.View>
 
-      <Card index={1} style={{ marginTop: 20, backgroundColor: D.blue, borderColor: D.blue, padding: 22 }}>
+      <Card index={1} style={{ marginTop: 16, backgroundColor: D.blue, borderColor: D.blue, padding: 18, borderRadius: 20 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: '#BBD0FF', fontSize: 12, fontWeight: '900', letterSpacing: .8 }}>{t('deliveryRevenueTab.revenueOfPrefix', 'REVENU DU')} {PERIODS[period].toUpperCase()}</Text>
-          <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: 'rgba(255,255,255,.14)', alignItems: 'center', justifyContent: 'center' }}>
-            <Banknote color="#FFF" size={20} />
+          <Text style={{ color: '#BBD0FF', fontSize: 11, fontWeight: '900', letterSpacing: .7 }}>{t('deliveryRevenueTab.revenueOfPrefix', 'REVENU DU')} {PERIODS[period].toUpperCase()}</Text>
+          <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,.14)', alignItems: 'center', justifyContent: 'center' }}>
+            <Banknote color="#FFF" size={18} />
           </View>
         </View>
-        <Text style={{ color: '#FFF', fontSize: 40, fontWeight: '900', marginTop: 18 }}>{solde.toLocaleString('fr-FR')} FCFA</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 12 }}>
-          <TrendingUp color="#9BE7B7" size={16} />
-          <Text style={{ color: '#C9F4D8', fontWeight: '800', fontSize: 13 }}>{nbLivraisons} {nbLivraisons > 1 ? t('deliveryRevenueTab.deliveryWordPlural', 'livraisons') : t('deliveryRevenueTab.deliveryWord', 'livraison')} {t('deliveryRevenueTab.thisPeriodSuffix', 'cette période')}</Text>
+        <Text style={{ color: '#FFF', fontSize: 28, fontWeight: '900', marginTop: 12 }}>{solde.toLocaleString('fr-FR')} FCFA</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 }}>
+          <TrendingUp color="#9BE7B7" size={15} />
+          <Text style={{ color: '#C9F4D8', fontWeight: '800', fontSize: 12 }}>{nbLivraisons} {nbLivraisons > 1 ? t('deliveryRevenueTab.deliveryWordPlural', 'livraisons') : t('deliveryRevenueTab.deliveryWord', 'livraison')} {t('deliveryRevenueTab.thisPeriodSuffix', 'cette période')}</Text>
         </View>
       </Card>
 

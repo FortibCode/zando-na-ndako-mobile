@@ -193,7 +193,9 @@ export default function PaymentScreen() {
   }, [method.brand]);
 
   // ── Crée la commande réelle puis confirme le paiement selon la méthode choisie ──
-  const runRealOrder = useCallback(async (methodKey: 'cod' | 'airtel' | 'mtn' | 'card', reference: string) => {
+  // (MTN a son propre flux réel avec polling — voir l'effet ci-dessous — car il repose sur une
+  // vraie vérification de statut côté MTN plutôt que sur une référence saisie/générée localement.)
+  const runRealOrder = useCallback(async (methodKey: 'cod' | 'airtel' | 'card', reference: string) => {
     const zone = resolveZoneForAddress(selectedAddress);
     if (!zone) {
       throw new Error(t('payment.deliveryUnavailable', 'Livraison indisponible pour ce quartier. Choisissez une autre adresse.'));
@@ -205,9 +207,6 @@ export default function PaymentScreen() {
     } else if (methodKey === 'airtel') {
       const paiement = await initierAirtelMoney(order.commande_id);
       await confirmerAirtelMoney(paiement.id, reference);
-    } else if (methodKey === 'mtn') {
-      const paiement = await initierMtnMoMo(order.commande_id);
-      await confirmerMtnMoMo(paiement.id, reference);
     } else if (methodKey === 'card') {
       const paiement = await initierCarteLocale(order.commande_id);
       await confirmerCarteLocale(paiement.id, reference);
@@ -217,29 +216,92 @@ export default function PaymentScreen() {
     return order;
   }, [resolveZoneForAddress, selectedAddress, placeOrder, t]);
 
-  // ── Timer USSD ──────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (step === 'mm_pending') {
-      setUssdTimer(USSD_TIMEOUT_SECONDS);
-      timerRef.current = setInterval(() => {
-        setUssdTimer((t) => {
-          if (t <= 1) {
-            clearInterval(timerRef.current!);
-            setFailReason('timeout');
-            setStep('failed');
-            return 0;
-          }
-          return t - 1;
-        });
-      }, 1000);
+  const mapMtnFailReason = useCallback((reason?: string): string => {
+    switch (reason) {
+      case 'LOW_BALANCE_OR_PAYEE_LIMIT_REACHED_OR_NOT_ALLOWED':
+      case 'NOT_ENOUGH_FUNDS':
+        return 'insufficient';
+      case 'APPROVAL_REJECTED':
+        return 'cancelled';
+      case 'EXPIRED':
+        return 'timeout';
+      default:
+        return 'generic';
+    }
+  }, []);
 
-      // Attente de type USSD (6 s) avant de créer la commande et confirmer le paiement.
-      const successTimeout = setTimeout(async () => {
+  // ── Timer USSD + confirmation ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (step !== 'mm_pending') return undefined;
+
+    setUssdTimer(USSD_TIMEOUT_SECONDS);
+    timerRef.current = setInterval(() => {
+      setUssdTimer((t) => {
+        if (t <= 1) {
+          clearInterval(timerRef.current!);
+          setFailReason('timeout');
+          setStep('failed');
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+
+    let cancelled = false;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    if (method.brand === 'MTN') {
+      // MTN Mobile Money : vraie demande de paiement envoyée au client, puis on interroge
+      // périodiquement le vrai statut MTN jusqu'à SUCCESSFUL / FAILED / expiration du timer local.
+      (async () => {
+        try {
+          const zone = resolveZoneForAddress(selectedAddress);
+          if (!zone) throw new Error(t('payment.deliveryUnavailable', 'Livraison indisponible pour ce quartier. Choisissez une autre adresse.'));
+          const order = await placeOrder({ zoneId: zone.id });
+          if (cancelled) return;
+          setOrderResult({ commandeId: order.commande_id, numeroCommande: order.numero_commande, montantTotal: order.montant_total });
+
+          const paiement = await initierMtnMoMo(order.commande_id, phone);
+          if (cancelled) return;
+          setTxRef(paiement.reference_id || paiement.id);
+
+          const poll = async () => {
+            if (cancelled) return;
+            try {
+              const result = await confirmerMtnMoMo(paiement.id);
+              if (cancelled) return;
+              if (result.status === 'valide') {
+                clearInterval(timerRef.current!);
+                setStep('success');
+              } else if (result.status === 'echoue') {
+                clearInterval(timerRef.current!);
+                setFailReason(mapMtnFailReason(result.reason));
+                setFailMessage(result.message || null);
+                setStep('failed');
+              } else {
+                pollTimeout = setTimeout(poll, 4000);
+              }
+            } catch {
+              if (!cancelled) pollTimeout = setTimeout(poll, 4000);
+            }
+          };
+          pollTimeout = setTimeout(poll, 3000);
+        } catch (err) {
+          if (cancelled) return;
+          clearInterval(timerRef.current!);
+          setFailMessage(err instanceof ApiError ? err.message : t('payment.unableToFinalize', 'Impossible de finaliser la commande. Vérifiez votre connexion.'));
+          setFailReason('generic');
+          setStep('failed');
+        }
+      })();
+    } else {
+      // Airtel Money : pas d'API réelle branchée côté backend — flux simulé inchangé.
+      pollTimeout = setTimeout(async () => {
         clearInterval(timerRef.current!);
         const reference = generateTxRef();
         setTxRef(reference);
         try {
-          await runRealOrder(method.brand === 'AIRTEL' ? 'airtel' : 'mtn', reference);
+          await runRealOrder('airtel', reference);
           setStep('success');
         } catch (err) {
           setFailMessage(err instanceof ApiError ? err.message : t('payment.unableToFinalize', 'Impossible de finaliser la commande. Vérifiez votre connexion.'));
@@ -247,13 +309,14 @@ export default function PaymentScreen() {
           setStep('failed');
         }
       }, 6000);
-
-      return () => {
-        clearInterval(timerRef.current!);
-        clearTimeout(successTimeout);
-      };
     }
-  }, [step, generateTxRef]);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timerRef.current!);
+      if (pollTimeout) clearTimeout(pollTimeout);
+    };
+  }, [step, method.brand, phone, resolveZoneForAddress, selectedAddress, placeOrder, t, generateTxRef, runRealOrder, mapMtnFailReason]);
 
   const formatTimer = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;

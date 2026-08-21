@@ -64,7 +64,8 @@ export default function PhoneLoginScreen() {
             <PrimaryButton
               disabled={!isValid}
               icon="arrow-forward"
-              onPress={() => router.push(`/auth/phone-otp?phone=+242 ${phone}`)}
+              onPress={() => router.push(`/auth/phone-otp?phone=${encodeURIComponent(`+242${phone.replace(/\D/g, '')}`)}`)}
+
               title="Recevoir le code OTP"
             />
 

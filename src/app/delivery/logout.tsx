@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { router } from 'expo-router';
-import { Image } from 'expo-image';
 import { Alert, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { LogOut, X } from 'lucide-react-native';
@@ -46,31 +45,15 @@ export default function Logout() {
         <Text style={[styles.headerTitle, { fontSize: 31, marginTop: 6, color: colors.text }]}>{t('deliveryLogout.title', 'Déconnexion')}</Text>
 
         <Animated.View entering={ZoomIn.duration(400).delay(80).springify()} style={{
-          width: '100%',
-          height: 275,
-          marginTop: 24,
-          borderRadius: 28,
+          width: 168,
+          height: 168,
+          marginTop: 28,
+          borderRadius: 84,
           backgroundColor: colors.primarySoft,
-          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
-          <Image
-            source={require('@/assets/images/onboarding-delivery.png')}
-            contentFit="cover"
-            style={{ width: '100%', height: '100%' }}
-          />
-          <View style={{
-            position: 'absolute',
-            right: 18,
-            top: 18,
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            backgroundColor: colors.surface,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <Text style={{ fontSize: 25 }}>👋</Text>
-          </View>
+          <Text style={{ fontSize: 68 }}>👋</Text>
         </Animated.View>
 
         <Text style={[styles.headerTitle, { textAlign: 'center', fontSize: 25, marginTop: 24, color: colors.text }]}>

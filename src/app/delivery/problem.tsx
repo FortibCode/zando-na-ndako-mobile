@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useState, useCallback } from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, Text, TextInput, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { AlertTriangle, Camera, Headphones, MapPin, PackageX, Store, UserRound, XCircle } from 'lucide-react-native';
+import { AlertTriangle, Camera, Headphones, MapPin, PackageX, Store, Trash2, UserRound, XCircle } from 'lucide-react-native';
 import { DeliveryScreen, Header, OutlineButton, PrimaryButton, styles } from '@/components/delivery-ui';
 import { useDelivery } from '@/contexts/delivery-context';
 import { useTheme } from '@/contexts/theme-context';
@@ -25,8 +26,21 @@ export default function Problem() {
 
   const [selected, setSelected] = useState('');
   const [details, setDetails] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const handleTakePhoto = useCallback(async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t('deliveryProblem.photoPermTitle', 'Autorisation requise'), t('deliveryProblem.photoPermDesc', "Activez l'accès à l'appareil photo pour joindre une photo au signalement."));
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: false });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setPhoto(result.assets[0].uri);
+    }
+  }, [t]);
 
   const handleSubmit = useCallback(async () => {
     if (!selected || status === 'loading') return;
@@ -36,13 +50,13 @@ export default function Problem() {
     }
     setStatus('loading');
     try {
-      await signalerProbleme(details, selected);
+      await signalerProbleme(details, selected, photo || undefined);
       setStatus('success');
     } catch (err: any) {
       setErrorMsg(err.message || t('deliveryProblem.sendErrorDesc', "Erreur lors de l'envoi du signalement."));
       setStatus('error');
     }
-  }, [selected, status, details, currentMission, signalerProbleme, t]);
+  }, [selected, status, details, photo, currentMission, signalerProbleme, t]);
 
   if (status === 'loading') {
     return (
@@ -146,11 +160,24 @@ export default function Problem() {
         }}
       />
 
-      <View style={{ opacity: 0.55 }}>
-        <OutlineButton onPress={() => Alert.alert(t('deliveryProblem.photoComingSoonTitle', 'Bientôt disponible'), t('deliveryProblem.photoComingSoonDesc', "L'ajout de photo au signalement sera disponible dans une prochaine mise à jour."))}>
-          <Camera color={colors.primary} size={19} /> {t('deliveryProblem.addPhotoComingSoon', 'Ajouter une photo (bientôt)')}
-        </OutlineButton>
-      </View>
+      {photo ? (
+        <View style={{ marginTop: 14, position: 'relative' }}>
+          <Image source={{ uri: photo }} style={{ width: '100%', height: 160, borderRadius: 16 }} />
+          <Pressable
+            onPress={() => setPhoto(null)}
+            accessibilityLabel={t('deliveryProblem.removePhotoAria', 'Supprimer la photo')}
+            style={{ position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Trash2 color="#FFF" size={16} />
+          </Pressable>
+        </View>
+      ) : (
+        <View style={{ marginTop: 14 }}>
+          <OutlineButton onPress={handleTakePhoto}>
+            <Camera color={colors.primary} size={19} /> {t('deliveryProblem.addPhoto', 'Ajouter une photo')}
+          </OutlineButton>
+        </View>
+      )}
 
       <PrimaryButton red onPress={handleSubmit}>
         <AlertTriangle color="#FFF" size={18} /> {t('deliveryProblem.sendReport', 'Envoyer le signalement')}

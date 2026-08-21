@@ -16,20 +16,15 @@ export default function EmailOtpScreen() {
   const [canResend, setCanResend] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [devCode, setDevCode] = useState('');
 
   useEffect(() => {
     // Envoyer le code OTP automatiquement au chargement
     if (!otpSent) {
       setOtpSent(true);
       sendOtp(emailAddress, 'email')
-        .then((devCode) => {
-          if (devCode) {
-            Alert.alert(
-              '🛠 Code OTP (dev)',
-              `Code de vérification : ${devCode}`,
-              [{ text: 'OK' }],
-            );
-          }
+        .then((code) => {
+          if (code) setDevCode(code);
         })
         .catch(() => {});
     }
@@ -110,6 +105,7 @@ export default function EmailOtpScreen() {
         <OtpVerificationLayout
           accentLabel="adresse email"
           canResend={canResend}
+          initialCode={devCode}
           description={
             <>
               Nous avons envoye un code de verification a{' '}

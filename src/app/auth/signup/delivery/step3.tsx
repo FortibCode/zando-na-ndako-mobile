@@ -44,7 +44,7 @@ export default function DeliverySignupStep3Screen() {
         nom: data.lastName.trim(),
         prenom: data.firstName.trim(),
         date_naissance: dateOfBirth,
-        email: data.email.trim(),
+        email: data.email.trim() ? data.email.trim() : `livreur.${Date.now()}@zandondako.cg`,
         telephone: phoneNumber,
         mot_de_passe: password,
         pays_residence: data.country,

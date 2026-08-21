@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { ApiAvisEntry, ApiCommande, ApiProduit, ApiVendeurDashboard } from '@/services/api';
+import type { ApiAvisEntry, ApiCommande, ApiProduit, ApiVendeurDashboard, UserNotification, VendeurDocumentKey } from '@/services/api';
 import {
   fetchCategories,
   fetchVendeurDashboard,
@@ -17,6 +17,12 @@ import {
   fetchVendeurAvis,
   resolveMediaUrl,
   getUser,
+  updateStatutBoutiqueVendeur,
+  updateVendeurProfil,
+  uploaderDocumentsVendeur,
+  fetchNotifications as apiFetchNotifications,
+  markNotificationRead as apiMarkNotificationRead,
+  markAllNotificationsRead as apiMarkAllNotificationsRead,
 } from '@/services/api';
 
 export type VendorValidationStatus = 'en_attente' | 'valide' | 'suspendu';
@@ -74,26 +80,6 @@ export type VendorOrder = {
   prepStep?: number;
 };
 
-export type Promotion = {
-  id: string;
-  titre: string;
-  produit: string;
-  pourcentage: number;
-  dateDebut: string;
-  dateFin: string;
-  actif: boolean;
-  terminee?: boolean;
-};
-
-export type VendorNotification = {
-  id: string;
-  type: 'commande' | 'paiement' | 'stock' | 'avis' | 'promotion';
-  titre: string;
-  message: string;
-  heure: string;
-  lu: boolean;
-};
-
 export type Review = {
   id: string;
   client: string;
@@ -116,11 +102,34 @@ function mapApiAvisToReview(a: ApiAvisEntry): Review {
   };
 }
 
-export type VendorDocument = {
+export type Promotion = {
   id: string;
-  nom: string;
-  statut: 'valide' | 'en_attente' | 'refuse';
+  titre: string;
+  produit: string;
+  pourcentage: number;
+  dateDebut: string;
+  dateFin: string;
+  actif: boolean;
+  terminee?: boolean;
 };
+
+// Les 3 seuls documents réellement stockés côté serveur (colonnes vendeurs.photo_boutique /
+// document_identite / registre_commerce, envoyés via POST /vendeur/documents) — pas de statut de
+// validation par document en base, seulement un statut global de compte (`statut_validation`) qui
+// s'affiche séparément. `uploaded` reflète donc simplement "un fichier a été envoyé" ou non.
+export type VendorDocument = {
+  id: VendeurDocumentKey;
+  nom: string;
+  uploaded: boolean;
+  statut: 'valide' | 'en_attente' | 'refuse';
+  url?: string;
+};
+
+const DOCUMENT_LABELS: { key: VendeurDocumentKey; nom: string }[] = [
+  { key: 'photo_boutique', nom: 'Photo de la boutique' },
+  { key: 'document_identite', nom: "Pièce d'identité" },
+  { key: 'registre_commerce', nom: 'Registre de commerce (RCCM)' },
+];
 
 export type Horaire = { jour: string; ouverture: string; fermeture: string; actif: boolean };
 
@@ -231,27 +240,9 @@ const INITIAL_ORDERS: VendorOrder[] = [
   },
 ];
 
-const INITIAL_PROMOTIONS: Promotion[] = [
-  { id: 'pr1', titre: '-10% sur Dorade royale', produit: 'Dorade royale', pourcentage: 10, dateDebut: '15/05/2024', dateFin: '30/05/2024', actif: true },
-  { id: 'pr2', titre: '-5% sur Riz parfumé', produit: 'Riz parfumé', pourcentage: 5, dateDebut: '01/05/2024', dateFin: '15/05/2024', actif: true },
-  { id: 'pr3', titre: '-15% sur Poulet fermier', produit: 'Poulet fermier', pourcentage: 15, dateDebut: '01/04/2024', dateFin: '30/04/2024', actif: false, terminee: true },
-];
-
-const INITIAL_NOTIFICATIONS: VendorNotification[] = [
-  { id: 'n1', type: 'commande', titre: 'Nouvelle commande', message: '#7DGK0419', heure: '10:15', lu: false },
-  { id: 'n2', type: 'paiement', titre: 'Paiement reçu', message: '#7DGK0419', heure: '10:16', lu: false },
-  { id: 'n3', type: 'stock', titre: 'Stock faible', message: 'Dorade royale (2 kg)', heure: '09:30', lu: false },
-  { id: 'n4', type: 'avis', titre: 'Nouveau commentaire', message: 'Vous avez 1 nouvel avis', heure: '08:45', lu: false },
-  { id: 'n5', type: 'promotion', titre: 'Promotion terminée', message: '-10% sur Riz parfumé', heure: 'Hier', lu: true },
-];
-
-const INITIAL_DOCUMENTS: VendorDocument[] = [
-  { id: 'd1', nom: "Carte d'identité", statut: 'valide' },
-  { id: 'd2', nom: 'RCOM', statut: 'valide' },
-  { id: 'd3', nom: 'NIF', statut: 'valide' },
-  { id: 'd4', nom: 'Autorisation commerciale', statut: 'valide' },
-];
-
+// Valeurs par défaut affichées tant qu'aucun horaire réel n'a été enregistré (ou tant que le
+// vendeur ne les a pas encore configurés) — jamais envoyées au serveur telles quelles, seulement
+// un point de départ pour l'écran "Horaires d'ouverture".
 const INITIAL_HORAIRES: Horaire[] = [
   { jour: 'Lundi', ouverture: '06:00', fermeture: '18:00', actif: true },
   { jour: 'Mardi', ouverture: '06:00', fermeture: '18:00', actif: true },
@@ -261,6 +252,74 @@ const INITIAL_HORAIRES: Horaire[] = [
   { jour: 'Samedi', ouverture: '06:00', fermeture: '18:00', actif: true },
   { jour: 'Dimanche', ouverture: '', fermeture: '', actif: false },
 ];
+
+const JOURS_ORDER = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+const JOUR_ABBREV: Record<string, string> = {
+  Lundi: 'Lun', Mardi: 'Mar', Mercredi: 'Mer', Jeudi: 'Jeu', Vendredi: 'Ven', Samedi: 'Sam', Dimanche: 'Dim',
+};
+const ABBREV_TO_JOUR: Record<string, string> = Object.fromEntries(Object.entries(JOUR_ABBREV).map(([j, a]) => [a, j]));
+
+// Le backend ne stocke `horaires_ouverture` que comme une simple chaîne libre (déjà utilisée par
+// le champ texte libre de l'écran web) — on ne change pas le schéma. Ici, on sérialise le réglage
+// par-jour de l'écran mobile en un résumé lisible ("Lun-Ven 08:00-18:00, Sam 09:00-13:00, Dim
+// Fermé") en regroupant les jours consécutifs qui partagent les mêmes horaires.
+function serializeHoraires(horaires: Horaire[]): string {
+  const byJour = new Map(horaires.map((h) => [h.jour, h]));
+  const segments: string[] = [];
+  let i = 0;
+  while (i < JOURS_ORDER.length) {
+    const h = byJour.get(JOURS_ORDER[i]);
+    if (!h) { i += 1; continue; }
+    const key = h.actif ? `${h.ouverture}-${h.fermeture}` : 'FERME';
+    let j = i;
+    while (j + 1 < JOURS_ORDER.length) {
+      const next = byJour.get(JOURS_ORDER[j + 1]);
+      const nextKey = next && next.actif ? `${next.ouverture}-${next.fermeture}` : 'FERME';
+      if (!next || nextKey !== key) break;
+      j += 1;
+    }
+    const startAbbrev = JOUR_ABBREV[JOURS_ORDER[i]];
+    const endAbbrev = JOUR_ABBREV[JOURS_ORDER[j]];
+    const dayLabel = i === j ? startAbbrev : `${startAbbrev}-${endAbbrev}`;
+    const valueLabel = h.actif ? `${h.ouverture}-${h.fermeture}` : 'Fermé';
+    segments.push(`${dayLabel} ${valueLabel}`);
+    i = j + 1;
+  }
+  return segments.join(', ');
+}
+
+// Inverse de serializeHoraires() : ne comprend que le format généré ci-dessus. Toute autre chaîne
+// (texte libre saisi depuis le web, ou vide) renvoie null — l'écran garde alors ses valeurs par
+// défaut plutôt que de tenter une lecture approximative d'un texte arbitraire.
+function parseHoraires(text?: string | null): Horaire[] | null {
+  if (!text || !text.trim()) return null;
+  const parsed = new Map<string, Horaire>();
+  const segments = text.split(',').map((s) => s.trim()).filter(Boolean);
+  if (segments.length === 0) return null;
+
+  for (const segment of segments) {
+    const match = segment.match(/^([A-Za-zÀ-ÿ]{3})(?:-([A-Za-zÀ-ÿ]{3}))?\s+(Fermé|\d{2}:\d{2}-\d{2}:\d{2})$/);
+    if (!match) return null;
+    const [, startAbbrev, endAbbrev, valueLabel] = match;
+    const startJour = ABBREV_TO_JOUR[startAbbrev];
+    const endJour = endAbbrev ? ABBREV_TO_JOUR[endAbbrev] : startAbbrev ? startJour : undefined;
+    if (!startJour || (endAbbrev && !ABBREV_TO_JOUR[endAbbrev])) return null;
+
+    const startIdx = JOURS_ORDER.indexOf(startJour);
+    const endIdx = JOURS_ORDER.indexOf(endAbbrev ? ABBREV_TO_JOUR[endAbbrev] : startJour);
+    if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) return null;
+
+    const actif = valueLabel !== 'Fermé';
+    const [ouverture, fermeture] = actif ? valueLabel.split('-') : ['', ''];
+    for (let idx = startIdx; idx <= endIdx; idx += 1) {
+      const jour = JOURS_ORDER[idx];
+      parsed.set(jour, { jour, ouverture, fermeture, actif });
+    }
+  }
+
+  if (parsed.size !== JOURS_ORDER.length) return null;
+  return JOURS_ORDER.map((jour) => parsed.get(jour)!);
+}
 
 export type SalesStats = {
   chiffreAffaires: number;
@@ -373,11 +432,20 @@ function mapApiCommandeToVendorOrder(c: ApiCommande): VendorOrder {
 type VendorContextValue = {
   vendorFirstName: string;
   boutique: Boutique;
-  updateBoutiqueStatus: (statut: BoutiqueStatut, message?: string) => void;
+  // Persiste réellement côté serveur (PUT /vendeur/statut-boutique) : "pause"/"fermee" bloquent
+  // désormais la création de nouvelles commandes pour ce vendeur — voir le rejet à valider() côté
+  // API. Peut lever une erreur réseau ; l'écran appelant doit l'attraper.
+  updateBoutiqueStatus: (statut: BoutiqueStatut, message?: string) => Promise<void>;
   vendorValidationStatus: VendorValidationStatus | null;
 
   horaires: Horaire[];
   updateHoraire: (jour: string, patch: Partial<Horaire>) => void;
+  // Sérialise `horaires` (voir serializeHoraires) et l'enregistre dans vendeurs.horaires_ouverture
+  // via PUT /vendeur/profil.
+  saveHoraires: () => Promise<void>;
+
+  numeroMobileMoneyReception: string;
+  updateNumeroMobileMoneyReception: (numero: string) => Promise<void>;
 
   products: VendorProduct[];
   productsLoading: boolean;
@@ -406,16 +474,21 @@ type VendorContextValue = {
   togglePromotion: (id: string) => void;
   addPromotion: (input: { titre: string; produit: string; pourcentage: number; dateDebut: string; dateFin: string }) => void;
 
-  notifications: VendorNotification[];
+  // Notifications réelles (GET/POST /user/notifications — identique à client/livreur), plus de
+  // liste factice locale.
+  notifications: UserNotification[];
+  notificationsLoading: boolean;
   unreadNotificationsCount: number;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
+  refreshNotifications: () => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
 
   reviews: Review[];
   reviewsLoading: boolean;
   refreshReviews: () => Promise<void>;
 
   documents: VendorDocument[];
+  uploadDocument: (key: VendeurDocumentKey, file: { uri: string; fileName?: string | null; type?: string | null }) => Promise<void>;
 
   stats: SalesStats;
 };
@@ -430,20 +503,32 @@ export function VendorProvider({ children }: { children: ReactNode }) {
   });
   const [vendorValidationStatus, setVendorValidationStatus] = useState<VendorValidationStatus | null>(null);
   const [horaires, setHoraires] = useState<Horaire[]>(INITIAL_HORAIRES);
+  const [numeroMobileMoneyReception, setNumeroMobileMoneyReception] = useState('');
   const [products, setProducts] = useState<VendorProduct[]>(INITIAL_PRODUCTS);
   const [productsLoading, setProductsLoading] = useState(false);
   const [orders, setOrders] = useState<VendorOrder[]>(INITIAL_ORDERS);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLastPage, setOrdersLastPage] = useState(1);
-  const [promotions, setPromotions] = useState<Promotion[]>(INITIAL_PROMOTIONS);
-  const [notifications, setNotifications] = useState<VendorNotification[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [documents] = useState<VendorDocument[]>(INITIAL_DOCUMENTS);
+  const [documentPaths, setDocumentPaths] = useState<Partial<Record<VendeurDocumentKey, string | null>>>({});
   const [stats, setStats] = useState<SalesStats>(DEFAULT_STATS);
   const [categoryIdByName, setCategoryIdByName] = useState<Record<string, string>>({});
   const [categoriesReady, setCategoriesReady] = useState(false);
+  const [promotions, setPromotions] = useState<Promotion[]>([
+    { id: 'p1', titre: '-10% sur Daurade royale', produit: 'Daurade royale', pourcentage: 10, dateDebut: '01/05/2024', dateFin: '31/05/2024', actif: true, terminee: false },
+  ]);
+
+  const documents: VendorDocument[] = useMemo(() => DOCUMENT_LABELS.map(({ key, nom }) => ({
+    id: key,
+    nom,
+    uploaded: !!documentPaths[key],
+    statut: documentPaths[key] ? 'valide' : 'en_attente',
+    url: resolveMediaUrl(documentPaths[key] || undefined),
+  })), [documentPaths]);
 
   // Les catégories sont indispensables pour publier un produit (mapping nom → id) :
   // un simple échec réseau au démarrage ne doit pas bloquer la publication pour le reste de la session.
@@ -487,6 +572,17 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     finally { setReviewsLoading(false); }
   }, []);
 
+  // ─── Notifications réelles (GET /user/notifications — même endpoint que client/livreur) : plus
+  // de liste factice locale, remplace INITIAL_NOTIFICATIONS.
+  const refreshNotifications = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setNotificationsLoading(true);
+    try {
+      const data = await apiFetchNotifications();
+      setNotifications(data);
+    } catch { /* garde la liste précédente (vide au premier chargement) */ }
+    finally { setNotificationsLoading(false); }
+  }, []);
+
   // ─── Chargement initial depuis l'API réelle (repli sur les données de démo en cas d'échec) ───
   useEffect(() => {
     refreshCategories();
@@ -509,6 +605,7 @@ export function VendorProvider({ children }: { children: ReactNode }) {
 
     fetchOrders();
     refreshReviews();
+    refreshNotifications();
 
     (async () => {
       try {
@@ -518,7 +615,22 @@ export function VendorProvider({ children }: { children: ReactNode }) {
           ...prev,
           nom: dashboard.nom_commerce || prev.nom,
           note: toNumber(dashboard.note_moyenne) || prev.note,
+          // Statut réel de la boutique (ouverte/pause/fermée) : jusqu'ici toujours resté à la
+          // valeur locale par défaut "ouverte", quoi qu'ait choisi le vendeur lors d'une session
+          // précédente, puisque rien n'était jamais chargé depuis le serveur.
+          statut: (dashboard.statut_boutique as BoutiqueStatut) || prev.statut,
         }));
+        setNumeroMobileMoneyReception(dashboard.numero_mobile_money_reception || '');
+        // N'écrase l'état local que si le texte enregistré correspond bien au format généré par
+        // serializeHoraires() (voir sa définition) — sinon on garde les valeurs par défaut plutôt
+        // que d'essayer d'interpréter un texte libre arbitraire (ex: saisi depuis le web).
+        const parsedHoraires = parseHoraires(dashboard.horaires_ouverture);
+        if (parsedHoraires) setHoraires(parsedHoraires);
+        setDocumentPaths({
+          photo_boutique: dashboard.photo_boutique,
+          document_identite: dashboard.document_identite,
+          registre_commerce: dashboard.registre_commerce,
+        });
         setStats((prev) => ({
           ...prev,
           commandesTotal: dashboard.commandes_aujourd_hui + dashboard.commandes_en_cours + dashboard.commandes_livrees,
@@ -531,6 +643,9 @@ export function VendorProvider({ children }: { children: ReactNode }) {
         setStats((prev) => ({
           ...prev,
           chiffreAffaires: toNumber(revenus.revenus_nets) || prev.chiffreAffaires,
+          // Panier moyen réel (moyenne des commandes livrées du mois) au lieu d'une valeur figée à
+          // 3242 FCFA quelle que soit l'activité réelle de la boutique.
+          panierMoyen: revenus.panier_moyen !== undefined ? toNumber(revenus.panier_moyen) : prev.panierMoyen,
           ventesSemaine: revenus.ventes_semaine
             ? revenus.ventes_semaine.map((v) => ({ jour: v.jour, montant: toNumber(v.montant) }))
             : prev.ventesSemaine,
@@ -538,7 +653,7 @@ export function VendorProvider({ children }: { children: ReactNode }) {
         }));
       } catch { /* garde les stats de démo */ }
     })();
-  }, [refreshCategories, refreshReviews]);
+  }, [refreshCategories, refreshReviews, refreshNotifications]);
 
   // ─── Polling périodique des commandes : un vendeur qui laisse l'écran ouvert doit voir une
   // nouvelle commande client sans avoir à redémarrer l'app. Rafraîchit aussi au retour au premier
@@ -580,7 +695,8 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     } catch { /* la page suivante restera indisponible tant que la connexion échoue */ }
   }, [ordersPage, ordersLastPage]);
 
-  const updateBoutiqueStatus = useCallback((statut: BoutiqueStatut, message?: string) => {
+  const updateBoutiqueStatus = useCallback(async (statut: BoutiqueStatut, message?: string) => {
+    await updateStatutBoutiqueVendeur(statut);
     setBoutique((prev) => ({ ...prev, statut, messageClients: message ?? prev.messageClients }));
   }, []);
 
@@ -738,6 +854,21 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     return created;
   }, []);
 
+  const saveHoraires = useCallback(async () => {
+    const text = serializeHoraires(horaires);
+    await updateVendeurProfil({ horaires_ouverture: text });
+  }, [horaires]);
+
+  const updateNumeroMobileMoneyReception = useCallback(async (numero: string) => {
+    await updateVendeurProfil({ numero_mobile_money_reception: numero });
+    setNumeroMobileMoneyReception(numero);
+  }, []);
+
+  const uploadDocument = useCallback(async (key: VendeurDocumentKey, file: { uri: string; fileName?: string | null; type?: string | null }) => {
+    const res = await uploaderDocumentsVendeur({ [key]: file });
+    setDocumentPaths((prev) => ({ ...prev, ...res }));
+  }, []);
+
   const togglePromotion = useCallback((id: string) => {
     setPromotions((prev) => prev.map((p) => (p.id === id ? { ...p, actif: !p.actif } : p)));
   }, []);
@@ -746,14 +877,16 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     setPromotions((prev) => [{ id: 'promo_' + Date.now(), actif: true, ...input }, ...prev]);
   }, []);
 
-  const unreadNotificationsCount = notifications.filter((n) => !n.lu).length;
+  const unreadNotificationsCount = notifications.filter((n) => !n.statut_lecture).length;
 
-  const markNotificationRead = useCallback((id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, lu: true } : n)));
+  const markNotificationRead = useCallback(async (id: string) => {
+    try { await apiMarkNotificationRead(id); } catch {}
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, statut_lecture: true } : n)));
   }, []);
 
-  const markAllNotificationsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, lu: true })));
+  const markAllNotificationsRead = useCallback(async () => {
+    try { await apiMarkAllNotificationsRead(); } catch {}
+    setNotifications((prev) => prev.map((n) => ({ ...n, statut_lecture: true })));
   }, []);
 
   const hasMoreOrders = ordersPage < ordersLastPage;
@@ -761,23 +894,25 @@ export function VendorProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     vendorFirstName,
     boutique, updateBoutiqueStatus, vendorValidationStatus,
-    horaires, updateHoraire,
+    horaires, updateHoraire, saveHoraires,
+    numeroMobileMoneyReception, updateNumeroMobileMoneyReception,
     products, productsLoading, categoriesReady, refreshCategories,
     addProduct, updateProduct, toggleProductAvailability, adjustStock, addVariant, getProduct,
     orders, ordersLoading, hasMoreOrders, refreshOrders: fetchOrders, loadMoreOrders, getOrder, acceptOrder, refuseOrder, setOrderStatus, setPrepStep, createManualOrder,
     promotions, togglePromotion, addPromotion,
-    notifications, unreadNotificationsCount, markNotificationRead, markAllNotificationsRead,
+    notifications, notificationsLoading, unreadNotificationsCount, refreshNotifications, markNotificationRead, markAllNotificationsRead,
     reviews, reviewsLoading, refreshReviews,
-    documents,
+    documents, uploadDocument,
     stats,
   }), [
-    vendorFirstName, boutique, updateBoutiqueStatus, vendorValidationStatus, horaires, updateHoraire,
+    vendorFirstName, boutique, updateBoutiqueStatus, vendorValidationStatus, horaires, updateHoraire, saveHoraires,
+    numeroMobileMoneyReception, updateNumeroMobileMoneyReception,
     products, productsLoading, categoriesReady, refreshCategories,
     addProduct, updateProduct, toggleProductAvailability, adjustStock, addVariant, getProduct,
     orders, ordersLoading, hasMoreOrders, fetchOrders, loadMoreOrders, getOrder, acceptOrder, refuseOrder, setOrderStatus, setPrepStep, createManualOrder,
     promotions, togglePromotion, addPromotion,
-    notifications, unreadNotificationsCount, markNotificationRead, markAllNotificationsRead,
-    reviews, reviewsLoading, refreshReviews, documents, stats,
+    notifications, notificationsLoading, unreadNotificationsCount, refreshNotifications, markNotificationRead, markAllNotificationsRead,
+    reviews, reviewsLoading, refreshReviews, documents, uploadDocument, stats,
   ]);
 
   return <VendorContext.Provider value={value}>{children}</VendorContext.Provider>;
