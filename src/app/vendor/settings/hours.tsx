@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
@@ -8,14 +10,27 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 
 export default function OpeningHoursScreen() {
-  const { horaires, updateHoraire } = useVendor();
+  const { horaires, updateHoraire, saveHoraires } = useVendor();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    Alert.alert(t('vendorHours.savedTitle', '✅ Horaires enregistrés'), t('vendorHours.savedDesc', 'Vos horaires d\'ouverture ont bien été mis à jour.'), [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+  // Appelait auparavant uniquement cette alerte de succès sans jamais invoquer saveHoraires() :
+  // les bascules faites via updateHoraire() ne vivaient que dans l'état React local et
+  // disparaissaient au redémarrage de l'app, malgré la confirmation "Enregistré" affichée ici.
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await saveHoraires();
+      alert(t('vendorHours.savedTitle', '✅ Horaires enregistrés'), t('vendorHours.savedDesc', 'Vos horaires d\'ouverture ont bien été mis à jour.'), [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (e: any) {
+      alert('Erreur', e.message || t('vendorHours.errorDesc', 'Impossible d\'enregistrer les horaires.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -52,8 +67,8 @@ export default function OpeningHoursScreen() {
       </ScrollView>
 
       <Animated.View entering={FadeInUp.duration(400).delay(400).springify()} style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        <Pressable onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-          <Text style={styles.saveBtnText}>{t('vendorHours.save', 'Enregistrer')}</Text>
+        <Pressable onPress={handleSave} disabled={saving} style={[styles.saveBtn, { backgroundColor: colors.primary }, saving && { opacity: 0.6 }]}>
+          {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>{t('vendorHours.save', 'Enregistrer')}</Text>}
         </Pressable>
       </Animated.View>
     </SafeAreaView>

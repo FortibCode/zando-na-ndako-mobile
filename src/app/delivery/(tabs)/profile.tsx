@@ -36,13 +36,13 @@ export default function Profile() {
   const rating = driver?.note_moyenne ?? 0;
   const isOnline = driver?.statut_disponibilite === 'disponible';
 
-  const rows: { icon: any; label: string; value?: string; path?: string; comingSoon?: boolean }[] = [
+  const rows: { icon: any; label: string; value?: string; valueIcon?: any; path?: string; comingSoon?: boolean }[] = [
     { icon: UserRound, label: t('deliveryProfileTab.myInfo', 'Mes informations'), path: '/delivery/profile-info' },
     { icon: Truck, label: t('deliveryProfileTab.vehicle', 'Véhicule'), value: vehicleType },
     { icon: FileText, label: t('deliveryProfileTab.documents', 'Documents'), path: '/delivery/documents' },
     { icon: Clock3, label: t('deliveryProfileTab.history', 'Historique'), path: '/delivery/history' },
     { icon: Wallet, label: t('deliveryProfileTab.statistics', 'Statistiques'), path: '/delivery/(tabs)/revenue' },
-    { icon: Star, label: t('deliveryProfileTab.myRating', 'Ma note'), value: `${rating > 0 ? rating.toFixed(1) : '—'} ★`, path: '/delivery/reviews' },
+    { icon: Star, label: t('deliveryProfileTab.myRating', 'Ma note'), value: rating > 0 ? rating.toFixed(1) : '—', valueIcon: Star, path: '/delivery/reviews' },
     { icon: Settings, label: t('deliveryProfileTab.settings', 'Paramètres'), comingSoon: true },
     { icon: HelpCircle, label: t('deliveryProfileTab.helpSupport', 'Aide et support'), path: '/delivery/support' },
     { icon: ShieldCheck, label: t('deliveryProfileTab.security', 'Sécurité'), comingSoon: true },
@@ -81,9 +81,12 @@ export default function Profile() {
                 <Star color={colors.gold} size={24} fill={colors.gold} />
               </View>
               <View style={{ flex: 1, marginLeft: 14 }}>
-                <Text style={[styles.sectionTitle, { fontSize: 18, color: colors.text }]}>
-                  {rating > 0 ? rating.toFixed(1) : '—'} <Text style={{ color: colors.gold }}>★</Text>
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Text style={[styles.sectionTitle, { fontSize: 18, color: colors.text }]}>
+                    {rating > 0 ? rating.toFixed(1) : '—'}
+                  </Text>
+                  <Star color={colors.gold} fill={colors.gold} size={16} />
+                </View>
                 <Text style={[styles.muted, { fontSize: 13, marginTop: 3, color: colors.textSecondary }]}>
                   {t('deliveryProfileTab.avgRating', 'Note moyenne')} · {dashboard?.missions_livrees ?? 0} {t('deliveryProfileTab.deliveriesCompleted', 'livraisons réalisées')}
                 </Text>
@@ -104,6 +107,7 @@ export default function Profile() {
           >
             {rows.map((r, i) => {
               const Icon = r.icon;
+              const ValueIcon = r.valueIcon;
               const interactive = Boolean(r.path);
               return (
                 <Pressable
@@ -127,7 +131,12 @@ export default function Profile() {
                     <Text style={[styles.muted, { color: colors.textTertiary, fontSize: 11, fontWeight: '800' }]}>{t('deliveryProfileTab.comingSoon', 'BIENTÔT')}</Text>
                   ) : (
                     <>
-                      {r.value && <Text style={[styles.muted, { color: colors.textSecondary }]}>{r.value}</Text>}
+                      {r.value && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Text style={[styles.muted, { color: colors.textSecondary }]}>{r.value}</Text>
+                          {ValueIcon && <ValueIcon color={colors.gold} fill={colors.gold} size={14} />}
+                        </View>
+                      )}
                       {interactive && <ChevronRight color={colors.textTertiary} size={20} />}
                     </>
                   )}

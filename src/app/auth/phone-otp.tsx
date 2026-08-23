@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 
 import { OtpVerificationLayout, authStyles } from '@/components/auth-ui';
 import { sendOtp, verifyOtp, resendOtp } from '@/services/api';
@@ -49,9 +50,9 @@ export default function PhoneOtpScreen() {
     setCanResend(false);
     try {
       await resendOtp(phoneCredential, 'sms');
-      Alert.alert('Code renvoye', 'Un nouveau code de verification vous a ete envoye par SMS.');
+      alert('Code renvoye', 'Un nouveau code de verification vous a ete envoye par SMS.');
     } catch {
-      Alert.alert('Erreur', 'Impossible de renvoyer le code. Veuillez reessayer.');
+      alert('Erreur', 'Impossible de renvoyer le code. Veuillez reessayer.');
     }
   }, [canResend, phoneNumber]);
 
@@ -63,8 +64,8 @@ export default function PhoneOtpScreen() {
       // Mode dev sans backend et sans user local : sélecteur de rôle
       if ((result as any).__devMode) {
         setVerifying(false);
-        Alert.alert(
-          '🛠 Mode développement',
+        alert(
+          'Mode développement',
           'Backend non disponible. Choisissez l\'interface à tester :',
           [
             { text: 'Client', onPress: () => router.replace('/client/(tabs)' as any) },
@@ -83,13 +84,13 @@ export default function PhoneOtpScreen() {
       } else if (role === 'client') {
         router.replace('/client/(tabs)' as any);
       } else {
-        Alert.alert(
+        alert(
           'Erreur de connexion',
           'Impossible de déterminer votre type de compte. Veuillez contacter le support.',
         );
       }
     } catch (err: any) {
-      Alert.alert(
+      alert(
         'Code invalide',
         err?.message || 'Le code OTP est incorrect ou a expiré. Veuillez réessayer.',
       );

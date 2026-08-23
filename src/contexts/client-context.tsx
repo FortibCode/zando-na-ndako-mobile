@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { alert } from '@/contexts/alert-context';
 import type { DeliveryAddress, DeliveryAddressInput, LoginUser, ApiProduit, ApiCategorie, ApiZone, CommandeResult } from '@/services/api';
 import {
   fetchAddresses,
@@ -10,6 +11,7 @@ import {
   getUser as apiGetUser,
   fetchMe as apiFetchMe,
   setUser as apiSetUser,
+  onSessionChange,
   updateUserProfile as apiUpdateUserProfile,
   uploadUserPhoto as apiUploadUserPhoto,
   fetchProduits,
@@ -18,12 +20,14 @@ import {
   fetchProduitsPromotions,
   fetchCategories,
   fetchZones,
+  fetchVendeurTypes,
   resolveMediaUrl,
   viderPanier,
   ajouterAuPanier,
   assignerBeneficiairePanier,
   validerCommande,
   commanderPourProche,
+  ApiError,
 } from '@/services/api';
 
 const ADDRESSES_STORAGE_KEY = '@zando_client_addresses';
@@ -45,7 +49,6 @@ export type Product = {
   name: string;
   price: number;
   unit: string;
-  emoji: string;
   category: string;
   rating: number;
   reviews: number;
@@ -54,15 +57,16 @@ export type Product = {
   origin?: string;
   stock?: boolean;
   fraicheur?: 'frais' | 'fume' | 'congele' | null;
+  vendorId?: string;
+  vendorName?: string;
 };
 
-function mapApiProduitToProduct(p: ApiProduit): Product {
+export function mapApiProduitToProduct(p: ApiProduit): Product {
   return {
     id: p.id,
     name: p.nom_produit,
     price: typeof p.prix_unitaire === 'string' ? parseFloat(p.prix_unitaire) : p.prix_unitaire,
     unit: `FCFA/${p.unite_mesure}`,
-    emoji: '🛒',
     category: p.categorie?.nom_categorie || '',
     rating: 0,
     reviews: 0,
@@ -70,6 +74,8 @@ function mapApiProduitToProduct(p: ApiProduit): Product {
     description: p.description || undefined,
     stock: p.statut_disponibilite === 'disponible' && p.quantite_stock > 0,
     fraicheur: p.type_fraicheur,
+    vendorId: p.vendeur_id,
+    vendorName: p.vendeur?.nom_commerce,
   };
 }
 
@@ -125,6 +131,7 @@ type ClientContextValue = {
   categories: string[];
   categoryIcons: Record<string, string>;
   categoriesLoading: boolean;
+  boutiqueTypes: string[];
   zones: ApiZone[];
   resolveZoneForAddress: (address: DeliveryAddress | null) => ApiZone | null;
   resolveZoneForQuartier: (quartier?: string | null) => ApiZone | null;
@@ -184,6 +191,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<string[]>(FALLBACK_CATEGORIES);
   const [categoryIcons, setCategoryIcons] = useState<Record<string, string>>({});
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [boutiqueTypes, setBoutiqueTypes] = useState<string[]>([]);
   const [zones, setZones] = useState<ApiZone[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<SlotSelection | null>(null);
 
@@ -196,8 +204,38 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [selectedAddress, setSelectedAddressState] = useState<DeliveryAddress | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('airtel');
 
-  const addToCart = (id: string) =>
+  // Une commande n'est rattachée qu'à un seul vendeur côté backend (voir
+  // CommandeController::valider, qui prend le vendeur de la première ligne du panier) : mélanger
+  // des produits de deux boutiques dans le panier ferait silencieusement disparaître les articles
+  // du second vendeur de la commande, sans qu'il soit jamais notifié ni payé. Même garde-fou que
+  // PanierController::ajouter() côté serveur, appliqué ici localement pour prévenir plutôt que
+  // guérir (le panier mobile est local jusqu'à la validation de commande).
+  const addToCart = (id: string) => {
+    const product = products.find((p) => p.id === id);
+    const cartProductIds = Object.keys(cart).filter((pid) => cart[pid] > 0);
+    const existingVendorId = cartProductIds.length > 0
+      ? products.find((p) => p.id === cartProductIds[0])?.vendorId
+      : undefined;
+
+    if (product?.vendorId && existingVendorId && existingVendorId !== product.vendorId && !cart[id]) {
+      const currentVendorName = products.find((p) => p.id === cartProductIds[0])?.vendorName || 'cette boutique';
+      alert(
+        'Boutique différente',
+        `Votre panier contient déjà des produits de « ${currentVendorName} ». Le vider pour ajouter ce produit d'une autre boutique ?`,
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Vider et ajouter',
+            style: 'destructive',
+            onPress: () => setCart({ [id]: 1 }),
+          },
+        ]
+      );
+      return;
+    }
+
     setCart((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  };
 
   const changeQuantity = (id: string, amount: number) =>
     setCart((prev) => {
@@ -245,17 +283,8 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     try {
       const apiList = await fetchProduits();
       const mapped = apiList.map(mapApiProduitToProduct);
-      let localProducts: Product[] = [];
-      try {
-        const raw = await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
-        if (raw) {
-          const cached: Product[] = JSON.parse(raw);
-          localProducts = cached.filter((p) => p.id.startsWith('p_') && !mapped.some((m) => m.id === p.id));
-        }
-      } catch {}
-      const combined = [...localProducts, ...mapped];
-      setProducts(combined);
-      await AsyncStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(combined)).catch(() => {});
+      setProducts(mapped);
+      await AsyncStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(mapped)).catch(() => {});
     } catch (_e) {
       try {
         const raw = await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
@@ -306,6 +335,15 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     } catch { /* zones indisponibles : resolveZoneForAddress renverra null, géré côté écrans */ }
   }, []);
 
+  // Types de boutique (parcours "boutique d'abord") : valeurs réellement présentes en base
+  // (categorie_principale est un champ texte libre, pas un enum) plutôt qu'une liste codée en dur.
+  const refreshBoutiqueTypes = useCallback(async () => {
+    try {
+      const types = await fetchVendeurTypes();
+      setBoutiqueTypes(types);
+    } catch { /* liste vide : l'écran affiche son propre état vide */ }
+  }, []);
+
   // Produits populaires / récents / promotion active : sections d'accueil basées sur de vraies données
   // plutôt que de trancher arbitrairement le catalogue général ou d'afficher un bandeau inventé.
   const refreshHighlights = useCallback(async () => {
@@ -330,6 +368,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     refreshProducts();
     refreshCategories();
     refreshZones();
+    refreshBoutiqueTypes();
     refreshHighlights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -432,29 +471,6 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-// Charger l'utilisateur connecté et le cache au montage
-  useEffect(() => {
-    (async () => {
-      // Rafraîchit le profil depuis le backend (inclut est_diaspora) avec repli local
-      await refreshUser();
-      try {
-        const raw = await AsyncStorage.getItem(ADDRESSES_STORAGE_KEY);
-        if (raw) {
-          const cached = JSON.parse(raw) as DeliveryAddress[];
-          setAddresses(cached);
-          const savedId = await AsyncStorage.getItem(SELECTED_ADDRESS_KEY);
-          if (savedId) {
-            const found = cached.find((a) => a.id === savedId);
-            if (found) setSelectedAddressState(found);
-          }
-        }
-      } catch (_e) {
-        // ignore
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
 const userFirstName = useMemo(() => {
     if (!currentUser) return 'Invité';
     const parts = currentUser.nom_complet.split(' ');
@@ -521,6 +537,9 @@ const userFirstName = useMemo(() => {
         if (selectedAddress?.id === id) setSelectedAddressState(updated);
         return updated;
       } catch (e) {
+        // Le serveur a répondu (statut HTTP présent) : c'est un vrai refus (ex: adresse invalide),
+        // pas un simple problème de réseau — on ne doit pas faire semblant d'avoir réussi.
+        if (e instanceof ApiError && e.status !== undefined) throw e;
         const next = addresses.map((a) => (a.id === id ? { ...a, ...input, id } : a));
         await persistAddresses(next);
         const updated = next.find((a) => a.id === id);
@@ -535,8 +554,11 @@ const userFirstName = useMemo(() => {
     async (id: string) => {
       try {
         await apiDeleteAddress(id);
-      } catch (_e) {
-        // mode hors-ligne : on supprime localement
+      } catch (e) {
+        // Refus serveur réel (ex: adresse liée à une commande en cours) : on ne supprime pas
+        // localement une adresse que le backend a explicitement refusé de supprimer.
+        if (e instanceof ApiError && e.status !== undefined) throw e;
+        // Sinon (pas de réponse serveur du tout) : mode hors-ligne, on supprime localement.
       }
       const next = addresses.filter((a) => a.id !== id);
       await persistAddresses(next);
@@ -556,7 +578,8 @@ const userFirstName = useMemo(() => {
         await persistAddresses(next);
         setSelectedAddressState(updated);
         return updated;
-      } catch (_e) {
+      } catch (e) {
+        if (e instanceof ApiError && e.status !== undefined) throw e;
         const next = addresses.map((a) => ({ ...a, est_defaut: a.id === id }));
         await persistAddresses(next);
         const updated = next.find((a) => a.id === id) || null;
@@ -584,6 +607,33 @@ const userFirstName = useMemo(() => {
     }
   }, []);
 
+  // Charger l'utilisateur connecté et le cache au montage — et à chaque connexion (voir
+  // onSessionChange dans services/api.ts) : ClientProvider est monté une seule fois pour toute la
+  // durée de vie de l'app (voir _layout.tsx), donc sans ça un changement de compte pendant que
+  // l'app tourne déjà laissait l'identité et les adresses de l'ancien compte affichées.
+  const bootstrap = useCallback(async () => {
+    await refreshUser();
+    try {
+      const raw = await AsyncStorage.getItem(ADDRESSES_STORAGE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw) as DeliveryAddress[];
+        setAddresses(cached);
+        const savedId = await AsyncStorage.getItem(SELECTED_ADDRESS_KEY);
+        if (savedId) {
+          const found = cached.find((a) => a.id === savedId);
+          if (found) setSelectedAddressState(found);
+        }
+      }
+    } catch (_e) {
+      // ignore
+    }
+  }, [refreshUser]);
+
+  useEffect(() => {
+    bootstrap();
+    return onSessionChange(bootstrap);
+  }, [bootstrap]);
+
   const updateProfile = useCallback(async (input: Partial<{ nom: string; prenom: string; ville: string; adresse: string; email: string; date_naissance: string; pays_residence: string; devise_preferee: 'FCFA' | 'USD' | 'EUR' | 'GBP' }>) => {
     const updated = await apiUpdateUserProfile(input);
     setCurrentUser(updated);
@@ -593,13 +643,20 @@ const userFirstName = useMemo(() => {
 
   const uploadPhoto = useCallback(async (photo: { uri: string; fileName?: string | null; type?: string | null }) => {
     const url = await apiUploadUserPhoto(photo);
-    if (url && currentUser) {
-      const updated = { ...currentUser, photo_profil: url };
-      setCurrentUser(updated);
-      await apiSetUser(updated).catch(() => {});
+    // Mise à jour fonctionnelle (plutôt que de dépendre de `currentUser` capturé à la création du
+    // callback) : si l'identité était encore en cours de chargement au moment de l'appel, l'ancienne
+    // version silencieusement ignorait la mise à jour locale — la photo était bien enregistrée côté
+    // serveur mais jamais reflétée à l'écran tant que l'app n'était pas redémarrée.
+    if (url) {
+      setCurrentUser((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev, photo_profil: url };
+        apiSetUser(updated).catch(() => {});
+        return updated;
+      });
     }
     return url;
-  }, [currentUser]);
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -613,6 +670,7 @@ const userFirstName = useMemo(() => {
       categories,
       categoryIcons,
       categoriesLoading,
+      boutiqueTypes,
       zones,
       resolveZoneForAddress,
       resolveZoneForQuartier,
@@ -650,7 +708,7 @@ currentUser,
     }),
     [
       products, productsLoading, productsError, refreshProducts, popularProducts, recentProducts, promotedProduct,
-      categories, categoryIcons, categoriesLoading,
+      categories, categoryIcons, categoriesLoading, boutiqueTypes,
       zones, resolveZoneForAddress, resolveZoneForQuartier, selectedSlot, setSelectedSlot, placeOrder,
       cart, cartCount, subtotal, favorites, searchQuery,
       addresses, addressesLoading, refreshAddresses, addAddress,

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
   ArrowLeft, Users, Coins, ShieldCheck, MessageSquare, Radar, FileText, Share2,
@@ -57,7 +58,7 @@ export default function DiasporaAboutScreen() {
   ];
 
   const SUPPORT = [
-    { icon: HelpCircle, label: t('diaspora.about.faqLabel', 'FAQ Diaspora'), action: () => Alert.alert(t('diaspora.about.faqLabel', 'FAQ Diaspora'), t('diaspora.about.faqAlertDesc', 'La FAQ dédiée sera bientôt disponible. En attendant, contactez-nous via WhatsApp, email ou téléphone.')) },
+    { icon: HelpCircle, label: t('diaspora.about.faqLabel', 'FAQ Diaspora'), action: () => alert(t('diaspora.about.faqLabel', 'FAQ Diaspora'), t('diaspora.about.faqAlertDesc', 'La FAQ dédiée sera bientôt disponible. En attendant, contactez-nous via WhatsApp, email ou téléphone.')) },
     { icon: MessageCircle, label: t('diaspora.about.whatsappLabel', 'Contact WhatsApp'), action: () => Linking.openURL('https://wa.me/242060000000') },
     { icon: Mail, label: t('diaspora.about.emailLabel', 'Email : support@zandonandako.com'), action: () => Linking.openURL('mailto:support@zandonandako.com') },
     { icon: Phone, label: t('diaspora.about.phoneLabel', 'Téléphone : +242 06 000 00 00'), action: () => Linking.openURL('tel:+242060000000') },

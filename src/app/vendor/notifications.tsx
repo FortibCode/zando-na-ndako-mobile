@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Bell, Wallet, Store, MessageCircle, Percent, Check, CheckCheck } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
@@ -16,14 +17,14 @@ export default function VendorNotificationsScreen() {
 
   const handleMarkAllRead = () => {
     if (unreadCount === 0) {
-      Alert.alert(
+      alert(
         t('vendorNotifications.alreadyReadTitle', 'Information'),
         t('vendorNotifications.alreadyReadDesc', 'Toutes vos notifications sont déjà marquées comme lues.')
       );
       return;
     }
     markAllNotificationsRead();
-    Alert.alert(
+    alert(
       t('vendorNotifications.allReadTitle', '✅ Notifications lues'),
       t('vendorNotifications.allReadDesc', 'Toutes vos notifications ont été marquées comme lues.')
     );

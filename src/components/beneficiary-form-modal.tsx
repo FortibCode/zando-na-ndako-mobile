@@ -1,11 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform,
-  Pressable, ScrollView, StyleSheet, Text, TextInput, View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeIn, FadeInUp, SlideInRight, SlideOutRight } from 'react-native-reanimated';
-import { ArrowLeft, User, Phone, MapPin, Crosshair, StickyNote, Check } from 'lucide-react-native';
+import { ArrowLeft, User, Phone, MapPin, Crosshair, StickyNote, Check, AlertTriangle } from 'lucide-react-native';
 import { BLUE, RED } from '@/components/client-ui';
 import { useDiaspora, type Beneficiary, type BeneficiaryInput } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -74,8 +72,8 @@ const handleOpen = useCallback(() => {
         const created = await addBeneficiary(payload);
         onSaved?.(created);
       }
-      Alert.alert(
-        '✅ Succès',
+      alert(
+        'Succès',
         isEditing
           ? t('diaspora.beneficiaryForm.updatedSuccess', 'Le bénéficiaire a été mis à jour.')
           : t('diaspora.beneficiaryForm.addedSuccess', 'Le bénéficiaire a été ajouté avec succès.')
@@ -236,8 +234,9 @@ const handleOpen = useCallback(() => {
               </View>
 
               {error && (
-                <Animated.View entering={FadeInUp.duration(250)} style={styles.errorBox}>
-                  <Text style={styles.errorText}>⚠️ {error}</Text>
+                <Animated.View entering={FadeInUp.duration(250)} style={[styles.errorBox, styles.errorBoxRow]}>
+                  <AlertTriangle color={RED} size={15} />
+                  <Text style={styles.errorText}>{error}</Text>
                 </Animated.View>
               )}
             </ScrollView>
@@ -288,7 +287,8 @@ const styles = StyleSheet.create({
 field: { flex: 1, color: BLUE, fontSize: 15, fontWeight: '500', paddingVertical: 12 },
   fieldTextArea: { minHeight: 72, alignItems: 'flex-start', paddingTop: 14 },
   errorBox: { backgroundColor: '#FFF0F0', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#FFCDD2' },
-  errorText: { color: RED, fontSize: 13, fontWeight: '700' },
+  errorBoxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  errorText: { color: RED, fontSize: 13, fontWeight: '700', flexShrink: 1 },
   footer: { padding: 18, paddingBottom: 28, borderTopWidth: 1, borderTopColor: '#EEF2FA' },
   button: {
     height: 56, borderRadius: 18, backgroundColor: RED,

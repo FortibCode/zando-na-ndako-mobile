@@ -30,23 +30,24 @@ import {
 import { useClient, type Product } from '@/contexts/client-context';
 import { useDiaspora, formatEur, formatUsd } from '@/contexts/diaspora-context';
 import { useTheme } from '@/contexts/theme-context';
+import { fetchVendeurs, resolveMediaUrl, type ApiVendeur } from '@/services/api';
+import { Store } from 'lucide-react-native';
 
 const RECENT_SEARCHES_KEY = '@zando_recent_searches';
 const MAX_RECENT = 5;
 
-// ─── Composant carte résultat (hooks en dehors du .map) ─────────────────────
+// ─── Carte résultat "produit" (secondaire) : ouvre la boutique du produit, jamais d'ajout direct
+// au panier depuis un résultat de recherche cross-boutique (voir la fiche boutique pour ça).
 function ResultCard({
   product,
   index,
-  onAdd,
   onPress,
 }: {
   product: Product;
   index: number;
-  onAdd: () => void;
   onPress: () => void;
 }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { diasporaModeActive } = useDiaspora();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -69,7 +70,9 @@ function ResultCard({
         />
         <View style={styles.resultInfo}>
           <Text style={[styles.resultName, { color: colors.text }]} numberOfLines={1}>{product.name}</Text>
-          <Text style={[styles.resultCategory, { color: colors.textTertiary }]}>{product.category}</Text>
+          {!!product.vendorName && (
+            <Text numberOfLines={1} style={[styles.resultCategory, { color: colors.textTertiary }]}>{product.vendorName}</Text>
+          )}
           <Text style={[styles.resultPrice, { color: colors.primary }]}>
             {product.price.toLocaleString('fr-FR')} <Text style={[styles.resultUnit, { color: colors.textSecondary }]}>FCFA</Text>
           </Text>
@@ -78,9 +81,28 @@ function ResultCard({
               {formatEur(product.price)} · {formatUsd(product.price)}
             </Text>
           )}
-          <Pressable onPress={onAdd} style={[styles.resultAddBtn, { backgroundColor: colors.primarySoft }]}>
-            <Text style={[styles.resultAddText, { color: colors.primary }]}>+ Panier</Text>
-          </Pressable>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// ─── Carte résultat "boutique" (résultat principal) ───
+function BoutiqueResultCard({ vendeur, index, onPress }: { vendeur: ApiVendeur; index: number; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Animated.View entering={FadeInDown.duration(300).delay(index * 50).springify()}>
+      <Pressable onPress={onPress} style={[styles.boutiqueResultCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.boutiqueResultAvatar, { backgroundColor: colors.primarySoft }]}>
+          {vendeur.photo_boutique ? (
+            <Image source={{ uri: resolveMediaUrl(vendeur.photo_boutique) }} style={styles.boutiqueResultAvatarImage} contentFit="cover" />
+          ) : (
+            <Store color={colors.primary} size={20} />
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text numberOfLines={1} style={[styles.resultName, { color: colors.text }]}>{vendeur.nom_commerce}</Text>
+          <Text numberOfLines={1} style={[styles.resultCategory, { color: colors.textTertiary, textTransform: 'capitalize' }]}>{vendeur.categorie_principale}{vendeur.ville ? ` · ${vendeur.ville}` : ''}</Text>
         </View>
       </Pressable>
     </Animated.View>
@@ -89,13 +111,14 @@ function ResultCard({
 
 export default function SearchScreen() {
   const { q: initialQuery } = useLocalSearchParams<{ q?: string }>();
-  const { products, recentProducts, categories, addToCart } = useClient();
+  const { products, recentProducts, boutiqueTypes } = useClient();
   const { diasporaModeActive } = useDiaspora();
   const { colors, isDark } = useTheme();
   const inputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState(initialQuery || '');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(!!initialQuery);
+  const [boutiqueResults, setBoutiqueResults] = useState<ApiVendeur[]>([]);
 
   // Charger les recherches récentes depuis AsyncStorage
   useEffect(() => {
@@ -146,12 +169,17 @@ export default function SearchScreen() {
     });
   }, [products, query]);
 
-  // Suggestions de catégories
-  const suggestedCategories = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q || results.length > 0 || q.length < 2) return [];
-    return categories.filter((c) => c.toLowerCase().includes(q));
-  }, [categories, query, results]);
+  // Boutiques correspondantes — résultat principal du parcours "boutique d'abord" (recherche
+  // serveur, contrairement aux produits qui filtrent la liste déjà chargée en local).
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) { setBoutiqueResults([]); return; }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      fetchVendeurs({ search: q }).then((list) => { if (!cancelled) setBoutiqueResults(list); }).catch(() => { if (!cancelled) setBoutiqueResults([]); });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query]);
 
   const handleSearch = useCallback((term: string) => {
     const trimmed = term.trim();
@@ -267,20 +295,20 @@ export default function SearchScreen() {
             </ScrollView>
           </Animated.View>
 
-          {/* Catégories populaires */}
+          {/* Types de boutique */}
           <Animated.View entering={FadeIn.duration(300).delay(250)} style={styles.section}>
             <View style={styles.sectionHeader}>
               <Package color={colors.primary} size={16} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Catégories populaires</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Types de boutique</Text>
             </View>
             <View style={styles.categoryGrid}>
-              {categories.slice(0, 6).map((cat) => (
+              {boutiqueTypes.slice(0, 6).map((type) => (
                 <Pressable
-                  key={cat}
-                  onPress={() => router.push(`/client/category/${cat}` as any)}
+                  key={type}
+                  onPress={() => router.push(`/client/boutiques/${encodeURIComponent(type)}` as any)}
                   style={[styles.categoryChip, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }]}
                 >
-                  <Text style={[styles.categoryChipText, { color: colors.primary }]}>{cat}</Text>
+                  <Text style={[styles.categoryChipText, { color: colors.primary, textTransform: 'capitalize' }]}>{type}</Text>
                 </Pressable>
               ))}
             </View>
@@ -289,34 +317,30 @@ export default function SearchScreen() {
       ) : (
         /* Résultats de recherche */
         <ScrollView contentContainerStyle={styles.resultsContent} showsVerticalScrollIndicator={false}>
-          {/* Suggestions de catégories */}
-          {suggestedCategories.length > 0 && results.length === 0 && (
+          {/* Boutiques — résultat principal */}
+          {boutiqueResults.length > 0 && (
             <Animated.View entering={FadeIn.duration(250)} style={styles.suggestSection}>
-              <Text style={[styles.suggestTitle, { color: colors.text }]}>Catégories correspondantes</Text>
-              <View style={styles.suggestGrid}>
-                {suggestedCategories.map((cat) => (
-                  <Pressable
-                    key={cat}
-                    onPress={() => router.push(`/client/category/${cat}` as any)}
-                    style={[styles.suggestChip, { backgroundColor: colors.surface, borderColor: colors.primarySoft }]}
-                  >
-                    <Text style={[styles.suggestChipText, { color: colors.primary }]}>{cat}</Text>
-                  </Pressable>
+              <Text style={[styles.suggestTitle, { color: colors.text }]}>Boutiques</Text>
+              <View style={{ gap: 8 }}>
+                {boutiqueResults.map((v, index) => (
+                  <BoutiqueResultCard key={v.id} vendeur={v} index={index} onPress={() => router.push(`/client/boutique/${v.id}` as any)} />
                 ))}
               </View>
             </Animated.View>
           )}
 
-          {/* Compteur de résultats */}
+          {/* Compteur de résultats produit */}
           <View style={styles.resultMeta}>
             <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
               {results.length > 0
-                ? `${results.length} résultat${results.length > 1 ? 's' : ''} pour "${query}"`
-                : 'Aucun résultat'}
+                ? `${results.length} produit${results.length > 1 ? 's' : ''} pour "${query}"`
+                : boutiqueResults.length === 0
+                ? 'Aucun résultat'
+                : 'Aucun produit correspondant'}
             </Text>
           </View>
 
-          {/* Grille des produits */}
+          {/* Grille des produits — secondaire, ouvre la boutique du produit */}
           {results.length > 0 && (
             <View style={styles.resultsGrid}>
               {results.map((product, index) => (
@@ -324,16 +348,15 @@ export default function SearchScreen() {
                   key={product.id}
                   product={product}
                   index={index}
-                  onAdd={() => addToCart(product.id)}
-                  onPress={() => router.push(`/client/product/${product.id}` as any)}
+                  onPress={() => router.push(product.vendorId ? `/client/boutique/${product.vendorId}` : `/client/product/${product.id}` as any)}
                 />
               ))}
             </View>
           )}
 
-          {results.length === 0 && suggestedCategories.length === 0 && (
+          {results.length === 0 && boutiqueResults.length === 0 && (
             <Animated.View entering={FadeIn.duration(300)} style={styles.noResult}>
-              <Text style={styles.noResultEmoji}>🔍</Text>
+              <Search color={colors.textTertiary} size={48} strokeWidth={1.5} />
               <Text style={[styles.noResultTitle, { color: colors.text }]}>Aucun résultat trouvé</Text>
               <Text style={[styles.noResultDesc, { color: colors.textSecondary }]}>
                 Essayez avec d'autres termes comme "poisson", "riz" ou "poulet"
@@ -428,6 +451,9 @@ const styles = StyleSheet.create({
   categoryChipText: { fontSize: 13, fontWeight: '700' },
 
   resultsContent: { padding: 16, paddingBottom: 30 },
+  boutiqueResultCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, borderWidth: 1, padding: 12 },
+  boutiqueResultAvatar: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  boutiqueResultAvatarImage: { width: '100%', height: '100%' },
   suggestSection: { marginBottom: 16 },
   suggestTitle: { fontSize: 15, fontWeight: '800', marginBottom: 10 },
   suggestGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -468,7 +494,6 @@ const styles = StyleSheet.create({
   resultAddText: { fontSize: 11.5, fontWeight: '800' },
 
   noResult: { alignItems: 'center', paddingVertical: 40, gap: 8 },
-  noResultEmoji: { fontSize: 48 },
   noResultTitle: { fontSize: 18, fontWeight: '900' },
   noResultDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
 });

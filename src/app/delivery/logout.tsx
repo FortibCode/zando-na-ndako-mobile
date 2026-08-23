@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { router } from 'expo-router';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeIn, FadeInUp, ZoomIn } from 'react-native-reanimated';
-import { LogOut, X } from 'lucide-react-native';
+import { Hand, LogOut, X } from 'lucide-react-native';
 import { DeliveryScreen, OutlineButton, PrimaryButton, styles } from '@/components/delivery-ui';
 import { useDelivery } from '@/contexts/delivery-context';
 import { useTheme } from '@/contexts/theme-context';
@@ -23,7 +24,7 @@ export default function Logout() {
       await logout();
       router.replace('/' as any);
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('deliveryLogout.errorDesc', 'Impossible de se déconnecter.'));
+      alert('Erreur', err.message || t('deliveryLogout.errorDesc', 'Impossible de se déconnecter.'));
       setLoggingOut(false);
     }
   }, [logout]);
@@ -53,7 +54,7 @@ export default function Logout() {
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <Text style={{ fontSize: 68 }}>👋</Text>
+          <Hand color={colors.primary} size={68} strokeWidth={1.75} />
         </Animated.View>
 
         <Text style={[styles.headerTitle, { textAlign: 'center', fontSize: 25, marginTop: 24, color: colors.text }]}>

@@ -7,7 +7,7 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withSpring,
 } from 'react-native-reanimated';
 import {
-  Receipt, Package, Truck, CheckCircle, XCircle, Search, RefreshCw, Star,
+  Receipt, Package, Truck, CheckCircle, XCircle, Search, RefreshCw, Star, AlertTriangle, X,
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -33,14 +33,6 @@ function commandeNeedsRating(c: ApiCommande): boolean {
   const livreurNote = notations.some((n) => n.type_cible === 'livreur');
   return (!!c.vendeur && !vendeurNote) || (!!c.livreur && !livreurNote);
 }
-
-const DEMO_ORDERS: UiOrder[] = [
-  { id: '#ZNND-2024-000123', rawId: 'demo-1', date: "Aujourd'hui, 10h - 12h", total: '7 000 FCFA', status: 'En route', statutCode: 'en_route', needsRating: false },
-  { id: '#ZNND-2024-000122', rawId: 'demo-2', date: 'Hier, 14h - 16h', total: '6 500 FCFA', status: 'Livrée', statutCode: 'livree', needsRating: false },
-  { id: '#ZNND-2024-000121', rawId: 'demo-3', date: '09 Mai 2024, 10h - 12h', total: '8 300 FCFA', status: 'Livrée', statutCode: 'livree', needsRating: false },
-  { id: '#ZNND-2024-000120', rawId: 'demo-4', date: '02 Mai 2024, 08h - 10h', total: '4 200 FCFA', status: 'Annulée', statutCode: 'annulee', needsRating: false },
-  { id: '#ZNND-2024-000119', rawId: 'demo-5', date: '28 Avril 2024, 16h - 18h', total: '9 500 FCFA', status: 'Livrée', statutCode: 'livree', needsRating: false },
-];
 
 const STATUS_ICONS = {
   'En route': Truck,
@@ -148,18 +140,23 @@ export default function OrdersScreen() {
   const [query, setQuery] = useState('');
   const [orders, setOrders] = useState<UiOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const tabs: TabId[] = ['Tous', 'Terminés', 'En cours', 'Annulés'];
 
   const loadOrders = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const apiOrders = await fetchClientCommandes();
-      // Une liste vide est un état réel légitime (nouveau client) : on n'affiche les commandes
-      // de démonstration que si l'API elle-même est injoignable, jamais pour masquer un vrai "aucune commande".
+      // Une liste vide est un état réel légitime (nouveau client) : on l'affiche telle quelle,
+      // jamais masquée derrière de fausses commandes de démonstration.
       setOrders(apiOrders.map(mapApiToUiOrder));
     } catch (_err) {
-      setOrders(DEMO_ORDERS);
+      // Échec réel de récupération : état d'erreur honnête (pas de commandes inventées),
+      // avec une action de réessai proposée à l'utilisateur.
+      setOrders([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -214,7 +211,7 @@ export default function OrdersScreen() {
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery('')} hitSlop={8}>
-              <Text style={[styles.clearSearch, { color: colors.textTertiary }]}>✕</Text>
+              <X color={colors.textTertiary} size={16} />
             </Pressable>
           )}
         </Animated.View>
@@ -243,9 +240,21 @@ export default function OrdersScreen() {
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('ordersList.loading', 'Chargement de vos commandes...')}</Text>
           </View>
+        ) : loadError ? (
+          <Animated.View entering={FadeInUp.duration(400).springify()} style={styles.empty}>
+            <AlertTriangle color={colors.error} size={40} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('ordersList.errorTitle', 'Impossible de charger vos commandes')}</Text>
+            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
+              {t('ordersList.errorSub', 'Vérifiez votre connexion puis réessayez.')}
+            </Text>
+            <Pressable onPress={loadOrders} style={[styles.retryBtn, { backgroundColor: colors.primary }]}>
+              <RefreshCw color={colors.white} size={16} />
+              <Text style={[styles.retryBtnText, { color: colors.white }]}>{t('common.retry', 'Réessayer')}</Text>
+            </Pressable>
+          </Animated.View>
         ) : filteredOrders.length === 0 ? (
           <Animated.View entering={FadeInUp.duration(400).springify()} style={styles.empty}>
-            <Text style={styles.emptyEmoji}>📦</Text>
+            <Package color={colors.textTertiary} size={44} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('ordersList.emptyTitle', 'Aucune commande trouvée')}</Text>
             <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
               {query ? t('ordersList.emptyNoResult', 'Aucun résultat pour votre recherche.') : t('ordersList.emptyNoneInTab', 'Aucune commande dans cette catégorie.')}
@@ -280,7 +289,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   searchInput: { flex: 1, fontSize: 14, fontWeight: '500', paddingVertical: 0 },
-  clearSearch: { fontSize: 16, fontWeight: '700', paddingHorizontal: 4 },
   tabs: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -325,7 +333,12 @@ const styles = StyleSheet.create({
   status: { fontSize: 13, fontWeight: '700' },
   total: { fontSize: 16, fontWeight: '800' },
   empty: { alignItems: 'center', paddingVertical: 48, gap: 8 },
-  emptyEmoji: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '900' },
   emptySub: { fontSize: 14, textAlign: 'center' },
+  retryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md,
+    borderRadius: Radii.md, marginTop: 8,
+  },
+  retryBtnText: { fontSize: 14, fontWeight: '800' },
 });

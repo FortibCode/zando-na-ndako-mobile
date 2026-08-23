@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Alert, ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
-import { launchImageLibrary } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Camera, Check, Mail, Phone, UserRound } from 'lucide-react-native';
 import { DeliveryScreen, Header, PrimaryButton } from '@/components/delivery-ui';
@@ -32,31 +33,39 @@ export default function DeliveryProfileInfo() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('deliveryProfileInfo.saveErrorDesc', 'Impossible de mettre à jour le profil.'));
+      alert('Erreur', err.message || t('deliveryProfileInfo.saveErrorDesc', 'Impossible de mettre à jour le profil.'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleChangePhoto = () => {
-    launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 800, maxHeight: 800, selectionLimit: 1 }, async (result) => {
-      if (result.didCancel) return;
-      if (result.errorCode) {
-        Alert.alert('Erreur', result.errorMessage || t('deliveryProfileInfo.photoErrorDesc', 'Impossible de sélectionner une photo.'));
+  const handleChangePhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        alert(t('deliveryProfileInfo.photoPermTitle', 'Permission requise'), t('deliveryProfileInfo.photoPermDesc', "L'accès aux photos est nécessaire pour changer l'image."));
         return;
       }
-      const asset = result.assets?.[0];
-      if (!asset?.uri) return;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
       setPhotoLoading(true);
       try {
-        await uploadUserPhoto({ uri: asset.uri, fileName: asset.fileName, type: asset.type });
+        await uploadUserPhoto({ uri: asset.uri, fileName: asset.fileName, type: asset.mimeType });
         await fetchDashboard();
       } catch (err: any) {
-        Alert.alert('Erreur', err.message || t('deliveryProfileInfo.photoSaveErrorDesc', "Impossible d'enregistrer la photo."));
+        alert('Erreur', err.message || t('deliveryProfileInfo.photoSaveErrorDesc', "Impossible d'enregistrer la photo."));
       } finally {
         setPhotoLoading(false);
       }
-    });
+    } catch (_err) {
+      alert('Erreur', t('deliveryProfileInfo.photoErrorDesc', 'Impossible de sélectionner une photo.'));
+    }
   };
 
   if (saving) {

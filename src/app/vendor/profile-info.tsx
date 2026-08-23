@@ -1,22 +1,23 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Crosshair, User, Phone, Mail, MapPin, Store } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useTheme } from '@/contexts/theme-context';
-import { useVendor } from '@/contexts/vendor-context';
+import { useVendor, deriveStoreEmoji } from '@/contexts/vendor-context';
 import { useClient } from '@/contexts/client-context';
 import { useLanguage } from '@/contexts/language-context';
-import { uploadUserPhoto, resolveMediaUrl, updateVendeurProfil } from '@/services/api';
+import api, { fetchVendeurTypesDisponibles, type ApiResponse } from '@/services/api';
 
 export default function VendorProfileInfoScreen() {
   const { colors, isDark } = useTheme();
-  const { vendorFirstName, boutique } = useVendor();
-  const { currentUser, refreshUser, updateProfile } = useClient();
+  const { vendorFirstName, boutique, documents, uploadDocument } = useVendor();
+  const { currentUser, updateProfile } = useClient();
   const { t } = useLanguage();
 
   const [prenom, setPrenom] = useState(vendorFirstName);
@@ -24,11 +25,26 @@ export default function VendorProfileInfoScreen() {
   const [email, setEmail] = useState(currentUser?.email || '');
   const [adresse, setAdresse] = useState(currentUser?.adresse || '');
   const [boutiqueNom, setBoutiqueNom] = useState(boutique.nom);
-  const [boutiqueEmoji, setBoutiqueEmoji] = useState(boutique.emoji);
+  // Remplace l'ancien sélecteur d'emoji libre (jamais réellement enregistré : aucune colonne
+  // "emoji" n'existe côté serveur) par le vrai type de commerce (vendeurs.categorie_principale),
+  // désormais éditable ici et persisté pour de vrai — l'emoji affiché en est simplement dérivé.
+  const [categorie, setCategorie] = useState(boutique.categoriePrincipale);
+  const [storeCategories, setStoreCategories] = useState<string[]>([]);
+
+  // Liste des types de boutique chargée depuis le backend (App\Models\Vendeur::TYPES_BOUTIQUE) —
+  // remplace une liste codée en dur ici indépendamment de 3 autres copies (inscription mobile,
+  // inscription web, seeder), qui avaient fini par diverger dans les données réelles.
+  useEffect(() => {
+    fetchVendeurTypesDisponibles().then(setStoreCategories).catch(() => setStoreCategories([]));
+  }, []);
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [locating, setLocating] = useState(false);
-  const [photoUri, setPhotoUri] = useState<string | null>(resolveMediaUrl(currentUser?.photo_profil) || null);
+  // Photo de la BOUTIQUE (vendeurs.photo_boutique), pas la photo personnelle du vendeur — ce
+  // sélecteur est juste au-dessus des champs "Type de commerce"/"Nom de la boutique" et son repli
+  // (deriveStoreEmoji) est un emoji de commerce, pas un avatar générique : il a toujours représenté
+  // le logo de la boutique, mais téléversait par erreur vers /user/upload-photo (photo personnelle).
+  const [photoUri, setPhotoUri] = useState<string | null>(documents.find((d) => d.id === 'photo_boutique')?.url || null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -39,14 +55,14 @@ export default function VendorProfileInfoScreen() {
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(t('vendorProfileInfo.locationPermTitle', 'Autorisation requise'), t('vendorProfileInfo.locationPermDesc', 'Activez la localisation pour renseigner automatiquement la position de votre boutique.'));
+        alert(t('vendorProfileInfo.locationPermTitle', 'Autorisation requise'), t('vendorProfileInfo.locationPermDesc', 'Activez la localisation pour renseigner automatiquement la position de votre boutique.'));
         return;
       }
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setLatitude(position.coords.latitude.toFixed(6));
       setLongitude(position.coords.longitude.toFixed(6));
     } catch {
-      Alert.alert('Erreur', t('vendorProfileInfo.locationErrorDesc', 'Impossible de récupérer votre position actuelle.'));
+      alert('Erreur', t('vendorProfileInfo.locationErrorDesc', 'Impossible de récupérer votre position actuelle.'));
     } finally {
       setLocating(false);
     }
@@ -56,7 +72,7 @@ export default function VendorProfileInfoScreen() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(t('vendorProfileInfo.photoPermTitle', 'Permission requise'), t('vendorProfileInfo.photoPermDesc', 'L\'accès aux photos est nécessaire pour changer l\'image.'));
+        alert(t('vendorProfileInfo.photoPermTitle', 'Permission requise'), t('vendorProfileInfo.photoPermDesc', 'L\'accès aux photos est nécessaire pour changer l\'image.'));
         return;
       }
 
@@ -71,22 +87,21 @@ export default function VendorProfileInfoScreen() {
         const selected = result.assets[0];
         setUploadingPhoto(true);
         try {
-          const uploadedUrl = await uploadUserPhoto({
+          await uploadDocument('photo_boutique', {
             uri: selected.uri,
-            fileName: selected.fileName || `vendeur_${Date.now()}.jpg`,
+            fileName: selected.fileName || `boutique_${Date.now()}.jpg`,
             type: selected.mimeType || 'image/jpeg',
           });
-          setPhotoUri(resolveMediaUrl(uploadedUrl) || selected.uri);
-          await refreshUser();
-          Alert.alert(t('vendorProfileInfo.photoUpdatedTitle', '✅ Photo mise à jour'), t('vendorProfileInfo.photoUpdatedDesc', 'Votre photo a bien été enregistrée.'));
+          setPhotoUri(selected.uri);
+          alert(t('vendorProfileInfo.photoUpdatedTitle', '✅ Photo mise à jour'), t('vendorProfileInfo.photoUpdatedDesc', 'Votre photo a bien été enregistrée.'));
         } catch (err: any) {
-          Alert.alert('Erreur', err.message || t('vendorProfileInfo.photoErrorDesc', 'Échec de l\'envoi de la photo.'));
+          alert('Erreur', err.message || t('vendorProfileInfo.photoErrorDesc', 'Échec de l\'envoi de la photo.'));
         } finally {
           setUploadingPhoto(false);
         }
       }
     } catch (_err) {
-      Alert.alert('Erreur', t('vendorProfileInfo.photoPickErrorDesc', 'Impossible de sélectionner la photo.'));
+      alert('Erreur', t('vendorProfileInfo.photoPickErrorDesc', 'Impossible de sélectionner la photo.'));
     }
   };
 
@@ -103,16 +118,21 @@ export default function VendorProfileInfoScreen() {
       const lat = parseFloat(latitude);
       const lng = parseFloat(longitude);
       const hasCoords = latitude.trim().length > 0 && longitude.trim().length > 0 && !Number.isNaN(lat) && !Number.isNaN(lng);
-      await updateVendeurProfil({
+      // Appelle directement /vendeur/profil (plutôt que le helper updateVendeurProfil() de
+      // services/api.ts) pour pouvoir y inclure categorie_principale, un champ que ce helper ne
+      // connaît pas encore.
+      const response = await api.put<ApiResponse>('/vendeur/profil', {
         nom_commerce: boutiqueNom.trim(),
+        categorie_principale: categorie.trim() || undefined,
         ...(hasCoords ? { coordonnees_gps: { lat, lng } } : {}),
       });
+      if (!response.data.success) throw new Error(response.data.message || "Impossible d'enregistrer vos informations.");
 
-      Alert.alert(t('vendorProfileInfo.profileUpdatedTitle', '✅ Profil mis à jour'), t('vendorProfileInfo.profileUpdatedDesc', 'Vos informations ont bien été enregistrées.'), [
+      alert(t('vendorProfileInfo.profileUpdatedTitle', '✅ Profil mis à jour'), t('vendorProfileInfo.profileUpdatedDesc', 'Vos informations ont bien été enregistrées.'), [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      Alert.alert('Erreur', e.message || t('vendorProfileInfo.profileErrorDesc', 'Impossible d\'enregistrer vos informations.'));
+      alert('Erreur', e.message || t('vendorProfileInfo.profileErrorDesc', 'Impossible d\'enregistrer vos informations.'));
     } finally {
       setSaving(false);
     }
@@ -137,7 +157,7 @@ export default function VendorProfileInfoScreen() {
               ) : photoUri ? (
                 <Image source={{ uri: photoUri }} style={styles.avatarImg} />
               ) : (
-                <Text style={styles.avatarEmoji}>{boutiqueEmoji}</Text>
+                <Text style={styles.avatarEmoji}>{deriveStoreEmoji(categorie)}</Text>
               )}
             </View>
             <Text style={[styles.avatarText, { color: colors.primary }]}>
@@ -161,17 +181,20 @@ export default function VendorProfileInfoScreen() {
           <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Field icon={Store} label={t('vendorProfileInfo.storeName', 'Nom de la boutique')} value={boutiqueNom} onChangeText={setBoutiqueNom} placeholder={t('vendorProfileInfo.storeNamePlaceholder', 'Nom de la boutique')} colors={colors} />
             <View>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('vendorProfileInfo.storeEmoji', 'Emoji de la boutique')}</Text>
-              <View style={styles.emojiRow}>
-                {['🐟', '🥬', '🍅', '🛒', '🏪', '🛍️'].map((e) => (
-                  <Pressable
-                    key={e}
-                    onPress={() => setBoutiqueEmoji(e)}
-                    style={[styles.emojiOption, { borderColor: colors.border }, boutiqueEmoji === e && { borderColor: colors.primary, backgroundColor: colors.primarySoft }]}
-                  >
-                    <Text style={styles.emojiText}>{e}</Text>
-                  </Pressable>
-                ))}
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('vendorProfileInfo.storeCategory', 'Type de commerce')}</Text>
+              <View style={styles.categoryRow}>
+                {storeCategories.map((cat) => {
+                  const selected = categorie === cat;
+                  return (
+                    <Pressable
+                      key={cat}
+                      onPress={() => setCategorie(cat)}
+                      style={[styles.categoryChip, { borderColor: colors.border }, selected && { borderColor: colors.primary, backgroundColor: colors.primarySoft }]}
+                    >
+                      <Text style={[styles.categoryChipText, { color: colors.textSecondary }, selected && { color: colors.primary, fontWeight: '900' }]}>{cat}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
           </View>
@@ -261,9 +284,9 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, fontSize: 15 },
 
-  emojiRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  emojiOption: { width: 48, height: 48, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  emojiText: { fontSize: 22 },
+  categoryRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  categoryChip: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
+  categoryChipText: { fontSize: 12.5, fontWeight: '700' },
 
   locationHint: { fontSize: 12.5, lineHeight: 18, marginTop: -2 },
   locateBtn: {

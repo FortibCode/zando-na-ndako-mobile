@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
@@ -32,7 +33,7 @@ export default function RefuseOrderScreen() {
       await refuseOrder(id || '', reason, comment.trim() || undefined);
       router.replace('/vendor/(tabs)/orders' as any);
     } catch (e: any) {
-      Alert.alert('Erreur', e.message || t('vendorRefuse.errorDesc', 'Impossible de refuser cette commande.'));
+      alert('Erreur', e.message || t('vendorRefuse.errorDesc', 'Impossible de refuser cette commande.'));
     } finally {
       setSending(false);
     }

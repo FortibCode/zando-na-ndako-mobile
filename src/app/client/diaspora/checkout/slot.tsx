@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
-import { ArrowLeft, Clock, Truck, User } from 'lucide-react-native';
+import { ArrowLeft, Clock, Truck, User, Check } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useDiaspora } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -68,7 +68,7 @@ export default function DiasporaSlotScreen() {
                 <Clock color={isSelected ? colors.textInverse : colors.text} size={20} />
                 <Text style={[styles.slotText, { color: colors.text }, isSelected && { color: colors.textInverse, fontWeight: '800' }]}>{slot}</Text>
                 {isSelected && (
-                  <View style={styles.slotCheck}><Text style={[styles.slotCheckText, { color: colors.textInverse }]}>✓</Text></View>
+                  <View style={styles.slotCheck}><Check color={colors.textInverse} size={15} strokeWidth={3} /></View>
                 )}
               </Pressable>
             </Animated.View>
@@ -137,7 +137,6 @@ const styles = StyleSheet.create({
   },
   slotText: { fontSize: 18, fontWeight: '600', flex: 1 },
   slotCheck: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-  slotCheckText: { fontSize: 16, fontWeight: '800' },
   deliveryInfo: {
     borderRadius: 18, padding: 18, gap: 14, marginTop: 4,
     borderWidth: 1, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,

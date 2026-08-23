@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { CheckCircle2, Star } from 'lucide-react-native';
 import { Card, DeliveryScreen, PrimaryButton, SupportActions, styles } from '@/components/delivery-ui';
@@ -46,7 +47,7 @@ function RateClientCard({ commandeId }: { commandeId: string }) {
           setNotation(list.find((n) => n.type_notateur === 'livreur' && n.type_cible === 'client') || null);
         } catch { /* garde le formulaire tel quel */ }
       } else {
-        Alert.alert(t('common.error', 'Erreur'), err instanceof Error ? err.message : t('rateClient.sendError', "Impossible d'envoyer votre avis."));
+        alert(t('common.error', 'Erreur'), err instanceof Error ? err.message : t('rateClient.sendError', "Impossible d'envoyer votre avis."));
       }
     } finally {
       setSubmitting(false);

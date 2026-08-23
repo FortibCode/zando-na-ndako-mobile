@@ -6,7 +6,7 @@ import Animated, {
   FadeInDown, FadeInUp, ZoomIn, FadeIn,
   useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming, Easing,
 } from 'react-native-reanimated';
-import { ArrowLeft, Globe2, ShieldCheck, Truck, Radar, MapPin, Info } from 'lucide-react-native';
+import { ArrowLeft, Globe2, ShieldCheck, Truck, Radar, MapPin, Info, User } from 'lucide-react-native';
 import { useDiaspora } from '@/contexts/diaspora-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -84,7 +84,7 @@ export default function DiasporaIntroScreen() {
 
           <Animated.View entering={ZoomIn.duration(500).delay(350).springify()} style={styles.avatarCard}>
             <View style={[styles.avatarCircle, { backgroundColor: colors.surface, borderColor: colors.primary, shadowColor: colors.shadow }]}>
-              <Text style={styles.avatarEmoji}>🧑🏾</Text>
+              <User color={colors.primary} size={28} />
             </View>
             <View style={[styles.avatarPin, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
               <MapPin color={colors.textInverse} size={13} />
@@ -179,7 +179,6 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
   },
-  avatarEmoji: { fontSize: 30 },
   avatarPin: {
     position: 'absolute', bottom: -8, alignSelf: 'center',
     width: 24, height: 24, borderRadius: 12,

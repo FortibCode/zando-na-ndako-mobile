@@ -37,7 +37,7 @@ export default function FavoritesScreen() {
         <Animated.View entering={FadeInUp.duration(500).springify()} style={styles.empty}>
           <EmptyState
             title={t('favorites.emptyTitle', 'Aucun favori')}
-            message={t('favorites.emptyDesc', "Appuyez sur ❤️ sur un produit pour l'ajouter à vos favoris")}
+            message={t('favorites.emptyDesc', "Appuyez sur un produit pour l'ajouter à vos favoris")}
             size={130}
           />
           <Pressable onPress={() => router.back()} style={[styles.browseBtn, { backgroundColor: colors.primary }]}>

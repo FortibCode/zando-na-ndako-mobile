@@ -1,9 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import {
-  ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
   ArrowLeft, Lock, Fingerprint, Shield, UserX, ChevronRight,
@@ -20,7 +19,7 @@ const { colors, isDark } = useTheme();
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    alert(
       t('security.deleteAccount', 'Supprimer mon compte'),
       t('security.deleteWarning', 'Cette action est irréversible. Toutes vos données seront définitivement supprimées.'),
       [
@@ -38,14 +37,14 @@ const { colors, isDark } = useTheme();
       await clearAuthToken();
       router.replace('/auth' as any);
     } catch (e: any) {
-      Alert.alert('Erreur', e.message || t('security.deleteError', 'Impossible de supprimer le compte.'));
+      alert('Erreur', e.message || t('security.deleteError', 'Impossible de supprimer le compte.'));
     } finally {
       setDeleting(false);
     }
   };
 
   const handlePrivacy = () => {
-    Alert.alert(
+    alert(
       t('security.data', 'Confidentialité des données'),
       t('security.privacyMessage', 'La gestion détaillée de vos données personnelles sera bientôt disponible. Pour toute demande, contactez support@zandonandako.cg.')
     );

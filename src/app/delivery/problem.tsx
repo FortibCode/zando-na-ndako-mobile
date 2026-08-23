@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState, useCallback } from 'react';
-import { Alert, Image, Pressable, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { AlertTriangle, Camera, Headphones, MapPin, PackageX, Store, Trash2, UserRound, XCircle } from 'lucide-react-native';
@@ -33,7 +34,7 @@ export default function Problem() {
   const handleTakePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t('deliveryProblem.photoPermTitle', 'Autorisation requise'), t('deliveryProblem.photoPermDesc', "Activez l'accès à l'appareil photo pour joindre une photo au signalement."));
+      alert(t('deliveryProblem.photoPermTitle', 'Autorisation requise'), t('deliveryProblem.photoPermDesc', "Activez l'accès à l'appareil photo pour joindre une photo au signalement."));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: false });
@@ -45,7 +46,7 @@ export default function Problem() {
   const handleSubmit = useCallback(async () => {
     if (!selected || status === 'loading') return;
     if (!currentMission) {
-      Alert.alert('Erreur', t('deliveryProblem.noMissionAlertDesc', 'Aucune mission en cours sélectionnée.'));
+      alert('Erreur', t('deliveryProblem.noMissionAlertDesc', 'Aucune mission en cours sélectionnée.'));
       return;
     }
     setStatus('loading');

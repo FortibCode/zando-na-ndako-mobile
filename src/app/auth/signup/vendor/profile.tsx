@@ -3,7 +3,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
+import { Check } from 'lucide-react-native';
 
 import { BackButton, PrimaryButton, authStyles } from '@/components/auth-ui';
 import { BrandColors } from '@/constants/brand';
@@ -47,7 +49,14 @@ function UploadCard({ doc, state, onPress }: { doc: UploadDoc; state: DocState; 
           <Text style={styles.uploadLabel}>{doc.label}</Text>
           {doc.required && <Text style={styles.uploadRequired}> *</Text>}
         </View>
-        <Text style={styles.uploadHint}>{state.uploaded ? 'Envoyé ✓' : doc.hint}</Text>
+        {state.uploaded ? (
+          <View style={styles.uploadHintRow}>
+            <Text style={[styles.uploadHint, styles.uploadHintDone]}>Envoyé</Text>
+            <Check color="#16A34A" size={12} strokeWidth={3} />
+          </View>
+        ) : (
+          <Text style={styles.uploadHint}>{doc.hint}</Text>
+        )}
       </View>
       <View style={styles.uploadAction}>
         {state.uploading ? (
@@ -73,7 +82,7 @@ export default function VendorSignupProfileScreen() {
   const handlePick = async (doc: UploadDoc) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission requise', "L'accès aux photos est nécessaire pour ajouter ce document.");
+      alert('Permission requise', "L'accès aux photos est nécessaire pour ajouter ce document.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
@@ -92,7 +101,7 @@ export default function VendorSignupProfileScreen() {
       setDocs((prev) => ({ ...prev, [doc.key]: { uri: asset.uri, uploaded: true } }));
     } catch (error) {
       setDocs((prev) => ({ ...prev, [doc.key]: {} }));
-      Alert.alert('Erreur', error instanceof Error ? error.message : "Impossible d'envoyer ce document.");
+      alert('Erreur', error instanceof Error ? error.message : "Impossible d'envoyer ce document.");
     }
   };
 
@@ -186,6 +195,8 @@ const styles = StyleSheet.create({
   uploadLabel: { color: '#1E293B', fontSize: 14, fontWeight: '700' },
   uploadRequired: { color: '#E30613', fontSize: 14, fontWeight: '700' },
   uploadHint: { color: '#94A3B8', fontSize: 12, marginTop: 2 },
+  uploadHintRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  uploadHintDone: { color: '#16A34A', marginTop: 0 },
   uploadAction: {
     width: 40,
     height: 40,

@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 
 import { OtpVerificationLayout, authStyles } from '@/components/auth-ui';
 import { useDeliverySignup } from '@/contexts/delivery-signup-context';
-import { resendOtp, sendOtp, verifyOtp } from '@/services/api';
+import { login, resendOtp, sendOtp, verifyOtp } from '@/services/api';
 
 const RESEND_DELAY = 165;
 
@@ -20,7 +21,7 @@ export default function DeliveryVerifyEmailScreen() {
     if (!otpSent && data.email && !data.registrationOtp) {
       setOtpSent(true);
       sendOtp(data.email, 'email').catch(() => {
-        Alert.alert('Erreur', 'Impossible d\'envoyer le code de vérification par email. Vérifiez votre connexion.');
+        alert('Erreur', 'Impossible d\'envoyer le code de vérification par email. Vérifiez votre connexion.');
       });
     }
   }, [data.email, data.registrationOtp, otpSent]);
@@ -40,9 +41,9 @@ export default function DeliveryVerifyEmailScreen() {
     setCanResend(false);
     try {
       await resendOtp(data.email, 'email');
-      Alert.alert('Code renvoyé', 'Un nouveau code de vérification vous a été envoyé par email.');
+      alert('Code renvoyé', 'Un nouveau code de vérification vous a été envoyé par email.');
     } catch {
-      Alert.alert('Erreur', 'Impossible de renvoyer le code. Veuillez réessayer.');
+      alert('Erreur', 'Impossible de renvoyer le code. Veuillez réessayer.');
     }
   }, [canResend, data.email]);
 
@@ -51,16 +52,23 @@ export default function DeliveryVerifyEmailScreen() {
       setVerifying(true);
       try {
         if (data.email && code) {
-          await verifyOtp(data.email, code);
+          const result = await verifyOtp(data.email, code);
+          if (!result?.token) {
+            throw new Error('Code invalide. Vérifiez le code reçu et réessayez.');
+          }
         }
+        // Même correctif que verify-phone.tsx (et le pattern déjà utilisé côté vendeur) : garantit
+        // une session propre pour CE compte plutôt que de risquer de continuer avec un ancien
+        // utilisateur mis en cache par le filet de sécurité "hors-ligne" de verifyOtp().
+        await login(data.email, data.password);
         router.replace('/auth/signup/delivery/profile' as any);
-      } catch {
-        router.replace('/auth/signup/delivery/profile' as any);
+      } catch (err) {
+        alert('Code invalide', err instanceof Error ? err.message : 'Le code OTP est incorrect ou a expiré. Veuillez réessayer.');
       } finally {
         setVerifying(false);
       }
     },
-    [data.email],
+    [data.email, data.password],
   );
 
   return (

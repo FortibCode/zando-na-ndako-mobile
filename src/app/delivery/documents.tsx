@@ -1,4 +1,5 @@
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import { Car, CheckCircle2, Clock3, FileText, IdCard, ShieldCheck } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Card, DeliveryScreen, Header, styles } from '@/components/delivery-ui';
@@ -25,7 +26,7 @@ export default function DeliveryDocuments() {
   // simuler un succès (photo prise puis "enregistrée" nulle part), on l'affiche honnêtement comme
   // une fonctionnalité à venir, cohérent avec les sections "Paramètres"/"Sécurité" du profil.
   const handleUpload = () => {
-    Alert.alert(
+    alert(
       t('deliveryDocuments.uploadComingSoonTitle', 'Bientôt disponible'),
       t('deliveryDocuments.uploadComingSoonDesc', "L'envoi de documents depuis l'application arrive dans une prochaine mise à jour. En attendant, contactez le support pour transmettre vos documents.")
     );

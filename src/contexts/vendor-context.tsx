@@ -1,8 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { ApiAvisEntry, ApiCommande, ApiProduit, ApiVendeurDashboard, UserNotification, VendeurDocumentKey } from '@/services/api';
-import {
+import type { ApiAvisEntry, ApiCommande, ApiProduit, ApiPromotionVendeur, ApiResponse, ApiVendeurDashboard, UserNotification, VendeurDocumentKey } from '@/services/api';
+import api, {
   fetchCategories,
   fetchVendeurDashboard,
   fetchVendeurProduits,
@@ -15,15 +14,28 @@ import {
   refuserCommandeVendeur,
   fetchVendeurRevenus,
   fetchVendeurAvis,
+  fetchPromotionsVendeur,
+  creerPromotionVendeur,
+  modifierPromotionVendeur,
+  supprimerPromotionVendeur,
   resolveMediaUrl,
   getUser,
-  updateStatutBoutiqueVendeur,
+  onSessionChange,
   updateVendeurProfil,
   uploaderDocumentsVendeur,
   fetchNotifications as apiFetchNotifications,
   markNotificationRead as apiMarkNotificationRead,
   markAllNotificationsRead as apiMarkAllNotificationsRead,
 } from '@/services/api';
+
+// `categorie_principale` (vrai type de commerce) et `message_boutique` sont bien renvoyés par
+// GET /vendeur/dashboard (voir VendeurController::dashboard()) mais pas encore déclarés sur
+// l'interface partagée ApiVendeurDashboard de services/api.ts — ce petit complément local évite de
+// modifier ce fichier partagé pour 2 champs.
+type ApiVendeurDashboardWithExtras = ApiVendeurDashboard & {
+  categorie_principale?: string | null;
+  message_boutique?: string | null;
+};
 
 export type VendorValidationStatus = 'en_attente' | 'valide' | 'suspendu';
 
@@ -113,6 +125,25 @@ export type Promotion = {
   terminee?: boolean;
 };
 
+// Remplace l'ancienne liste factice locale (même -10% pour tous les vendeurs, jamais persistée)
+// par les vraies promotions créées via POST /vendeur/promotions, exposées ici via GET
+// /vendeur/promotions. `terminee` reflète maintenant un vrai état (désactivée ou date de fin
+// dépassée) plutôt qu'un champ jamais renseigné.
+function mapApiPromotionToPromotion(p: ApiPromotionVendeur): Promotion {
+  const valeur = typeof p.valeur_reduction === 'string' ? parseFloat(p.valeur_reduction) : p.valeur_reduction;
+  const dateFin = p.date_fin ? new Date(p.date_fin) : null;
+  return {
+    id: p.id,
+    titre: p.titre,
+    produit: p.produit?.nom_produit || 'Toute la boutique',
+    pourcentage: p.type_reduction === 'pourcentage' ? valeur : 0,
+    dateDebut: new Date(p.date_debut).toLocaleDateString('fr-FR'),
+    dateFin: dateFin ? dateFin.toLocaleDateString('fr-FR') : '—',
+    actif: p.actif,
+    terminee: !p.actif || (dateFin ? dateFin.getTime() < Date.now() : false),
+  };
+}
+
 // Les 3 seuls documents réellement stockés côté serveur (colonnes vendeurs.photo_boutique /
 // document_identite / registre_commerce, envoyés via POST /vendeur/documents) — pas de statut de
 // validation par document en base, seulement un statut global de compte (`statut_validation`) qui
@@ -135,110 +166,9 @@ export type Horaire = { jour: string; ouverture: string; fermeture: string; acti
 
 export type BoutiqueStatut = 'ouverte' | 'pause' | 'fermee';
 
-const INITIAL_PRODUCTS: VendorProduct[] = [
-  {
-    id: 'p1', nom: 'Daurade royale', categorie: 'Poisson', prix: 2500, unite: 'kg', stock: 12,
-    disponible: true, description: 'Poisson frais, idéal pour vos repas.',
-    image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=85',
-    variantes: [
-      { id: 'v1', label: '500 g', prix: 2000, stock: 20, disponible: true },
-      { id: 'v2', label: '1 kg', prix: 4000, stock: 12, disponible: true },
-      { id: 'v3', label: '2 kg', prix: 7500, stock: 6, disponible: true },
-    ],
-    mouvements: [
-      { id: 'm1', type: 'ajout', quantite: 5, date: '12/05/2024' },
-      { id: 'm2', type: 'vente', quantite: -2, date: '12/05/2024' },
-      { id: 'm3', type: 'ajout', quantite: 10, date: '15/05/2024' },
-    ],
-    derniereMaj: '12/05/2024 à 08:20',
-  },
-  {
-    id: 'p2', nom: 'Capitaine', categorie: 'Poisson', prix: 2150, unite: 'kg', stock: 8,
-    disponible: true, description: 'Capitaine frais pêché du jour.',
-    image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=85',
-    variantes: [], mouvements: [],
-  },
-  {
-    id: 'p3', nom: 'Tomate fraîche', categorie: 'Légumes', prix: 1100, unite: 'kg', stock: 30,
-    disponible: true, description: 'Tomates fraîches et fermes.',
-    image: 'https://images.unsplash.com/photo-1561136594-7f68413baa99?auto=format&fit=crop&w=600&q=85',
-    variantes: [], mouvements: [],
-  },
-  {
-    id: 'p4', nom: 'Riz parfumé', categorie: 'Épicerie', prix: 3500, unite: 'sac', stock: 15,
-    disponible: true, description: 'Riz parfumé grain long de haute qualité.',
-    image: 'https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=600&q=85',
-    variantes: [], mouvements: [],
-  },
-  {
-    id: 'p5', nom: 'Huile végétale 1L', categorie: 'Épicerie', prix: 2500, unite: 'bouteille', stock: 10,
-    disponible: true, description: 'Huile végétale raffinée pour toutes vos cuissons.',
-    image: 'https://images.unsplash.com/photo-1620706857370-e1b9770e8bb1?auto=format&fit=crop&w=600&q=85',
-    variantes: [], mouvements: [],
-  },
-];
+const INITIAL_PRODUCTS: VendorProduct[] = [];
 
-const INITIAL_ORDERS: VendorOrder[] = [
-  {
-    id: 'ZN02405178',
-    client: { nom: 'Ruth Okambi', telephone: '+242 06 123 45 67' },
-    adresse: 'Avenue des 3 Martyrs, Talangai, Brazzaville',
-    date: '11/05/2024', heure: '10:15',
-    produits: [
-      { nom: 'Dorade royale', image: INITIAL_PRODUCTS[0].image, quantite: 2, prix: 4000 },
-      { nom: 'Riz parfumé', image: INITIAL_PRODUCTS[3].image, quantite: 1, prix: 2000 },
-      { nom: 'Tomates', image: INITIAL_PRODUCTS[2].image, quantite: 3, prix: 1000 },
-      { nom: 'Huile végétale', image: INITIAL_PRODUCTS[4].image, quantite: 1, prix: 2500 },
-    ],
-    instruction: 'Merci de bien sélectionner des produits frais 🙏',
-    statut: 'en_attente',
-    livreur: { nom: 'Jean-Paul', telephone: '+242 06 987 65 43', vehicule: 'TVS Apache RTR', note: 4.9 } as any,
-  },
-  {
-    id: 'ZN02405177',
-    client: { nom: 'Michel Tay', telephone: '+242 05 555 22 11' },
-    adresse: 'Rue de la Paix, Bacongo, Brazzaville',
-    date: '10/05/2024', heure: '14:30',
-    produits: [
-      { nom: 'Capitaine', image: INITIAL_PRODUCTS[1].image, quantite: 1, prix: 2150 },
-    ],
-    statut: 'livree',
-  },
-  {
-    id: 'ZN02405176',
-    client: { nom: 'Sarah Golo', telephone: '+242 06 444 33 22' },
-    adresse: 'Poto-Poto, Brazzaville',
-    date: '10/05/2024', heure: '16:30',
-    produits: [
-      { nom: 'Riz parfumé', image: INITIAL_PRODUCTS[3].image, quantite: 2, prix: 3500 },
-    ],
-    statut: 'en_livraison',
-  },
-  {
-    id: 'ZN02405175',
-    client: { nom: 'David Banza', telephone: '+242 06 111 22 33' },
-    adresse: 'Ouenzé, Brazzaville',
-    date: '10/05/2024', heure: '09:10',
-    produits: [{ nom: 'Dorade royale', image: INITIAL_PRODUCTS[0].image, quantite: 1, prix: 4000 }],
-    statut: 'annulee', annuleePar: 'client', motifAnnulation: 'Client a annulé',
-  },
-  {
-    id: 'ZN02405173',
-    client: { nom: 'Alice Ngoma', telephone: '+242 05 222 33 44' },
-    adresse: 'Moungali, Brazzaville',
-    date: '10/05/2024', heure: '14:30',
-    produits: [{ nom: 'Huile végétale', image: INITIAL_PRODUCTS[4].image, quantite: 1, prix: 2500 }],
-    statut: 'annulee', annuleePar: 'systeme', motifAnnulation: 'Paiement échoué',
-  },
-  {
-    id: 'ZN02405171',
-    client: { nom: 'Paul Ossé', telephone: '+242 06 777 88 99' },
-    adresse: 'Bacongo, Brazzaville',
-    date: '10/05/2024', heure: '11:20',
-    produits: [{ nom: 'Capitaine', image: INITIAL_PRODUCTS[1].image, quantite: 2, prix: 2150 }],
-    statut: 'annulee', annuleePar: 'rupture_stock', motifAnnulation: 'Produit indisponible',
-  },
-];
+const INITIAL_ORDERS: VendorOrder[] = [];
 
 // Valeurs par défaut affichées tant qu'aucun horaire réel n'a été enregistré (ou tant que le
 // vendeur ne les a pas encore configurés) — jamais envoyées au serveur telles quelles, seulement
@@ -329,42 +259,68 @@ export type SalesStats = {
   panierMoyen: number;
   revenuJour: number;
   commandesJour: number;
+  // Nombre réel de commandes livrées sur les 7 derniers jours (GET /vendeur/revenus →
+  // commandes_semaine) — remplace l'ancien "42" figé de l'écran "Mes revenus" (onglet semaine).
+  commandesSemaine: number;
   ventesSemaine: { jour: string; montant: number }[];
   produitsPlusVendus: { nom: string; ventes: number }[];
+  // Valeur actuelle du réglage admin (retrait_montant_minimum, voir /admin/parametres) — remplace
+  // le seuil "1000" codé en dur dans l'écran "Coordonnées de paiement", qui restait figé si l'admin
+  // changeait ce réglage.
+  retraitMontantMinimum: number;
 };
 
 const DEFAULT_STATS: SalesStats = {
-  chiffreAffaires: 245000,
-  commandesTotal: 128,
-  commandesLivrees: 96,
-  commandesEnAttente: 32,
-  panierMoyen: 3242,
+  chiffreAffaires: 0,
+  commandesTotal: 0,
+  commandesLivrees: 0,
+  commandesEnAttente: 0,
+  panierMoyen: 0,
   revenuJour: 0,
   commandesJour: 0,
+  commandesSemaine: 0,
   ventesSemaine: [
-    { jour: 'LUN', montant: 60000 },
-    { jour: 'MAR', montant: 270000 },
-    { jour: 'MER', montant: 185000 },
-    { jour: 'JEU', montant: 320000 },
-    { jour: 'VEN', montant: 225000 },
-    { jour: 'SAM', montant: 400000 },
-    { jour: 'DIM', montant: 470000 },
+    { jour: 'LUN', montant: 0 },
+    { jour: 'MAR', montant: 0 },
+    { jour: 'MER', montant: 0 },
+    { jour: 'JEU', montant: 0 },
+    { jour: 'VEN', montant: 0 },
+    { jour: 'SAM', montant: 0 },
+    { jour: 'DIM', montant: 0 },
   ],
-  produitsPlusVendus: [
-    { nom: 'Dorade royale', ventes: 45 },
-    { nom: 'Poulet fermier', ventes: 32 },
-    { nom: 'Riz parfumé', ventes: 28 },
-  ],
+  produitsPlusVendus: [],
+  retraitMontantMinimum: 1000,
 };
 
 export type Boutique = {
   nom: string;
+  // Vrai type de commerce choisi à l'inscription (vendeurs.categorie_principale, ex: "Poissonnier
+  // & Produits de mer", "Mode & Habillement"...) — remplace l'ancien texte fixe "Poissonnerie"
+  // affiché sur l'écran Profil quel que soit le commerce réel du vendeur.
+  categoriePrincipale: string;
+  // `emoji` n'est plus un choix libre du vendeur (aucune colonne ne le stockait : le sélecteur
+  // "Emoji de la boutique" de profile-info.tsx laissait croire à un réglage jamais enregistré) —
+  // toujours dérivé de `categoriePrincipale` via deriveStoreEmoji() ci-dessous.
   emoji: string;
   note: number;
   avisCount: number;
   statut: BoutiqueStatut;
   messageClients: string;
 };
+
+// Dérive un emoji d'illustration à partir du vrai type de commerce (voir commentaire sur
+// `categoriePrincipale` ci-dessus). Simple correspondance par mot-clé sur le libellé français
+// saisi à l'inscription — volontairement tolérant (le champ reste un texte libre côté serveur).
+export function deriveStoreEmoji(categoriePrincipale?: string | null): string {
+  const c = (categoriePrincipale || '').toLowerCase();
+  if (c.includes('poisson')) return '🐟';
+  if (c.includes('bouch') || c.includes('charcut')) return '🥩';
+  if (c.includes('maraîch') || c.includes('maraich') || c.includes('fruit') || c.includes('légume') || c.includes('legume')) return '🥬';
+  if (c.includes('mode') || c.includes('habill')) return '👗';
+  if (c.includes('artisan')) return '🎁';
+  if (c.includes('épic') || c.includes('epic') || c.includes('aliment')) return '🛒';
+  return '🏪';
+}
 
 // ─── Mapping API → modèles locaux ───
 function toNumber(v: string | number | undefined | null): number {
@@ -437,6 +393,7 @@ type VendorContextValue = {
   // API. Peut lever une erreur réseau ; l'écran appelant doit l'attraper.
   updateBoutiqueStatus: (statut: BoutiqueStatut, message?: string) => Promise<void>;
   vendorValidationStatus: VendorValidationStatus | null;
+  refreshVendorProfile: () => Promise<void>;
 
   horaires: Horaire[];
   updateHoraire: (jour: string, patch: Partial<Horaire>) => void;
@@ -450,6 +407,10 @@ type VendorContextValue = {
   products: VendorProduct[];
   productsLoading: boolean;
   categoriesReady: boolean;
+  // Mapping nom catégorie → id UUID, chargé depuis GET /categories.
+  categoryIdByName: Record<string, string>;
+  // Liste ordonnée des vrais noms de catégories (clés de categoryIdByName).
+  vendorCategoryNames: string[];
   refreshCategories: () => Promise<Record<string, string>>;
   addProduct: (input: { nom: string; categorie: string; prix: number; stock: number; unite?: string; fraicheur?: 'frais' | 'fume' | 'congele'; description?: string; image?: string }) => Promise<VendorProduct>;
   updateProduct: (id: string, patch: Partial<{ nom: string; categorie: string; prix: number; stock: number; description: string; disponible: boolean; image?: string; derniereMaj: string }>) => Promise<void>;
@@ -468,11 +429,14 @@ type VendorContextValue = {
   refuseOrder: (id: string, motif: string, commentaire?: string) => Promise<void>;
   setOrderStatus: (id: string, statut: VendorOrderStatus) => void;
   setPrepStep: (id: string, step: number) => void;
-  createManualOrder: (input: { nom: string; telephone: string; email?: string; adresse: string; message?: string }) => VendorOrder;
+  createManualOrder: (input: { nom: string; telephone: string; email?: string; adresse: string; message?: string }) => Promise<VendorOrder>;
 
   promotions: Promotion[];
-  togglePromotion: (id: string) => void;
-  addPromotion: (input: { titre: string; produit: string; pourcentage: number; dateDebut: string; dateFin: string }) => void;
+  promotionsLoading: boolean;
+  refreshPromotions: () => Promise<void>;
+  togglePromotion: (id: string) => Promise<void>;
+  addPromotion: (input: { titre: string; produit: string; pourcentage: number }) => Promise<void>;
+  deletePromotion: (id: string) => Promise<void>;
 
   // Notifications réelles (GET/POST /user/notifications — identique à client/livreur), plus de
   // liste factice locale.
@@ -498,15 +462,21 @@ const VendorContext = createContext<VendorContextValue | null>(null);
 export function VendorProvider({ children }: { children: ReactNode }) {
   const [vendorFirstName, setVendorFirstName] = useState('Vendeur');
   const [boutique, setBoutique] = useState<Boutique>({
-    nom: 'Maman Clémentine', emoji: '🐟', note: 4.7, avisCount: 128,
+    // avisCount démarre à 0 (jamais un nombre inventé) : refreshReviews() ci-dessous l'écrase avec
+    // la vraie valeur dès que /vendeur/avis répond ; en cas d'échec, 0 reste un état honnête plutôt
+    // qu'un chiffre plausible mais fictif qui persisterait indéfiniment.
+    // `note` démarre à 0 pour la même raison : l'ancien 4.7 fixe ne pouvait jamais être remplacé
+    // par une vraie note de 0.00 (nouveau vendeur sans avis) à cause du `|| prev.note` utilisé plus
+    // bas, qui traite un vrai zéro comme une valeur absente.
+    nom: 'Ma boutique', categoriePrincipale: '', emoji: deriveStoreEmoji(null), note: 0, avisCount: 0,
     statut: 'ouverte', messageClients: '',
   });
   const [vendorValidationStatus, setVendorValidationStatus] = useState<VendorValidationStatus | null>(null);
   const [horaires, setHoraires] = useState<Horaire[]>(INITIAL_HORAIRES);
   const [numeroMobileMoneyReception, setNumeroMobileMoneyReception] = useState('');
-  const [products, setProducts] = useState<VendorProduct[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<VendorProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [orders, setOrders] = useState<VendorOrder[]>(INITIAL_ORDERS);
+  const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLastPage, setOrdersLastPage] = useState(1);
@@ -518,9 +488,8 @@ export function VendorProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<SalesStats>(DEFAULT_STATS);
   const [categoryIdByName, setCategoryIdByName] = useState<Record<string, string>>({});
   const [categoriesReady, setCategoriesReady] = useState(false);
-  const [promotions, setPromotions] = useState<Promotion[]>([
-    { id: 'p1', titre: '-10% sur Daurade royale', produit: 'Daurade royale', pourcentage: 10, dateDebut: '01/05/2024', dateFin: '31/05/2024', actif: true, terminee: false },
-  ]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promotionsLoading, setPromotionsLoading] = useState(false);
 
   const documents: VendorDocument[] = useMemo(() => DOCUMENT_LABELS.map(({ key, nom }) => ({
     id: key,
@@ -572,6 +541,17 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     finally { setReviewsLoading(false); }
   }, []);
 
+  // ─── Promotions vendeur réelles (GET /vendeur/promotions) : remplace l'ancienne liste factice
+  // locale (le même -10% pour tous les vendeurs, jamais persisté côté serveur).
+  const refreshPromotions = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setPromotionsLoading(true);
+    try {
+      const list = await fetchPromotionsVendeur();
+      setPromotions(list.map(mapApiPromotionToPromotion));
+    } catch { /* garde la liste précédente (vide au premier chargement) */ }
+    finally { setPromotionsLoading(false); }
+  }, []);
+
   // ─── Notifications réelles (GET /user/notifications — même endpoint que client/livreur) : plus
   // de liste factice locale, remplace INITIAL_NOTIFICATIONS.
   const refreshNotifications = useCallback(async (opts?: { silent?: boolean }) => {
@@ -583,77 +563,83 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     finally { setNotificationsLoading(false); }
   }, []);
 
+  const refreshVendorProfile = useCallback(async () => {
+    try {
+      const dashboard = await fetchVendeurDashboard() as ApiVendeurDashboardWithExtras;
+      setVendorValidationStatus((dashboard.statut_validation as VendorValidationStatus) || null);
+      setBoutique((prev) => ({
+        ...prev,
+        nom: dashboard.nom_commerce || prev.nom,
+        categoriePrincipale: dashboard.categorie_principale || prev.categoriePrincipale,
+        emoji: deriveStoreEmoji(dashboard.categorie_principale || prev.categoriePrincipale),
+        note: toNumber(dashboard.note_moyenne),
+        statut: (dashboard.statut_boutique as BoutiqueStatut) || prev.statut,
+        messageClients: dashboard.message_boutique ?? prev.messageClients,
+      }));
+      setNumeroMobileMoneyReception(dashboard.numero_mobile_money_reception || '');
+      const parsedHoraires = parseHoraires(dashboard.horaires_ouverture);
+      if (parsedHoraires) setHoraires(parsedHoraires);
+      setDocumentPaths({
+        photo_boutique: dashboard.photo_boutique,
+        document_identite: dashboard.document_identite,
+        registre_commerce: dashboard.registre_commerce,
+      });
+      setStats((prev) => ({
+        ...prev,
+        commandesTotal: dashboard.commandes_aujourd_hui + dashboard.commandes_en_cours + dashboard.commandes_livrees,
+        commandesLivrees: dashboard.commandes_livrees,
+        commandesEnAttente: dashboard.commandes_en_cours,
+      }));
+    } catch { /* garde les stats de démo */ }
+  }, []);
+
   // ─── Chargement initial depuis l'API réelle (repli sur les données de démo en cas d'échec) ───
-  useEffect(() => {
+  // Extrait en fonction nommée (plutôt qu'inline dans le useEffect) pour pouvoir la relancer à
+  // chaque connexion : VendorProvider est monté une seule fois pour toute la durée de vie de l'app
+  // (voir _layout.tsx), donc un simple useEffect à `[]` ne se relance jamais si un vendeur se
+  // déconnecte puis se reconnecte (ou si un autre compte s'était connecté avant lui) sans redémarrage
+  // complet de l'app — l'écran continuait alors d'afficher le prénom/les données du compte précédent.
+  const bootstrap = useCallback(async () => {
     refreshCategories();
 
-    (async () => {
-      const user = await getUser();
-      if (user) {
-        setVendorFirstName(user.prenom || user.nom_complet?.split(' ')[0] || 'Vendeur');
-      }
-    })();
+    const user = await getUser();
+    if (user) {
+      setVendorFirstName(user.prenom || user.nom_complet?.split(' ')[0] || 'Vendeur');
+    }
 
-    (async () => {
-      setProductsLoading(true);
-      try {
-        const list = await fetchVendeurProduits();
-        setProducts(list.map((p) => mapApiProduitToVendorProduct(p)));
-      } catch { /* garde INITIAL_PRODUCTS en mode démo hors-ligne */ }
-      finally { setProductsLoading(false); }
-    })();
+    setProductsLoading(true);
+    try {
+      const list = await fetchVendeurProduits();
+      setProducts(list.map((p) => mapApiProduitToVendorProduct(p)));
+    } catch { /* garde INITIAL_PRODUCTS en mode démo hors-ligne */ }
+    finally { setProductsLoading(false); }
 
     fetchOrders();
     refreshReviews();
     refreshNotifications();
+    refreshPromotions();
+    refreshVendorProfile();
 
-    (async () => {
-      try {
-        const dashboard: ApiVendeurDashboard = await fetchVendeurDashboard();
-        setVendorValidationStatus((dashboard.statut_validation as VendorValidationStatus) || null);
-        setBoutique((prev) => ({
-          ...prev,
-          nom: dashboard.nom_commerce || prev.nom,
-          note: toNumber(dashboard.note_moyenne) || prev.note,
-          // Statut réel de la boutique (ouverte/pause/fermée) : jusqu'ici toujours resté à la
-          // valeur locale par défaut "ouverte", quoi qu'ait choisi le vendeur lors d'une session
-          // précédente, puisque rien n'était jamais chargé depuis le serveur.
-          statut: (dashboard.statut_boutique as BoutiqueStatut) || prev.statut,
-        }));
-        setNumeroMobileMoneyReception(dashboard.numero_mobile_money_reception || '');
-        // N'écrase l'état local que si le texte enregistré correspond bien au format généré par
-        // serializeHoraires() (voir sa définition) — sinon on garde les valeurs par défaut plutôt
-        // que d'essayer d'interpréter un texte libre arbitraire (ex: saisi depuis le web).
-        const parsedHoraires = parseHoraires(dashboard.horaires_ouverture);
-        if (parsedHoraires) setHoraires(parsedHoraires);
-        setDocumentPaths({
-          photo_boutique: dashboard.photo_boutique,
-          document_identite: dashboard.document_identite,
-          registre_commerce: dashboard.registre_commerce,
-        });
-        setStats((prev) => ({
-          ...prev,
-          commandesTotal: dashboard.commandes_aujourd_hui + dashboard.commandes_en_cours + dashboard.commandes_livrees,
-          commandesLivrees: dashboard.commandes_livrees,
-          commandesEnAttente: dashboard.commandes_en_cours,
-        }));
-      } catch { /* garde les stats de démo */ }
-      try {
-        const revenus = await fetchVendeurRevenus();
-        setStats((prev) => ({
-          ...prev,
-          chiffreAffaires: toNumber(revenus.revenus_nets) || prev.chiffreAffaires,
-          // Panier moyen réel (moyenne des commandes livrées du mois) au lieu d'une valeur figée à
-          // 3242 FCFA quelle que soit l'activité réelle de la boutique.
-          panierMoyen: revenus.panier_moyen !== undefined ? toNumber(revenus.panier_moyen) : prev.panierMoyen,
-          ventesSemaine: revenus.ventes_semaine
-            ? revenus.ventes_semaine.map((v) => ({ jour: v.jour, montant: toNumber(v.montant) }))
-            : prev.ventesSemaine,
-          produitsPlusVendus: revenus.produits_plus_vendus?.length ? revenus.produits_plus_vendus : prev.produitsPlusVendus,
-        }));
-      } catch { /* garde les stats de démo */ }
-    })();
-  }, [refreshCategories, refreshReviews, refreshNotifications]);
+    try {
+      const revenus = await fetchVendeurRevenus();
+      setStats((prev) => ({
+        ...prev,
+        chiffreAffaires: toNumber(revenus.revenus_nets) || prev.chiffreAffaires,
+        panierMoyen: revenus.panier_moyen !== undefined ? toNumber(revenus.panier_moyen) : prev.panierMoyen,
+        ventesSemaine: revenus.ventes_semaine
+          ? revenus.ventes_semaine.map((v) => ({ jour: v.jour, montant: toNumber(v.montant) }))
+          : prev.ventesSemaine,
+        commandesSemaine: revenus.commandes_semaine !== undefined ? revenus.commandes_semaine : prev.commandesSemaine,
+        produitsPlusVendus: revenus.produits_plus_vendus?.length ? revenus.produits_plus_vendus : prev.produitsPlusVendus,
+        retraitMontantMinimum: revenus.retrait_montant_minimum ?? prev.retraitMontantMinimum,
+      }));
+    } catch { /* garde les stats de démo */ }
+  }, [refreshCategories, refreshReviews, refreshNotifications, refreshPromotions, refreshVendorProfile, fetchOrders]);
+
+  useEffect(() => {
+    bootstrap();
+    return onSessionChange(bootstrap);
+  }, [bootstrap]);
 
   // ─── Polling périodique des commandes : un vendeur qui laisse l'écran ouvert doit voir une
   // nouvelle commande client sans avoir à redémarrer l'app. Rafraîchit aussi au retour au premier
@@ -695,10 +681,20 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     } catch { /* la page suivante restera indisponible tant que la connexion échoue */ }
   }, [ordersPage, ordersLastPage]);
 
+  // N'utilise plus updateStatutBoutiqueVendeur() (services/api.ts) directement : ce helper ne
+  // transmet que `statut_boutique`, alors que l'écran "Statut de la boutique" envoie aussi un
+  // message aux clients désormais réellement persisté (voir VendeurController::dashboard() /
+  // mettreAJourStatutBoutique()) — l'appel HTTP est donc fait ici pour inclure ce second champ
+  // sans modifier la signature de la fonction partagée.
   const updateBoutiqueStatus = useCallback(async (statut: BoutiqueStatut, message?: string) => {
-    await updateStatutBoutiqueVendeur(statut);
-    setBoutique((prev) => ({ ...prev, statut, messageClients: message ?? prev.messageClients }));
-  }, []);
+    const finalMessage = message ?? boutique.messageClients;
+    const response = await api.put<ApiResponse>('/vendeur/statut-boutique', {
+      statut_boutique: statut,
+      message_boutique: finalMessage || null,
+    });
+    if (!response.data.success) throw new Error(response.data.message || 'Impossible de mettre à jour le statut de la boutique.');
+    setBoutique((prev) => ({ ...prev, statut, messageClients: finalMessage }));
+  }, [boutique.messageClients]);
 
   const updateHoraire = useCallback((jour: string, patch: Partial<Horaire>) => {
     setHoraires((prev) => prev.map((h) => (h.jour === jour ? { ...h, ...patch } : h)));
@@ -706,39 +702,26 @@ export function VendorProvider({ children }: { children: ReactNode }) {
 
   const getProduct = useCallback((id: string) => products.find((p) => p.id === id), [products]);
 
-  const syncToClientCatalog = (vendorProduct: VendorProduct) => {
-    try {
-      const clientItem = {
-        id: vendorProduct.id,
-        name: vendorProduct.nom,
-        price: vendorProduct.prix,
-        unit: `FCFA/${vendorProduct.unite || 'kg'}`,
-        emoji: '🛒',
-        category: vendorProduct.categorie,
-        rating: 5.0,
-        reviews: 1,
-        image: vendorProduct.image,
-        description: vendorProduct.description,
-        stock: vendorProduct.stock > 0,
-      };
-      AsyncStorage.getItem('@zando_client_products_cache').then((raw) => {
-        const list = raw ? JSON.parse(raw) : [];
-        const updated = [clientItem, ...list.filter((p: any) => p.id !== clientItem.id)];
-        AsyncStorage.setItem('@zando_client_products_cache', JSON.stringify(updated)).catch(() => {});
-      }).catch(() => {});
-    } catch (_e) {}
-  };
-
   const addProduct = useCallback(async (input: { nom: string; categorie: string; prix: number; stock: number; unite?: string; fraicheur?: 'frais' | 'fume' | 'congele'; description?: string; image?: string }) => {
-    let categorieId = categoryIdByName[input.categorie];
+    let map = categoryIdByName;
+    if (Object.keys(map).length === 0) {
+      map = await refreshCategories();
+    }
+    let categorieId = map[input.categorie];
     if (!categorieId) {
-      const freshMap = await refreshCategories();
-      categorieId = freshMap[input.categorie];
+      const inputLower = input.categorie.toLowerCase().trim();
+      const entry = Object.entries(map).find(([name]) => {
+        const nameLower = name.toLowerCase();
+        return nameLower.includes(inputLower) || inputLower.includes(nameLower);
+      });
+      if (entry) {
+        categorieId = entry[1];
+      } else if (Object.keys(map).length > 0) {
+        categorieId = Object.values(map)[0];
+      }
     }
     if (!categorieId) throw new Error('Catégorie non résolue');
-    // Ne plus masquer un échec réel derrière un produit factice local : le vendeur croyait avoir
-    // publié alors que rien n'était enregistré côté serveur. Une vraie erreur doit remonter à
-    // l'écran, qui affiche déjà une alerte claire dans ce cas.
+
     const apiProduit = await ajouterProduitVendeur({
       nom_produit: input.nom,
       description: input.description,
@@ -751,7 +734,6 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     });
     const created = mapApiProduitToVendorProduct(apiProduit);
     setProducts((prev) => [created, ...prev]);
-    syncToClientCatalog(created);
     return created;
   }, [categoryIdByName, refreshCategories]);
 
@@ -839,17 +821,22 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, prepStep: step } : o)));
   }, []);
 
-  const createManualOrder = useCallback((input: { nom: string; telephone: string; email?: string; adresse: string; message?: string }) => {
-    const created: VendorOrder = {
-      id: 'ZN' + Math.floor(1000000 + Math.random() * 8999999),
-      client: { nom: input.nom, telephone: input.telephone },
+  // POST /vendeur/commandes/manuelle (voir VendeurController::creerCommandeManuelle) — remplace
+  // l'ancienne fabrication locale d'une commande avec un id aléatoire jamais envoyée au serveur :
+  // le vendeur croyait avoir enregistré une commande (message de succès, navigation vers son
+  // détail) alors qu'elle disparaissait au prochain rafraîchissement de la liste ou redémarrage de
+  // l'app. Appelle directement `api` (plutôt qu'un nouveau helper dans services/api.ts) pour ce
+  // tout nouvel endpoint.
+  const createManualOrder = useCallback(async (input: { nom: string; telephone: string; email?: string; adresse: string; message?: string }) => {
+    const response = await api.post<ApiResponse<ApiCommande>>('/vendeur/commandes/manuelle', {
+      nom: input.nom,
+      telephone: input.telephone,
+      email: input.email,
       adresse: input.adresse,
-      date: new Date().toLocaleDateString('fr-FR'),
-      heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      produits: [],
-      instruction: input.message,
-      statut: 'en_attente',
-    };
+      message: input.message,
+    });
+    if (!response.data.data) throw new Error(response.data.message || 'Erreur lors de la création de la commande.');
+    const created = mapApiCommandeToVendorOrder(response.data.data);
     setOrders((prev) => [created, ...prev]);
     return created;
   }, []);
@@ -869,12 +856,32 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     setDocumentPaths((prev) => ({ ...prev, ...res }));
   }, []);
 
-  const togglePromotion = useCallback((id: string) => {
-    setPromotions((prev) => prev.map((p) => (p.id === id ? { ...p, actif: !p.actif } : p)));
-  }, []);
+  // N'affiche plus un simple mélange local — l'échec remonte à l'écran (voir promotions.tsx) au
+  // lieu de laisser croire que le bascule a réussi côté serveur alors que rien n'a changé.
+  const togglePromotion = useCallback(async (id: string) => {
+    const current = promotions.find((p) => p.id === id);
+    if (!current) return;
+    const updated = await modifierPromotionVendeur(id, { actif: !current.actif });
+    setPromotions((prev) => prev.map((p) => (p.id === id ? mapApiPromotionToPromotion(updated) : p)));
+  }, [promotions]);
 
-  const addPromotion = useCallback((input: { titre: string; produit: string; pourcentage: number; dateDebut: string; dateFin: string }) => {
-    setPromotions((prev) => [{ id: 'promo_' + Date.now(), actif: true, ...input }, ...prev]);
+  // `input.produit` est le nom d'un produit du catalogue du vendeur (voir promotions.tsx, qui ne
+  // laisse choisir que parmi `products`) — résolu ici en produit_id réel pour l'API. Si aucun
+  // produit ne correspond (catalogue vide), la promotion s'applique à toute la boutique.
+  const addPromotion = useCallback(async (input: { titre: string; produit: string; pourcentage: number }) => {
+    const matched = products.find((p) => p.nom === input.produit);
+    const created = await creerPromotionVendeur({
+      titre: input.titre,
+      produit_id: matched?.id ?? null,
+      valeur_reduction: input.pourcentage,
+      type_reduction: 'pourcentage',
+    });
+    setPromotions((prev) => [mapApiPromotionToPromotion(created), ...prev]);
+  }, [products]);
+
+  const deletePromotion = useCallback(async (id: string) => {
+    await supprimerPromotionVendeur(id);
+    setPromotions((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
   const unreadNotificationsCount = notifications.filter((n) => !n.statut_lecture).length;
@@ -891,26 +898,28 @@ export function VendorProvider({ children }: { children: ReactNode }) {
 
   const hasMoreOrders = ordersPage < ordersLastPage;
 
+  const vendorCategoryNames = useMemo(() => Object.keys(categoryIdByName), [categoryIdByName]);
+
   const value = useMemo(() => ({
     vendorFirstName,
-    boutique, updateBoutiqueStatus, vendorValidationStatus,
+    boutique, updateBoutiqueStatus, vendorValidationStatus, refreshVendorProfile,
     horaires, updateHoraire, saveHoraires,
     numeroMobileMoneyReception, updateNumeroMobileMoneyReception,
-    products, productsLoading, categoriesReady, refreshCategories,
+    products, productsLoading, categoriesReady, categoryIdByName, vendorCategoryNames, refreshCategories,
     addProduct, updateProduct, toggleProductAvailability, adjustStock, addVariant, getProduct,
     orders, ordersLoading, hasMoreOrders, refreshOrders: fetchOrders, loadMoreOrders, getOrder, acceptOrder, refuseOrder, setOrderStatus, setPrepStep, createManualOrder,
-    promotions, togglePromotion, addPromotion,
+    promotions, promotionsLoading, refreshPromotions, togglePromotion, addPromotion, deletePromotion,
     notifications, notificationsLoading, unreadNotificationsCount, refreshNotifications, markNotificationRead, markAllNotificationsRead,
     reviews, reviewsLoading, refreshReviews,
     documents, uploadDocument,
     stats,
   }), [
-    vendorFirstName, boutique, updateBoutiqueStatus, vendorValidationStatus, horaires, updateHoraire, saveHoraires,
+    vendorFirstName, boutique, updateBoutiqueStatus, vendorValidationStatus, refreshVendorProfile, horaires, updateHoraire, saveHoraires,
     numeroMobileMoneyReception, updateNumeroMobileMoneyReception,
-    products, productsLoading, categoriesReady, refreshCategories,
+    products, productsLoading, categoriesReady, categoryIdByName, vendorCategoryNames, refreshCategories,
     addProduct, updateProduct, toggleProductAvailability, adjustStock, addVariant, getProduct,
     orders, ordersLoading, hasMoreOrders, fetchOrders, loadMoreOrders, getOrder, acceptOrder, refuseOrder, setOrderStatus, setPrepStep, createManualOrder,
-    promotions, togglePromotion, addPromotion,
+    promotions, promotionsLoading, refreshPromotions, togglePromotion, addPromotion, deletePromotion,
     notifications, notificationsLoading, unreadNotificationsCount, refreshNotifications, markNotificationRead, markAllNotificationsRead,
     reviews, reviewsLoading, refreshReviews, documents, uploadDocument, stats,
   ]);

@@ -82,6 +82,9 @@ export interface DeliveryDashboard {
 // ─── Revenus ───
 export interface DeliveryRevenue {
   solde_disponible: number;
+  // Valeur actuelle du réglage admin (retrait_montant_minimum) — remplace le seuil "1000" codé en
+  // dur côté mobile, qui restait figé si l'admin changeait ce réglage.
+  retrait_montant_minimum?: number;
   nb_livraisons: number;
   remuneration: number;
   mois: number;
@@ -114,7 +117,7 @@ export interface SupportMessage {
   text: string;
   sender: 'driver' | 'support';
   timestamp: string;
-  status?: 'sending' | 'sent' | 'read';
+  status?: 'sending' | 'sent' | 'read' | 'failed';
 }
 
 // ─── Navigation ───
@@ -216,6 +219,7 @@ export type DeliveryAction =
   | { type: 'SET_REVENUE_ERROR'; payload: string | null }
   | { type: 'SET_SUPPORT_MESSAGES'; payload: SupportMessage[] }
   | { type: 'ADD_SUPPORT_MESSAGE'; payload: SupportMessage }
+  | { type: 'UPDATE_SUPPORT_MESSAGE'; payload: { id: string; changes: Partial<SupportMessage> } }
   | { type: 'SET_SUPPORT_LOADING'; payload: boolean }
   | { type: 'SET_SUPPORT_ERROR'; payload: string | null }
   | { type: 'SET_AVAILABILITY'; payload: boolean }
@@ -241,6 +245,7 @@ export interface DeliveryContextType extends DeliveryState {
   fetchRevenue: (mois?: number, annee?: number) => Promise<void>;
   toggleAvailability: () => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
+  fetchSupportMessages: () => Promise<void>;
   fetchAvis: () => Promise<void>;
   logout: () => Promise<void>;
 }

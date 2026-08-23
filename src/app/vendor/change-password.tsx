@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Lock } from 'lucide-react-native';
 import { changePassword } from '@/services/api';
@@ -23,11 +24,11 @@ export default function ChangePasswordScreen() {
     setSubmitting(true);
     try {
       await changePassword({ ancienMotDePasse: ancien, nouveauMotDePasse: nouveau });
-      Alert.alert(t('changePassword.success', 'Mot de passe changé'), t('changePassword.successDesc', 'Veuillez vous reconnecter avec votre nouveau mot de passe.'), [
+      alert(t('changePassword.success', 'Mot de passe changé'), t('changePassword.successDesc', 'Veuillez vous reconnecter avec votre nouveau mot de passe.'), [
         { text: 'OK', onPress: () => router.replace('/auth') },
       ]);
     } catch (e: any) {
-      Alert.alert('Erreur', e.message || t('changePassword.error', 'Impossible de changer le mot de passe.'));
+      alert('Erreur', e.message || t('changePassword.error', 'Impossible de changer le mot de passe.'));
     } finally {
       setSubmitting(false);
     }

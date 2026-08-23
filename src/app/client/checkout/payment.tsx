@@ -23,18 +23,16 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
-  Pressable, SafeAreaView, ScrollView, StyleSheet,
-  Text, TextInput, View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, {
   FadeIn, FadeInDown, FadeInUp, ZoomIn,
 } from 'react-native-reanimated';
 import {
-  ArrowLeft, CheckCircle2, XCircle, ShieldCheck, Zap,
+  ArrowLeft, ArrowRight, CheckCircle2, XCircle, ShieldCheck, Zap,
   Smartphone, Banknote, Lock, RefreshCw,
-  Clock, AlertCircle,
+  Clock, AlertCircle, Check, CreditCard, Scooter,
+  Wallet, Ban, WifiOff, CalendarX,
 } from 'lucide-react-native';
 import { BLUE, RED, GREEN } from '@/components/client-ui';
 import { useClient } from '@/contexts/client-context';
@@ -46,10 +44,10 @@ import {
   initierAirtelMoney, confirmerAirtelMoney,
   initierMtnMoMo, confirmerMtnMoMo,
   initierCarteLocale, confirmerCarteLocale,
+  FALLBACK_DELIVERY_FEE,
 } from '@/services/api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const FALLBACK_DELIVERY_FEE = 800;
 const USSD_TIMEOUT_SECONDS = 180; // 3 minutes
 
 const METHOD_LOGOS = {
@@ -359,8 +357,8 @@ export default function PaymentScreen() {
   const handleResendOtp = useCallback(() => {
     setOtp('');
     setOtpError(false);
-    Alert.alert(
-      t('payment.otpResentTitle', '✅ Code renvoyé'),
+    alert(
+      t('payment.otpResentTitle', 'Code renvoyé'),
       t('payment.otpResentDesc', 'Un nouveau code de vérification SMS vous a été envoyé par votre banque.')
     );
   }, [t]);
@@ -400,7 +398,7 @@ export default function PaymentScreen() {
                   >
                     {/* Radio check en haut à droite */}
                     <View style={[s.gridRadio, { backgroundColor: colors.surface, borderColor: colors.border }, isSelected && { backgroundColor: m.color, borderColor: m.color }]}>
-                      {isSelected && <Text style={s.gridRadioCheck}>✓</Text>}
+                      {isSelected && <Check color="#FFF" size={13} strokeWidth={3.5} />}
                     </View>
 
                     {/* Logo carré centré – occupe 75% de la carte */}
@@ -477,7 +475,10 @@ export default function PaymentScreen() {
               </View>
 
               {rawPhone.length > 0 && !isPhoneValid && (
-                <Text style={s.errorText}>⚠️ {t('payment.invalidNumber', 'Numéro invalide — 9 chiffres requis')}</Text>
+                <View style={s.errorRow}>
+                  <AlertCircle color={RED} size={13} />
+                  <Text style={s.errorText}>{t('payment.invalidNumber', 'Numéro invalide — 9 chiffres requis')}</Text>
+                </View>
               )}
             </Animated.View>
 
@@ -597,7 +598,7 @@ export default function PaymentScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
             <Animated.View entering={FadeInDown.duration(320).springify()} style={s.cardVisual}>
-              <View style={s.cardChip}><Text style={{ fontSize: 22 }}>💳</Text></View>
+              <View style={s.cardChip}><CreditCard color="#FFF" size={22} /></View>
               <Text style={s.cardVisualNum}>
                 {cardNumber || '•••• •••• •••• ••••'}
               </Text>
@@ -687,7 +688,7 @@ export default function PaymentScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={s.content}>
             <Animated.View entering={ZoomIn.duration(400).springify()} style={s.otpIllus}>
-              <Text style={{ fontSize: 52 }}>🔐</Text>
+              <Lock color={BLUE} size={40} />
             </Animated.View>
 
             <Animated.Text entering={FadeInDown.duration(300).delay(100).springify()} style={[s.otpTitle, { color: colors.text }]}>
@@ -711,7 +712,10 @@ export default function PaymentScreen() {
                 autoFocus
               />
               {otpError && (
-                <Text style={s.errorText}>⚠️ {t('payment.otpIncorrect', 'Code incorrect. Réessayez.')}</Text>
+                <View style={s.errorRow}>
+                  <AlertCircle color={RED} size={13} />
+                  <Text style={s.errorText}>{t('payment.otpIncorrect', 'Code incorrect. Réessayez.')}</Text>
+                </View>
               )}
               <Pressable onPress={handleResendOtp} style={s.resendOtp}>
                 <RefreshCw color={colors.textTertiary} size={13} />
@@ -735,7 +739,7 @@ export default function PaymentScreen() {
       return (
         <ScrollView contentContainerStyle={s.content}>
           <Animated.View entering={ZoomIn.duration(400).springify()} style={s.codIllus}>
-            <Text style={{ fontSize: 52 }}>🛵</Text>
+            <Scooter color={GREEN} size={44} />
           </Animated.View>
 
           <Animated.Text entering={FadeInDown.duration(300).delay(100).springify()} style={[s.otpTitle, { color: colors.text }]}>
@@ -826,7 +830,8 @@ export default function PaymentScreen() {
               router.push(`/client/checkout/confirmed?numero=${encodeURIComponent(numero)}&montant=${montant}${idParam}` as any);
             }}
           >
-            <Text style={s.resultBtnText}>{t('payment.continueArrow', 'Continuer →')}</Text>
+            <Text style={s.resultBtnText}>{t('payment.continueArrow', 'Continuer')}</Text>
+            <ArrowRight color="#FFF" size={18} />
           </Pressable>
         </Animated.View>
       );
@@ -834,16 +839,16 @@ export default function PaymentScreen() {
 
     // ── FAILED ────────────────────────────────────────────────────────────────
     if (step === 'failed') {
-      const failureReasons: Record<string, { title: string; icon: string }> = {
-        generic:         { title: t('payment.failedGeneric', "La transaction n'a pas pu être finalisée."), icon: '❌' },
-        wrong_pin:       { title: t('payment.failedWrongPin', 'Code PIN incorrect. Vérifiez votre code et réessayez.'), icon: '🔒' },
-        insufficient:    { title: t('payment.failedInsufficient', 'Fonds insuffisants. Approvisionnez votre compte et réessayez.'), icon: '💰' },
-        cancelled:       { title: t('payment.failedCancelled', "Paiement annulé par l'utilisateur."), icon: '🚫' },
-        timeout:         { title: t('payment.failedTimeout', 'Délai dépassé. La session a expiré.'), icon: '⏰' },
-        network_error:   { title: t('payment.failedNetwork', 'Erreur réseau. Vérifiez votre connexion et réessayez.'), icon: '📡' },
-        card_declined:   { title: t('payment.failedCardDeclined', "Carte refusée par l'émetteur. Contactez votre banque."), icon: '💳' },
-        card_expired:    { title: t('payment.failedCardExpired', 'Carte expirée. Utilisez une autre carte.'), icon: '📅' },
-        auth_3ds:        { title: t('payment.failedAuth3ds', "Échec de l'authentification 3D Secure. Réessayez."), icon: '🔐' },
+      const failureReasons: Record<string, { title: string; icon: typeof XCircle }> = {
+        generic:         { title: t('payment.failedGeneric', "La transaction n'a pas pu être finalisée."), icon: XCircle },
+        wrong_pin:       { title: t('payment.failedWrongPin', 'Code PIN incorrect. Vérifiez votre code et réessayez.'), icon: Lock },
+        insufficient:    { title: t('payment.failedInsufficient', 'Fonds insuffisants. Approvisionnez votre compte et réessayez.'), icon: Wallet },
+        cancelled:       { title: t('payment.failedCancelled', "Paiement annulé par l'utilisateur."), icon: Ban },
+        timeout:         { title: t('payment.failedTimeout', 'Délai dépassé. La session a expiré.'), icon: Clock },
+        network_error:   { title: t('payment.failedNetwork', 'Erreur réseau. Vérifiez votre connexion et réessayez.'), icon: WifiOff },
+        card_declined:   { title: t('payment.failedCardDeclined', "Carte refusée par l'émetteur. Contactez votre banque."), icon: CreditCard },
+        card_expired:    { title: t('payment.failedCardExpired', 'Carte expirée. Utilisez une autre carte.'), icon: CalendarX },
+        auth_3ds:        { title: t('payment.failedAuth3ds', "Échec de l'authentification 3D Secure. Réessayez."), icon: Lock },
       };
       const reason = failureReasons[failReason] || failureReasons.generic;
       return (
@@ -852,9 +857,10 @@ export default function PaymentScreen() {
             <XCircle color="#FFF" size={56} />
           </Animated.View>
           <Text style={[s.resultTitle, { color: RED }]}>{t('payment.failedTitle', 'Paiement échoué')}</Text>
-          <Text style={s.resultDesc}>
-            <Text style={{ fontSize: 22, marginRight: 6 }}>{reason.icon}</Text> {reason.title}
-          </Text>
+          <View style={s.failReasonRow}>
+            <reason.icon color={RED} size={20} />
+            <Text style={[s.resultDesc, { flexShrink: 1 }]}>{reason.title}</Text>
+          </View>
           {Boolean(failMessage) && (
             <Text style={[s.resultDesc, { color: RED, fontSize: 13 }]}>{failMessage}</Text>
           )}
@@ -1119,7 +1125,6 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFF',
   },
-  gridRadioCheck: { color: '#FFF', fontSize: 12, fontWeight: '900' },
   methodIcon: { width: '100%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', marginBottom: 10 },
   methodLogo: { width: '100%', height: '100%' },
   methodName: { color: BLUE, fontSize: 15, fontWeight: '800' },
@@ -1154,6 +1159,7 @@ const s = StyleSheet.create({
   flagCode: { color: BLUE, fontSize: 14, fontWeight: '700' },
   phoneInput: { flex: 1, paddingHorizontal: 14, fontSize: 17, color: BLUE, fontWeight: '700' },
   errorText: { color: RED, fontSize: 12 },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
 
   // Info box
   infoBox: {
@@ -1240,6 +1246,7 @@ const s = StyleSheet.create({
   resultCircleErr: { width: 110, height: 110, borderRadius: 55, backgroundColor: RED, alignItems: 'center', justifyContent: 'center', shadowColor: RED, shadowOpacity: 0.25, shadowRadius: 20, elevation: 8 },
   resultTitle: { color: BLUE, fontSize: 26, fontWeight: '900', textAlign: 'center' },
   resultDesc: { color: '#475569', fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  failReasonRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
 
   // Transaction details (success)
   txDetails: {
@@ -1253,6 +1260,7 @@ const s = StyleSheet.create({
   txDivider: { height: 1, backgroundColor: '#F1F5F9' },
   resultBtn: {
     width: '100%', height: 56, borderRadius: 18,
+    flexDirection: 'row', gap: 8,
     backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center',
     shadowColor: GREEN, shadowOpacity: 0.25, shadowRadius: 10, elevation: 5,
   },

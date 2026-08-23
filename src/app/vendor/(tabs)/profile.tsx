@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import {
   Star, User, Settings, Bell, Lock, ChevronRight, LogOut,
@@ -27,10 +29,15 @@ function MenuRow({ icon: Icon, label, onPress, index, colors }: { icon: any; lab
 }
 
 export default function VendorProfileScreen() {
-  const { boutique, vendorFirstName } = useVendor();
+  const { boutique, vendorFirstName, documents } = useVendor();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const [showGoodbye, setShowGoodbye] = useState(false);
+
+  // Vraie photo de la boutique si le vendeur en a envoyé une (voir vendor/profile-info.tsx) —
+  // avant ce correctif, l'avatar affichait toujours l'emoji dérivé du type de commerce, même
+  // avec une photo réellement enregistrée en base.
+  const boutiquePhotoUrl = documents.find((d) => d.id === 'photo_boutique')?.url;
 
   const ACCOUNT_MENU = [
     { icon: User, label: t('vendorProfile.personalInfo', 'Informations personnelles'), route: '/vendor/profile-info' },
@@ -50,7 +57,7 @@ export default function VendorProfileScreen() {
   ] as const;
 
   const handleLogout = () => {
-    Alert.alert(t('vendorProfile.logoutConfirmTitle', 'Se déconnecter'), t('vendorProfile.logoutConfirmDesc', 'Voulez-vous vraiment vous déconnecter ?'), [
+    alert(t('vendorProfile.logoutConfirmTitle', 'Se déconnecter'), t('vendorProfile.logoutConfirmDesc', 'Voulez-vous vraiment vous déconnecter ?'), [
       { text: t('vendorProfile.cancel', 'Annuler'), style: 'cancel' },
       { text: t('vendorProfile.logout', 'Se déconnecter'), style: 'destructive', onPress: () => setShowGoodbye(true) },
     ]);
@@ -83,9 +90,16 @@ export default function VendorProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeInDown.duration(400).springify()} style={[styles.hero, { backgroundColor: colors.primary }]}>
           <View style={[styles.avatar, { backgroundColor: colors.surface }]}>
-            <Text style={styles.avatarEmoji}>{boutique.emoji}</Text>
+            {boutiquePhotoUrl ? (
+              <Image source={{ uri: boutiquePhotoUrl }} style={styles.avatarImg} contentFit="cover" />
+            ) : (
+              <Text style={styles.avatarEmoji}>{boutique.emoji}</Text>
+            )}
           </View>
-<Text style={[styles.storeType, { color: colors.white + 'CC' }]}>{t('vendorProfile.storeType', 'Poissonnerie')}</Text>
+{/* Type de commerce réel choisi à l'inscription (vendeurs.categorie_principale) — remplace
+              l'ancien texte fixe "Poissonnerie" affiché à tous les vendeurs quel que soit leur
+              commerce réel. */}
+<Text style={[styles.storeType, { color: colors.white + 'CC' }]}>{boutique.categoriePrincipale || t('vendorProfile.storeType', 'Commerce')}</Text>
           <Text style={[styles.storeName, { color: colors.white }]}>{vendorFirstName}</Text>
           <View style={styles.ratingRow}>
             <Star color={colors.gold} fill={colors.gold} size={16} />
@@ -140,9 +154,10 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
   },
 avatar: {
-    width: 84, height: 84, borderRadius: 42,
+    width: 84, height: 84, borderRadius: 42, overflow: 'hidden',
     alignItems: 'center', justifyContent: 'center', marginBottom: 10,
   },
+  avatarImg: { width: 84, height: 84 },
   avatarEmoji: { fontSize: 42 },
   storeType: { fontSize: 13, fontWeight: '600' },
   storeName: { fontSize: 22, fontWeight: '900', marginTop: 2 },

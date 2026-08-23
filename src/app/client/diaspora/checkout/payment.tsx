@@ -3,7 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { ArrowLeft, Lock, ShieldCheck, Wallet, CreditCard, Smartphone } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
@@ -42,7 +43,7 @@ export default function DiasporaPaymentScreen() {
   // sur la seule foi d'une référence inventée côté client.
   const handlePay = async () => {
     if (!selectedBeneficiary) {
-      Alert.alert(t('diaspora.payment.missingBeneficiary', 'Bénéficiaire manquant'), t('diaspora.payment.missingBeneficiaryDesc', 'Veuillez choisir un bénéficiaire avant de payer.'));
+      alert(t('diaspora.payment.missingBeneficiary', 'Bénéficiaire manquant'), t('diaspora.payment.missingBeneficiaryDesc', 'Veuillez choisir un bénéficiaire avant de payer.'));
       return;
     }
     setProcessing(true);
@@ -90,7 +91,7 @@ export default function DiasporaPaymentScreen() {
       setLastOrder({ id: order.commande_id, numeroCommande: order.numero_commande, montantFcfa: order.montant_total });
       router.push('/client/diaspora/checkout/confirmed' as any);
     } catch (err) {
-      Alert.alert('Erreur', err instanceof ApiError || err instanceof Error ? err.message : t('diaspora.payment.genericError', 'Impossible de finaliser la commande.'));
+      alert('Erreur', err instanceof ApiError || err instanceof Error ? err.message : t('diaspora.payment.genericError', 'Impossible de finaliser la commande.'));
     } finally {
       setProcessing(false);
     }

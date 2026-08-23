@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
   ArrowLeft, AlertTriangle, PackageX, PackageSearch, PackageOpen, FileWarning,
@@ -9,26 +10,29 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
-import { ouvrirLitige, type LitigeMotif } from '@/services/api';
+import { ouvrirLitige, fetchLitigeMotifs, type LitigeMotif, type ApiLitigeMotif } from '@/services/api';
 
-const MOTIFS: { value: LitigeMotif; icon: any }[] = [
-  { value: 'produit_non_recu', icon: PackageX },
-  { value: 'produit_incorrect', icon: PackageSearch },
-  { value: 'produit_endommage', icon: PackageOpen },
-  { value: 'produit_non_conforme', icon: FileWarning },
-  { value: 'article_manquant', icon: ListX },
-  { value: 'probleme_livraison', icon: Truck },
-  { value: 'probleme_paiement', icon: CreditCard },
-  { value: 'probleme_remboursement', icon: RotateCcw },
-  { value: 'autre', icon: HelpCircle },
-];
+// Icône + libellé traduit pour les motifs connus au moment où cet écran a été écrit — un motif
+// ajouté depuis l'admin après coup (voir /admin/litige-motifs) n'a ni icône ni traduction dédiées
+// ici, et retombe sur HelpCircle + le libellé brut renvoyé par le backend plutôt que de bloquer.
+const KNOWN_ICONS: Record<string, any> = {
+  produit_non_recu: PackageX,
+  produit_incorrect: PackageSearch,
+  produit_endommage: PackageOpen,
+  produit_non_conforme: FileWarning,
+  article_manquant: ListX,
+  probleme_livraison: Truck,
+  probleme_paiement: CreditCard,
+  probleme_remboursement: RotateCcw,
+  autre: HelpCircle,
+};
 
 export default function NewDisputeScreen() {
   const { commandeId } = useLocalSearchParams<{ commandeId: string }>();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
 
-  const motifLabel = (m: LitigeMotif) => ({
+  const KNOWN_LABELS: Record<string, string> = {
     produit_non_recu: t('clientDisputeNew.motifNotReceived', 'Produit non reçu'),
     produit_incorrect: t('clientDisputeNew.motifWrong', 'Mauvais produit'),
     produit_endommage: t('clientDisputeNew.motifDamaged', 'Produit endommagé'),
@@ -38,7 +42,15 @@ export default function NewDisputeScreen() {
     probleme_paiement: t('clientDisputeNew.motifPayment', 'Problème de paiement'),
     probleme_remboursement: t('clientDisputeNew.motifRefund', 'Problème de remboursement'),
     autre: t('clientDisputeNew.motifOther', 'Autre'),
-  })[m];
+  };
+  const motifIcon = (code: string) => KNOWN_ICONS[code] || HelpCircle;
+  const motifLabel = (m: ApiLitigeMotif) => KNOWN_LABELS[m.code] ?? m.libelle;
+
+  const [motifs, setMotifs] = useState<ApiLitigeMotif[]>([]);
+  const [motifsLoading, setMotifsLoading] = useState(true);
+  useEffect(() => {
+    fetchLitigeMotifs().then(setMotifs).catch(() => setMotifs([])).finally(() => setMotifsLoading(false));
+  }, []);
 
   const [selected, setSelected] = useState<LitigeMotif | null>(null);
   const [description, setDescription] = useState('');
@@ -49,13 +61,13 @@ export default function NewDisputeScreen() {
     setSubmitting(true);
     try {
       const litige = await ouvrirLitige(commandeId, selected, description.trim());
-      Alert.alert(
+      alert(
         t('clientDisputeNew.sentTitle', 'Litige ouvert'),
         t('clientDisputeNew.sentDesc', 'Le vendeur a été notifié. Vous pouvez suivre son évolution depuis vos litiges.'),
         [{ text: 'OK', onPress: () => router.replace(`/client/disputes/${litige.id}` as any) }]
       );
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('clientDisputeNew.errorDesc', "Impossible d'ouvrir ce litige."));
+      alert('Erreur', err.message || t('clientDisputeNew.errorDesc', "Impossible d'ouvrir ce litige."));
     } finally {
       setSubmitting(false);
     }
@@ -81,25 +93,32 @@ export default function NewDisputeScreen() {
 
         <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('clientDisputeNew.whatProblem', 'Quel est le problème ?')}</Text>
 
-        {MOTIFS.map(({ value, icon: Icon }, i) => (
-          <Animated.View key={value} entering={FadeInUp.duration(280).delay(120 + i * 40).springify()}>
-            <Pressable
-              onPress={() => setSelected(value)}
-              style={[
-                styles.option,
-                { borderColor: selected === value ? colors.error : colors.border, backgroundColor: selected === value ? colors.error + '0F' : colors.surface },
-              ]}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: selected === value ? colors.error + '18' : colors.primarySoft }]}>
-                <Icon color={selected === value ? colors.error : colors.primary} size={19} />
-              </View>
-              <Text style={[styles.optionText, { color: colors.text }]}>{motifLabel(value)}</Text>
-              <View style={[styles.radio, { borderColor: selected === value ? colors.error : colors.borderStrong }]}>
-                {selected === value && <View style={[styles.radioDot, { backgroundColor: colors.error }]} />}
-              </View>
-            </Pressable>
-          </Animated.View>
-        ))}
+        {motifsLoading ? (
+          <ActivityIndicator color={colors.error} style={{ marginVertical: 16 }} />
+        ) : (
+          motifs.map((m, i) => {
+            const Icon = motifIcon(m.code);
+            return (
+              <Animated.View key={m.code} entering={FadeInUp.duration(280).delay(120 + i * 40).springify()}>
+                <Pressable
+                  onPress={() => setSelected(m.code)}
+                  style={[
+                    styles.option,
+                    { borderColor: selected === m.code ? colors.error : colors.border, backgroundColor: selected === m.code ? colors.error + '0F' : colors.surface },
+                  ]}
+                >
+                  <View style={[styles.optionIcon, { backgroundColor: selected === m.code ? colors.error + '18' : colors.primarySoft }]}>
+                    <Icon color={selected === m.code ? colors.error : colors.primary} size={19} />
+                  </View>
+                  <Text style={[styles.optionText, { color: colors.text }]}>{motifLabel(m)}</Text>
+                  <View style={[styles.radio, { borderColor: selected === m.code ? colors.error : colors.borderStrong }]}>
+                    {selected === m.code && <View style={[styles.radioDot, { backgroundColor: colors.error }]} />}
+                  </View>
+                </Pressable>
+              </Animated.View>
+            );
+          })
+        )}
 
         <Text style={[styles.sectionLabel, { color: colors.text, marginTop: 20 }]}>{t('clientDisputeNew.describe', 'Décrivez le problème')}</Text>
         <TextInput

@@ -5,13 +5,13 @@ import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'rea
 import Animated, {
   FadeInDown, FadeInUp, FadeInLeft,
 } from 'react-native-reanimated';
-import { ArrowLeft, Clock, Truck, MapPin, Pencil } from 'lucide-react-native';
+import { ArrowLeft, Clock, Truck, MapPin, Pencil, StickyNote, Check } from 'lucide-react-native';
 import { useClient, computeSlotDates } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { FALLBACK_DELIVERY_FEE } from '@/services/api';
 
 const SLOTS = ['08h - 10h', '10h - 12h', '12h - 14h', '14h - 16h', '16h - 18h', '18h - 20h'];
-const FALLBACK_DELIVERY_FEE = 800;
 
 export default function SlotScreen() {
   const { selectedAddress, setSelectedSlot: setGlobalSlot, resolveZoneForAddress } = useClient();
@@ -53,9 +53,12 @@ export default function SlotScreen() {
             <Text style={[styles.addressLabel, { color: colors.primary }]}>{addressLabel}</Text>
             <Text style={[styles.addressText, { color: colors.textSecondary }]} numberOfLines={2}>{addressText}</Text>
             {selectedAddress?.instructions ? (
-              <Text style={[styles.addressInstructions, { color: colors.textTertiary }]} numberOfLines={1}>
-                📝 {selectedAddress.instructions}
-              </Text>
+              <View style={styles.instructionsRow}>
+                <StickyNote color={colors.textTertiary} size={11} />
+                <Text style={[styles.addressInstructions, { color: colors.textTertiary }]} numberOfLines={1}>
+                  {selectedAddress.instructions}
+                </Text>
+              </View>
             ) : null}
           </View>
           <Pressable
@@ -108,7 +111,7 @@ export default function SlotScreen() {
                 </Text>
                 {isSelected && (
                   <View style={styles.slotCheck}>
-                    <Text style={styles.slotCheckText}>✓</Text>
+                    <Check color="#FFF" size={15} strokeWidth={3} />
                   </View>
                 )}
               </Pressable>
@@ -196,7 +199,8 @@ const styles = StyleSheet.create({
   },
   addressLabel: { fontSize: 15, fontWeight: '900' },
   addressText: { fontSize: 13, lineHeight: 19, marginTop: 3 },
-  addressInstructions: { fontSize: 11.5, marginTop: 3, fontStyle: 'italic' },
+  instructionsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  addressInstructions: { fontSize: 11.5, fontStyle: 'italic', flexShrink: 1 },
   editBtn: {
     width: 34,
     height: 34,
@@ -235,7 +239,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center', justifyContent: 'center',
   },
-  slotCheckText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
   deliveryInfo: {
     borderRadius: 18,
     padding: 18,

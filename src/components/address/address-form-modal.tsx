@@ -29,6 +29,7 @@ import {
   Star,
   Check,
   Navigation,
+  AlertTriangle,
 } from 'lucide-react-native';
 import type { DeliveryAddress, DeliveryAddressInput } from '@/services/api';
 import { useClient } from '@/contexts/client-context';
@@ -304,8 +305,9 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
               </Pressable>
 
               {error && (
-                <Animated.View entering={FadeInUp.duration(250)} style={[styles.errorBox, { backgroundColor: colors.error + '14', borderColor: colors.error + '44' }]}>
-                  <Text style={[styles.errorText, { color: colors.error }]}>⚠️ {error}</Text>
+                <Animated.View entering={FadeInUp.duration(250)} style={[styles.errorBox, styles.errorBoxRow, { backgroundColor: colors.error + '14', borderColor: colors.error + '44' }]}>
+                  <AlertTriangle color={colors.error} size={15} />
+                  <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
                 </Animated.View>
               )}
             </ScrollView>
@@ -432,7 +434,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
   },
-  errorText: { fontSize: 13, fontWeight: '700' },
+  errorBoxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  errorText: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
 
   // Footer
   footer: {

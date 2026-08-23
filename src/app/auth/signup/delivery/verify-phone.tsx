@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 
 import { OtpVerificationLayout, authStyles } from '@/components/auth-ui';
 import { useDeliverySignup } from '@/contexts/delivery-signup-context';
-import { resendOtp, sendOtp, verifyOtp } from '@/services/api';
+import { login, resendOtp, sendOtp, verifyOtp } from '@/services/api';
 
 const RESEND_DELAY = 165;
 
@@ -33,11 +34,19 @@ export default function DeliveryVerifyPhoneScreen() {
       setVerifying(true);
       try {
         if (phoneCredential && code) {
-          await verifyOtp(phoneCredential, code);
+          const result = await verifyOtp(phoneCredential, code);
+          if (!result?.token) {
+            throw new Error('Code invalide. Vérifiez le code reçu et réessayez.');
+          }
         }
+        // verifyOtp() peut, en cas de coupure réseau pendant l'inscription, retourner un ancien
+        // utilisateur mis en cache sur l'appareil sans nouveau jeton (voir le même correctif côté
+        // vendeur) — ce login() explicite garantit qu'on continue avec une session propre pour CE
+        // compte, jamais celle d'un compte précédemment utilisé sur l'appareil.
+        await login(phoneCredential, data.password);
         router.replace('/auth/signup/delivery/profile' as any);
       } catch (err: any) {
-        Alert.alert(
+        alert(
           'Code invalide',
           err?.message || 'Le code OTP est incorrect ou a expiré. Veuillez réessayer.',
           [{ text: 'OK' }],
@@ -46,7 +55,7 @@ export default function DeliveryVerifyPhoneScreen() {
         setVerifying(false);
       }
     },
-    [phoneCredential],
+    [phoneCredential, data.password],
   );
 
   // ── Auto-vérification : si otp_dev retourné par le backend, soumettre auto après 800ms ──
@@ -65,7 +74,7 @@ export default function DeliveryVerifyPhoneScreen() {
     if (!otpSent && data.registrationPhone && !data.registrationOtp) {
       setOtpSent(true);
       sendOtp(phoneCredential, 'sms').catch(() => {
-        Alert.alert('Erreur', "Impossible d'envoyer le code de vérification. Vérifiez votre connexion.");
+        alert('Erreur', "Impossible d'envoyer le code de vérification. Vérifiez votre connexion.");
       });
     }
   }, [data.registrationPhone, data.registrationOtp, otpSent, phoneCredential]);
@@ -87,9 +96,9 @@ export default function DeliveryVerifyPhoneScreen() {
     autoVerifiedRef.current = false;
     try {
       await resendOtp(phoneCredential, 'sms');
-      Alert.alert('Code renvoyé', 'Un nouveau code de vérification vous a été envoyé par SMS.');
+      alert('Code renvoyé', 'Un nouveau code de vérification vous a été envoyé par SMS.');
     } catch {
-      Alert.alert('Erreur', 'Impossible de renvoyer le code. Veuillez réessayer.');
+      alert('Erreur', 'Impossible de renvoyer le code. Veuillez réessayer.');
     }
   }, [canResend, data.registrationPhone, phoneCredential]);
 

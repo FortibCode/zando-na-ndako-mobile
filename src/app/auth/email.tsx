@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Check } from 'lucide-react-native';
 
 import { AuthBrand, BackButton, GoogleButton, InputField, PrimaryButton, authStyles } from '@/components/auth-ui';
 import { BrandColors } from '@/constants/brand';
@@ -106,7 +107,7 @@ export default function EmailLoginScreen() {
           <View style={styles.options}>
             <Pressable onPress={() => setRememberMe(!rememberMe)} style={styles.rememberRow}>
               <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-                {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+                {rememberMe && <Check color="#FFF" size={12} strokeWidth={3} />}
               </View>
               <Text style={styles.rememberText}>Se souvenir de moi</Text>
             </Pressable>
@@ -168,7 +169,6 @@ const styles = StyleSheet.create({
     backgroundColor: BrandColors.blueBright,
     borderColor: BrandColors.blueBright,
   },
-  checkmark: { color: '#FFF', fontSize: 11, fontWeight: '900' },
   rememberText: { color: '#64748B', fontSize: 13, fontWeight: '500' },
   forgot: { color: BrandColors.blueBright, fontSize: 13, fontWeight: '700' },
   error: { color: BrandColors.red, fontSize: 13, lineHeight: 19, marginTop: 14, textAlign: 'center', fontWeight: '600' },

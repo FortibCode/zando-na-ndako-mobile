@@ -1,9 +1,27 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// Base URL - configurable via env or default
-const LOCAL_API_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+// En dev, Expo expose l'hôte réellement utilisé par le bundler Metro (LAN IP de la machine de dev)
+// via `hostUri` — c'est la même machine qui fait tourner l'API Laravel en local. Sur un appareil
+// physique (Expo Go / dev build via QR code), ni "localhost" ni "10.0.2.2" ne pointent vers cette
+// machine : seule cette IP LAN fonctionne. Sans ça, TOUT appel réseau échouait silencieusement dès
+// que l'app tournait sur un vrai téléphone (au lieu d'un simulateur/émulateur sur la même machine).
+function resolveDevApiHost(): string | null {
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (!hostUri) return null;
+  const host = hostUri.split(':')[0]?.split('/')[0];
+  if (!host) return null;
+  // En mode `expo start --localhost`, hostUri vaut littéralement "localhost" : sur émulateur
+  // Android, cet hôte ne pointe pas vers la machine hôte (contrairement à iOS/appareil physique) —
+  // on garde alors le fallback historique 10.0.2.2 plutôt que d'utiliser cette valeur telle quelle.
+  if (Platform.OS === 'android' && (host === 'localhost' || host === '127.0.0.1')) return null;
+  return host;
+}
+
+// Base URL - configurable via env, sinon déduite de l'hôte Metro (LAN), sinon fallback historique.
+const LOCAL_API_HOST = resolveDevApiHost() || (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || `http://${LOCAL_API_HOST}:8001/api`;
 const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
@@ -13,6 +31,12 @@ export function resolveMediaUrl(path?: string | null): string | undefined {
   if (/^https?:\/\//.test(path)) return path;
   return `${STORAGE_BASE_URL}/storage/${path.replace(/^\/?storage\//, '')}`;
 }
+
+// Estimation affichée tant que la vraie zone de livraison (avec son frais_livraison_base réel)
+// n'est pas encore chargée — jamais le montant réellement facturé, qui vient toujours du serveur
+// à la validation de la commande. Centralisé ici : ce même nombre était recopié indépendamment
+// dans 4 écrans (accueil, panier, créneau, paiement), au risque de diverger.
+export const FALLBACK_DELIVERY_FEE = 800;
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -86,10 +110,31 @@ export async function getAuthToken(): Promise<string | null> {
   return AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 }
 
+// ─── Signal de changement de session ───
+// Les contextes de rôle (client/diaspora/vendeur/livreur, voir _layout.tsx) sont montés une seule
+// fois pour toute la durée de vie de l'app et chargent leurs données au montage. Sans ce signal,
+// une connexion à un AUTRE compte pendant que l'app tourne déjà ne rafraîchissait rien : l'écran
+// continuait d'afficher l'identité et les données du compte précédent jusqu'au prochain
+// redémarrage complet de l'app. Déclenché uniquement depuis login()/verifyOtp()/clearAuthToken()
+// (changement réel d'identité), pas depuis setUser() elle-même (aussi appelée par de simples
+// resynchronisations de cache comme fetchMe(), ce qui bouclerait avec les contextes qui y répondent).
+type SessionListener = () => void;
+const sessionListeners = new Set<SessionListener>();
+
+export function onSessionChange(listener: SessionListener): () => void {
+  sessionListeners.add(listener);
+  return () => sessionListeners.delete(listener);
+}
+
+function notifySessionChange(): void {
+  sessionListeners.forEach((listener) => listener());
+}
+
 export async function clearAuthToken(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
   await AsyncStorage.removeItem(STORAGE_KEYS.DELIVERY_USER);
   await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+  notifySessionChange();
 }
 
 export async function setUser(user: LoginUser): Promise<void> {
@@ -343,6 +388,7 @@ const { token, user } = response.data.data;
     await setDeliveryUser(user);
   }
 
+  notifySessionChange();
   return user;
 }
 
@@ -463,6 +509,7 @@ export async function verifyOtp(credential: string, code: string): Promise<OtpVe
         if (data.user.type_utilisateur === 'livreur') {
           await setDeliveryUser(data.user);
         }
+        notifySessionChange();
       }
     }
     return { token: data?.token, user: data?.user };
@@ -553,6 +600,49 @@ export async function fetchProduitDetail(id: string): Promise<ApiProduit> {
 
 export async function fetchCategories(): Promise<ApiCategorie[]> {
   const response = await api.get<ApiResponse<ApiCategorie[]>>('/categories');
+  return response.data.data || [];
+}
+
+// ─── Boutiques (parcours "boutique d'abord") ───
+export interface ApiVendeur {
+  id: string;
+  nom_commerce: string;
+  categorie_principale: string;
+  note_moyenne: number;
+  ville: string | null;
+  photo_boutique: string | null;
+  horaires_ouverture?: string | null;
+  message_boutique?: string | null;
+  statut_boutique?: 'ouverte' | 'pause' | 'fermee';
+}
+
+export async function fetchVendeurTypes(): Promise<string[]> {
+  const response = await api.get<ApiResponse<string[]>>('/vendeurs/types');
+  return response.data.data || [];
+}
+
+// Liste COMPLÈTE des types de boutique autorisés (pas seulement ceux déjà utilisés) — source
+// unique pour tout formulaire qui choisit un type (inscription vendeur, édition profil), remplace
+// les listes codées en dur précédemment dupliquées à plusieurs endroits.
+export async function fetchVendeurTypesDisponibles(): Promise<string[]> {
+  const response = await api.get<ApiResponse<string[]>>('/vendeurs/types-disponibles');
+  return response.data.data || [];
+}
+
+export async function fetchVendeurs(params?: { type?: string; search?: string }): Promise<ApiVendeur[]> {
+  const response = await api.get<ApiResponse<{ data: ApiVendeur[] }> & { data: any }>('/vendeurs', { params });
+  const payload = response.data.data;
+  return Array.isArray(payload) ? payload : payload?.data || [];
+}
+
+export async function fetchVendeurDetail(id: string): Promise<ApiVendeur> {
+  const response = await api.get<ApiResponse<ApiVendeur>>(`/vendeurs/${id}`);
+  if (!response.data.data) throw new ApiError('Boutique introuvable.');
+  return response.data.data;
+}
+
+export async function fetchProduitsBoutique(vendeurId: string): Promise<ApiProduit[]> {
+  const response = await api.get<ApiResponse<ApiProduit[]>>(`/vendeur/${vendeurId}/produits`);
   return response.data.data || [];
 }
 
@@ -914,17 +1004,36 @@ export async function resetPassword(
   });
 }
 
+// FormData multipart : sur natif, l'objet {uri,name,type} est la convention React Native pour
+// joindre un fichier. Un vrai navigateur (cible Web) ne la comprend pas — FormData.append() y
+// attend un Blob/File, sinon la valeur est simplement convertie en chaîne "[object Object]", que
+// Laravel rejette avec "Le champ photo doit être une image." On récupère donc le vrai blob via
+// fetch(uri) sur le web (uri y est un blob:/data: local, pas une requête réseau externe).
+export async function appendFilePart(
+  form: FormData,
+  field: string,
+  file: { uri: string; fileName?: string | null; type?: string | null },
+  fallbackName: string
+): Promise<void> {
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(file.uri)).blob();
+    form.append(field, blob, file.fileName || fallbackName);
+  } else {
+    form.append(field, {
+      uri: file.uri,
+      name: file.fileName || fallbackName,
+      type: file.type || 'image/jpeg',
+    } as any);
+  }
+}
+
 // ─── Photo de profil & Mise à jour utilisateur ───
 // L'endpoint renvoie `photo_url` à la racine de la réponse (pas sous `data`) : lire
 // `response.data.data?.photo_url` renvoyait toujours vide même quand l'upload avait réussi côté
 // serveur. `resolveMediaUrl` normalise ensuite le chemin relatif renvoyé en URL absolue affichable.
 export async function uploadUserPhoto(photo: { uri: string; fileName?: string | null; type?: string | null }): Promise<string> {
   const form = new FormData();
-  form.append('photo', {
-    uri: photo.uri,
-    name: photo.fileName || `photo_${Date.now()}.jpg`,
-    type: photo.type || 'image/jpeg',
-  } as any);
+  await appendFilePart(form, 'photo', photo, `photo_${Date.now()}.jpg`);
   const response = await api.post<ApiResponse & { photo_url?: string }>('/user/upload-photo', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
@@ -1043,15 +1152,11 @@ export async function uploaderDocumentsVendeur(
   docs: Partial<Record<VendeurDocumentKey, { uri: string; fileName?: string | null; type?: string | null }>>
 ): Promise<Partial<Record<VendeurDocumentKey, string | null>>> {
   const form = new FormData();
-  (Object.keys(docs) as VendeurDocumentKey[]).forEach((key) => {
+  for (const key of Object.keys(docs) as VendeurDocumentKey[]) {
     const file = docs[key];
-    if (!file?.uri) return;
-    form.append(key, {
-      uri: file.uri,
-      name: file.fileName || `${key}_${Date.now()}.jpg`,
-      type: file.type || 'image/jpeg',
-    } as any);
-  });
+    if (!file?.uri) continue;
+    await appendFilePart(form, key, file, `${key}_${Date.now()}.jpg`);
+  }
   const response = await api.post<ApiResponse<Partial<Record<VendeurDocumentKey, string | null>>>>('/vendeur/documents', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
@@ -1146,11 +1251,7 @@ export async function ajouterProduitVendeur(input: VendeurProduitInput): Promise
   form.append('quantite_stock', String(input.quantite_stock));
   if (input.type_fraicheur) form.append('type_fraicheur', input.type_fraicheur);
   if (input.photo?.uri) {
-    form.append('photo', {
-      uri: input.photo.uri,
-      name: input.photo.fileName || `produit_${Date.now()}.jpg`,
-      type: input.photo.type || 'image/jpeg',
-    } as any);
+    await appendFilePart(form, 'photo', input.photo, `produit_${Date.now()}.jpg`);
   }
   const response = await api.post<ApiResponse<ApiProduit>>('/vendeur/produits', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -1189,7 +1290,11 @@ export interface ApiVendeurRevenus {
   annee: number;
   panier_moyen?: string | number;
   ventes_semaine?: { jour: string; montant: string | number }[];
+  commandes_semaine?: number;
   produits_plus_vendus?: { nom: string; ventes: number }[];
+  // Valeur actuelle du réglage admin (retrait_montant_minimum) — remplace le seuil "1000" codé en
+  // dur côté mobile, qui restait figé si l'admin changeait ce réglage.
+  retrait_montant_minimum?: number;
 }
 
 export async function fetchVendeurRevenus(mois?: number, annee?: number): Promise<ApiVendeurRevenus> {
@@ -1223,6 +1328,54 @@ export async function fetchHistoriqueRetraitsVendeur(): Promise<ApiVendeurRetrai
   const response = await api.get<ApiResponse<{ data: ApiVendeurRetrait[] }> & { data: any }>('/vendeur/retraits');
   const payload = response.data.data;
   return Array.isArray(payload) ? payload : payload?.data || [];
+}
+
+// ─── Promotions vendeur (self-service, distinct de la bannière marketing /produits/promotions) ───
+export interface ApiPromotionVendeur {
+  id: string;
+  vendeur_id: string;
+  produit_id: string | null;
+  titre: string;
+  description: string | null;
+  type_reduction: 'pourcentage' | 'montant_fixe';
+  valeur_reduction: string | number;
+  date_debut: string;
+  date_fin: string | null;
+  actif: boolean;
+  created_at?: string;
+  produit?: { id: string; nom_produit: string } | null;
+}
+
+export async function fetchPromotionsVendeur(): Promise<ApiPromotionVendeur[]> {
+  const response = await api.get<ApiResponse<{ data: ApiPromotionVendeur[] }> & { data: any }>('/vendeur/promotions');
+  const payload = response.data.data;
+  return Array.isArray(payload) ? payload : payload?.data || [];
+}
+
+export async function creerPromotionVendeur(input: {
+  titre: string;
+  produit_id?: string | null;
+  valeur_reduction: number;
+  type_reduction?: 'pourcentage' | 'montant_fixe';
+  date_debut?: string;
+  date_fin?: string | null;
+}): Promise<ApiPromotionVendeur> {
+  const response = await api.post<ApiResponse<ApiPromotionVendeur>>('/vendeur/promotions', input);
+  if (!response.data.data) throw new ApiError(response.data.message || 'Erreur lors de la création de la promotion.');
+  return response.data.data;
+}
+
+export async function modifierPromotionVendeur(id: string, input: Partial<{
+  titre: string; valeur_reduction: number; type_reduction: 'pourcentage' | 'montant_fixe';
+  date_debut: string; date_fin: string | null; actif: boolean;
+}>): Promise<ApiPromotionVendeur> {
+  const response = await api.patch<ApiResponse<ApiPromotionVendeur>>(`/vendeur/promotions/${id}`, input);
+  if (!response.data.data) throw new ApiError(response.data.message || 'Erreur lors de la mise à jour de la promotion.');
+  return response.data.data;
+}
+
+export async function supprimerPromotionVendeur(id: string): Promise<void> {
+  await api.delete<ApiResponse>(`/vendeur/promotions/${id}`);
 }
 
 // ─── Messagerie Vendeur / Admin ───
@@ -1296,9 +1449,22 @@ export type LitigeSenderType = 'client' | 'vendeur' | 'admin' | 'system';
 export type LitigeStatut =
   | 'ouvert' | 'attente_vendeur' | 'attente_client' | 'en_cours' | 'escalade'
   | 'resolu' | 'rejete' | 'annule';
-export type LitigeMotif =
-  | 'produit_non_recu' | 'produit_incorrect' | 'produit_endommage' | 'produit_non_conforme'
-  | 'article_manquant' | 'probleme_livraison' | 'probleme_paiement' | 'probleme_remboursement' | 'autre';
+// Liste des codes valides chargée depuis le backend (App\Models\LitigeMotif, gérée par un admin
+// via /admin/litige-motifs) — remplace l'ancienne union de 9 valeurs codées en dur ici
+// indépendamment du backend (LitigeController::MOTIFS) et du web (LITIGE_MOTIFS), qui pouvaient
+// diverger silencieusement.
+export type LitigeMotif = string;
+
+export interface ApiLitigeMotif {
+  code: string;
+  libelle: string;
+}
+
+// GET /api/litiges/motifs
+export async function fetchLitigeMotifs(): Promise<ApiLitigeMotif[]> {
+  const response = await api.get<ApiResponse<ApiLitigeMotif[]>>('/litiges/motifs');
+  return response.data.data || [];
+}
 
 export interface ApiLitigePieceJointe {
   id: string;
@@ -1407,17 +1573,83 @@ export async function uploaderPreuveLitige(
   messageId?: string
 ): Promise<ApiLitigePieceJointe> {
   const form = new FormData();
-  form.append('fichier', {
-    uri: fichier.uri,
-    name: fichier.fileName || `preuve_${Date.now()}.jpg`,
-    type: fichier.type || 'image/jpeg',
-  } as any);
+  await appendFilePart(form, 'fichier', fichier, `preuve_${Date.now()}.jpg`);
   if (messageId) form.append('message_id', messageId);
   const response = await api.post<ApiResponse<ApiLitigePieceJointe>>(`/litiges/${litigeId}/pieces-jointes`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   if (!response.data.data) throw new ApiError(response.data.message || "Erreur lors de l'envoi de la preuve.");
   return response.data.data;
+}
+
+// ============================================
+// SUPPORT — TICKETS (client, vendeur, livreur — même endpoint pour les 3 rôles, différencié
+// uniquement par le token d'authentification ; le contrôleur scope tout sur request()->user()->id)
+// ============================================
+export type TicketCategorie =
+  | 'commande' | 'paiement' | 'livraison' | 'vendeur' | 'livreur' | 'produit' | 'remboursement' | 'compte' | 'autre';
+export type TicketStatut = 'ouvert' | 'en_cours' | 'en_attente' | 'resolu' | 'ferme';
+
+export interface ApiTicketReponse {
+  id: string;
+  ticket_id: string;
+  auteur_id: string;
+  auteur?: { id: string; nom: string; prenom: string; photo_profil?: string | null } | null;
+  message: string;
+  est_note_interne: boolean;
+  created_at: string;
+}
+
+export interface ApiSupportTicket {
+  id: string;
+  numero: string;
+  categorie: TicketCategorie | string;
+  commande_id: string | null;
+  sujet: string;
+  description: string;
+  priorite: 'basse' | 'normale' | 'haute' | 'urgente' | string;
+  statut: TicketStatut | string;
+  date_derniere_reponse: string | null;
+  created_at: string;
+  commande?: { id: string; numero_commande: string } | null;
+  reponses?: ApiTicketReponse[];
+}
+
+// GET /api/support/tickets — tickets de l'utilisateur connecté (paginé).
+export async function fetchSupportTickets(): Promise<ApiSupportTicket[]> {
+  const response = await api.get<ApiResponse<any>>('/support/tickets');
+  return unwrapPaginated<ApiSupportTicket>(response.data.data);
+}
+
+// GET /api/support/tickets/{id} — détail avec fil de réponses (auteur inclus).
+export async function fetchSupportTicketDetail(id: string): Promise<ApiSupportTicket> {
+  const response = await api.get<ApiResponse<ApiSupportTicket>>(`/support/tickets/${id}`);
+  if (!response.data.data) throw new ApiError('Ticket introuvable.');
+  return response.data.data;
+}
+
+// POST /api/support/tickets — ouverture d'un nouveau ticket.
+export async function ouvrirTicketSupport(payload: {
+  categorie: TicketCategorie | string;
+  sujet: string;
+  description: string;
+  commandeId?: string;
+}): Promise<ApiSupportTicket> {
+  const response = await api.post<ApiResponse<ApiSupportTicket>>('/support/tickets', {
+    categorie: payload.categorie,
+    sujet: payload.sujet,
+    description: payload.description,
+    commande_id: payload.commandeId,
+  });
+  if (!response.data.data) throw new ApiError(response.data.message || "Erreur lors de l'ouverture du ticket.");
+  return response.data.data;
+}
+
+// POST /api/support/tickets/{id}/repondre — répond sur un ticket existant (ne renvoie pas la
+// réponse créée : recharger le détail via fetchSupportTicketDetail pour resynchroniser le fil).
+export async function repondreTicketSupport(ticketId: string, message: string): Promise<void> {
+  const response = await api.post<ApiResponse>(`/support/tickets/${ticketId}/repondre`, { message });
+  if (response.data.success === false) throw new ApiError(response.data.message || "Erreur lors de l'envoi du message.");
 }
 
 export { STORAGE_KEYS };

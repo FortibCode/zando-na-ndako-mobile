@@ -1,16 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -31,6 +23,7 @@ import {
   Star,
   Phone,
   User as UserIcon,
+  StickyNote,
 } from 'lucide-react-native';
 import { useClient } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
@@ -88,7 +81,7 @@ export default function AddressScreen() {
 
   const handleDelete = useCallback(
     (address: DeliveryAddress) => {
-      Alert.alert(
+      alert(
         t('address.deleteTitle', 'Supprimer cette adresse ?'),
         `« ${address.label} » ${t('address.deleteMsg', 'sera définitivement supprimée.')}`,
         [
@@ -100,7 +93,7 @@ export default function AddressScreen() {
               try {
                 await removeAddress(address.id);
               } catch (e: any) {
-                Alert.alert('Erreur', e.message || t('address.deleteError', 'Impossible de supprimer cette adresse.'));
+                alert('Erreur', e.message || t('address.deleteError', 'Impossible de supprimer cette adresse.'));
               }
             },
           },
@@ -117,7 +110,7 @@ export default function AddressScreen() {
         await makeDefaultAddress(address.id);
         setSelectedAddress(address);
       } catch (e: any) {
-        Alert.alert('Erreur', e.message || t('address.defaultError', "Impossible de définir l'adresse par défaut."));
+        alert('Erreur', e.message || t('address.defaultError', "Impossible de définir l'adresse par défaut."));
       }
     },
     [makeDefaultAddress, setSelectedAddress, t]
@@ -134,14 +127,14 @@ export default function AddressScreen() {
         setPendingCoords({ latitude, longitude });
         setEditingAddress(null);
         setModalVisible(true);
-        Alert.alert(
+        alert(
           t('address.positionDetected', 'Position détectée'),
           `(${latitude.toFixed(4)}, ${longitude.toFixed(4)}) — ${t('address.positionCaptured', 'Votre position a été capturée. Vous pouvez maintenant compléter votre adresse manuellement.')}`
         );
       },
       (error: any) => {
         setGeolocating(false);
-        Alert.alert(
+        alert(
           t('address.positionUnavailable', 'Position indisponible'),
           t('address.positionUnavailableDesc', 'Impossible de récupérer votre position. Renseignez votre adresse manuellement.'),
           [{ text: 'OK', onPress: () => setModalVisible(true) }]
@@ -254,9 +247,12 @@ export default function AddressScreen() {
                       </View>
                     )}
                     {addr.instructions ? (
-                      <Text style={[styles.instructions, { color: colors.textTertiary }]} numberOfLines={1}>
-                        📝 {addr.instructions}
-                      </Text>
+                      <View style={styles.instructionsRow}>
+                        <StickyNote color={colors.textTertiary} size={11} />
+                        <Text style={[styles.instructions, { color: colors.textTertiary }]} numberOfLines={1}>
+                          {addr.instructions}
+                        </Text>
+                      </View>
                     ) : null}
                   </View>
                   <View style={[styles.radio, { borderColor: colors.borderStrong }, isSelected && { borderColor: colors.primary }]}>
@@ -312,7 +308,7 @@ export default function AddressScreen() {
         <Pressable
           onPress={() => {
             if (!selectedAddress) {
-              Alert.alert(
+              alert(
                 t('address.selectionRequired', 'Sélection requise'),
                 t('address.selectionRequiredDesc', 'Veuillez sélectionner ou ajouter une adresse de livraison pour continuer.')
               );
@@ -431,7 +427,8 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
   metaText: { fontSize: 11.5, fontWeight: '600' },
   metaSep: { color: '#CBD5E1', fontSize: 11.5, marginHorizontal: 2 },
-  instructions: { fontSize: 11.5, marginTop: 4, fontStyle: 'italic' },
+  instructionsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  instructions: { fontSize: 11.5, fontStyle: 'italic', flexShrink: 1 },
   radio: {
     width: 24,
     height: 24,

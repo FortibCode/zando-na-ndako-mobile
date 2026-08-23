@@ -1,25 +1,21 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import {
-  Alert, Pressable, SafeAreaView, ScrollView, Share,
-  StyleSheet, Text, View,
-} from 'react-native';
+import { Platform, Pressable, SafeAreaView, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import Animated, {
   FadeInDown, FadeInUp, SlideInDown, FadeIn,
   useAnimatedStyle, useSharedValue, withSpring,
 } from 'react-native-reanimated';
-import { ArrowLeft, Trash2, Plus, Minus, ShoppingCart, Share2 } from 'lucide-react-native';
+import { ArrowLeft, Trash2, Plus, Minus, ShoppingCart, Share2, Scooter } from 'lucide-react-native';
 import { useClient, type Product } from '@/contexts/client-context';
 import { useDiaspora, formatEur, formatUsd } from '@/contexts/diaspora-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 import { EmptyState } from '@/components/lottie-animations';
-import { ApiError, sharePanier, viderPanier, ajouterAuPanier } from '@/services/api';
-
-const FALLBACK_DELIVERY_FEE = 800;
+import { ApiError, sharePanier, viderPanier, ajouterAuPanier, FALLBACK_DELIVERY_FEE } from '@/services/api';
 
 function CartItem({ product, quantity, index }: { product: Product; quantity: number; index: number }) {
   const { changeQuantity } = useClient();
@@ -115,9 +111,18 @@ export default function CartScreen() {
         const itemList = items.map((i) => `• ${i.product.name} (x${i.quantity})`).join('\n');
         messageText = `Voici mon panier Zando na Ndako${destinataire} (${total.toLocaleString('fr-FR')} FCFA) :\n${itemList}`;
       }
-      await Share.share({ message: messageText });
+      const webNavigator = Platform.OS === 'web' ? (navigator as any) : null;
+      if (webNavigator && !webNavigator.share) {
+        // La plupart des navigateurs desktop (Chrome/Firefox/Edge desktop) n'implémentent pas
+        // `navigator.share` — Share.share() y échoue systématiquement avec "not supported". On copie
+        // le message dans le presse-papiers à la place plutôt que de laisser le bouton ne rien faire.
+        await webNavigator.clipboard.writeText(messageText);
+        alert(t('cartExtra.shareCopiedTitle', 'Lien copié !'), t('cartExtra.shareCopiedDesc', 'Le message a été copié dans le presse-papiers — colle-le où tu veux l’envoyer.'));
+      } else {
+        await Share.share({ message: messageText });
+      }
     } catch (error) {
-      Alert.alert('Erreur', error instanceof ApiError ? error.message : t('cartExtra.shareError', 'Impossible de partager le panier pour le moment.'));
+      alert('Erreur', error instanceof ApiError ? error.message : t('cartExtra.shareError', 'Impossible de partager le panier pour le moment.'));
     } finally {
       setSharing(false);
     }
@@ -155,7 +160,7 @@ return (
         </Pressable>
         <Text style={[styles.title, { color: colors.text }]}>{t('cart.title', 'Mon panier')} ({items.length})</Text>
         <Pressable
-          onPress={() => Alert.alert(t('cart.clearTitle', 'Vider le panier ?'), t('cart.clearMsg', 'Tous les articles seront supprimés.'), [
+          onPress={() => alert(t('cart.clearTitle', 'Vider le panier ?'), t('cart.clearMsg', 'Tous les articles seront supprimés.'), [
             { text: t('common.cancel', 'Annuler'), style: 'cancel' },
             { text: t('common.remove', 'Retirer'), style: 'destructive', onPress: clearCart },
           ])}
@@ -204,8 +209,9 @@ return (
           entering={FadeInUp.duration(350).delay(items.length * 70 + 200).springify()}
           style={[styles.deliveryNote, { backgroundColor: colors.primarySoft }]}
         >
+          <Scooter color={colors.primary} size={16} />
           <Text style={[styles.deliveryNoteText, { color: colors.primary }]}>
-            🛵 {t('cartExtra.deliveryNote', 'Livraison en 30–60 min · Zone : Brazzaville uniquement')}
+            {t('cartExtra.deliveryNote', 'Livraison en 30–60 min · Zone : Brazzaville uniquement')}
           </Text>
         </Animated.View>
 
@@ -309,10 +315,11 @@ const styles = StyleSheet.create({
 
   // Delivery note
   deliveryNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: Palette.navySoft, borderRadius: Radii.sm,
     paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md,
   },
-  deliveryNoteText: { color: Palette.navy, fontSize: 13, fontWeight: '600' },
+  deliveryNoteText: { color: Palette.navy, fontSize: 13, fontWeight: '600', flexShrink: 1 },
   shareCartBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginTop: Spacing.md, paddingVertical: 14, borderRadius: Radii.md, borderWidth: 1.5,

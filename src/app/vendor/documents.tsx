@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, IdCard, Briefcase, FileBadge, Store, Plus } from 'lucide-react-native';
 import { useVendor, type VendorDocument } from '@/contexts/vendor-context';
@@ -55,7 +56,7 @@ export default function VendorDocumentsScreen() {
 
         <Animated.View entering={FadeInUp.duration(400).delay(320).springify()}>
           <Pressable
-            onPress={() => Alert.alert(t('vendorDocuments.addDocument', 'Ajouter un document'), t('vendorDocuments.addDocumentAlertDesc', 'Le téléversement de documents sera bientôt disponible.'))}
+            onPress={() => alert(t('vendorDocuments.addDocument', 'Ajouter un document'), t('vendorDocuments.addDocumentAlertDesc', 'Le téléversement de documents sera bientôt disponible.'))}
             style={[styles.addBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}
           >
             <Plus color={colors.primary} size={18} />

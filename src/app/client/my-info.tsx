@@ -1,11 +1,10 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
-import { launchImageLibrary } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, MapPin, Save, Camera,
@@ -58,7 +57,7 @@ export default function MyInfoScreen() {
     }
 
     if (Object.keys(payload).length === 0) {
-      Alert.alert(t('myInfo.noChange', 'Aucune modification'), t('myInfo.noChangeDesc', 'Modifiez un champ puis enregistrez.'));
+      alert(t('myInfo.noChange', 'Aucune modification'), t('myInfo.noChangeDesc', 'Modifiez un champ puis enregistrez.'));
       return;
     }
 
@@ -66,47 +65,46 @@ export default function MyInfoScreen() {
     try {
       await updateProfile(payload);
       setEditing({});
-      Alert.alert(t('myInfo.saved', 'Informations mises à jour'), t('myInfo.savedDesc', 'Vos informations ont bien été enregistrées.'));
+      alert(t('myInfo.saved', 'Informations mises à jour'), t('myInfo.savedDesc', 'Vos informations ont bien été enregistrées.'));
     } catch (e: any) {
-      Alert.alert('Erreur', e.message || 'Impossible de mettre à jour vos informations.');
+      alert('Erreur', e.message || 'Impossible de mettre à jour vos informations.');
     } finally {
       setIsUpdating(false);
     }
   }, [editing, updateProfile, t]);
 
-  const handleChangePhoto = useCallback(() => {
-    launchImageLibrary(
-      {
-        mediaType: 'photo',
-        quality: 0.8,
-        maxWidth: 800,
-        maxHeight: 800,
-        selectionLimit: 1,
-      },
-      async (result) => {
-        if (result.didCancel) return;
-        if (result.errorCode) {
-          Alert.alert('Erreur', result.errorMessage || 'Impossible de sélectionner une photo.');
-          return;
-        }
-        const asset = result.assets?.[0];
-        if (!asset?.uri) return;
-
-        setPhotoLoading(true);
-        try {
-          await uploadPhoto({
-            uri: asset.uri,
-            fileName: asset.fileName,
-            type: asset.type,
-          });
-          Alert.alert('✅ Photo mise à jour', 'Votre photo de profil a bien été enregistrée.');
-        } catch (e: any) {
-          Alert.alert('Erreur', e.message || 'Impossible d\'enregistrer la photo.');
-        } finally {
-          setPhotoLoading(false);
-        }
+  const handleChangePhoto = useCallback(async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        alert('Permission requise', "L'accès aux photos est nécessaire pour changer l'image.");
+        return;
       }
-    );
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+
+      setPhotoLoading(true);
+      try {
+        await uploadPhoto({
+          uri: asset.uri,
+          fileName: asset.fileName,
+          type: asset.mimeType,
+        });
+        alert('Photo mise à jour', 'Votre photo de profil a bien été enregistrée.');
+      } catch (e: any) {
+        alert('Erreur', e.message || 'Impossible d\'enregistrer la photo.');
+      } finally {
+        setPhotoLoading(false);
+      }
+    } catch (_err) {
+      alert('Erreur', 'Impossible de sélectionner une photo.');
+    }
   }, [uploadPhoto]);
 
   const resolvedPhoto = resolveMediaUrl(currentUser?.photo_profil);

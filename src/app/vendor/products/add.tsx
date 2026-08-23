@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Camera, ChevronDown, Check, AlertTriangle } from 'lucide-react-native';
-import { useClient } from '@/contexts/client-context';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -19,15 +19,14 @@ const FRAICHEURS: { value: 'frais' | 'fume' | 'congele'; label: string }[] = [
 ];
 
 export default function AddProductScreen() {
-  const { categories } = useClient();
-  const { addProduct, vendorValidationStatus } = useVendor();
+  const { addProduct, vendorValidationStatus, refreshVendorProfile, refreshCategories, vendorCategoryNames } = useVendor();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const isPending = vendorValidationStatus === 'en_attente';
   const isSuspended = vendorValidationStatus === 'suspendu';
   const [photo, setPhoto] = useState<string | null>(null);
   const [nom, setNom] = useState('');
-  const [categorie, setCategorie] = useState(categories[0]);
+  const [categorie, setCategorie] = useState(vendorCategoryNames[0] || '');
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [prix, setPrix] = useState('');
   const [stock, setStock] = useState('');
@@ -36,16 +35,21 @@ export default function AddProductScreen() {
   const [description, setDescription] = useState('');
   const [publishing, setPublishing] = useState(false);
 
+  // Rafraîchit le profil vendeur et les catégories au chargement de l'écran (pour répercuter immédiatement une validation de l'admin)
+  useEffect(() => {
+    refreshVendorProfile();
+    refreshCategories();
+  }, [refreshVendorProfile, refreshCategories]);
+
   // La liste de catégories arrive de manière asynchrone (API) après le premier rendu ;
   // resynchronise la sélection par défaut si elle ne correspond plus à la liste réelle.
   useEffect(() => {
-    if (categories.length > 0 && !categories.includes(categorie)) {
-      setCategorie(categories[0]);
+    if (vendorCategoryNames.length > 0 && (!categorie || !vendorCategoryNames.includes(categorie))) {
+      setCategorie(vendorCategoryNames[0]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories]);
+  }, [vendorCategoryNames, categorie]);
 
-  const isBlocked = isSuspended;
+  const isBlocked = isSuspended || isPending;
   const isFormFilled = nom.trim().length >= 2 && prix.trim().length > 0 && stock.trim().length > 0;
   const isValid = isFormFilled && !isBlocked;
 
@@ -61,11 +65,15 @@ export default function AddProductScreen() {
 
   const handlePublish = async () => {
     if (isBlocked) {
-      Alert.alert('Compte suspendu', t('vendorAddProduct.suspendedWarning', 'Votre compte vendeur est suspendu. Contactez le support pour publier des produits.'));
+      if (isSuspended) {
+        alert('Compte suspendu', t('vendorAddProduct.suspendedWarning', 'Votre compte vendeur est suspendu. Contactez le support pour publier des produits.'));
+      } else {
+        alert('Compte en attente', t('vendorAddProduct.pendingWarning', "Votre compte vendeur est en attente de validation par un administrateur. Vous pourrez publier dès qu'il sera validé."));
+      }
       return;
     }
     if (!isFormFilled) {
-      Alert.alert('Champs incomplets', 'Veuillez renseigner le nom (au moins 2 caractères), le prix et le stock du produit.');
+      alert('Champs incomplets', 'Veuillez renseigner le nom (au moins 2 caractères), le prix et le stock du produit.');
       return;
     }
     if (publishing) return;
@@ -81,11 +89,11 @@ export default function AddProductScreen() {
         description: description.trim() || undefined,
         image: photo || undefined,
       });
-      Alert.alert(t('vendorAddProduct.publishedTitle', '✅ Produit publié'), `« ${nom.trim()} » ${t('vendorAddProduct.publishedDescSuffix', 'a été ajouté à votre catalogue et est visible par les clients.')}`, [
+      alert(t('vendorAddProduct.publishedTitle', '✅ Produit publié'), `« ${nom.trim()} » ${t('vendorAddProduct.publishedDescSuffix', 'a été ajouté à votre catalogue et est visible par les clients.')}`, [
         { text: 'OK', onPress: () => router.replace('/vendor/(tabs)/products' as any) },
       ]);
     } catch (e: any) {
-      Alert.alert('Erreur', e.message || t('vendorAddProduct.publishErrorDesc', 'Impossible de publier ce produit. Vérifiez votre connexion.'));
+      alert('Erreur', e.message || t('vendorAddProduct.publishErrorDesc', 'Impossible de publier ce produit. Vérifiez votre connexion.'));
     } finally {
       setPublishing(false);
     }
@@ -146,7 +154,7 @@ export default function AddProductScreen() {
           </Pressable>
           {categoryOpen && (
             <Animated.View entering={FadeInDown.duration(200)} style={[styles.dropdownPanel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-              {categories.map((c) => (
+              {vendorCategoryNames.map((c) => (
                 <Pressable
                   key={c}
                   onPress={() => { setCategorie(c); setCategoryOpen(false); }}

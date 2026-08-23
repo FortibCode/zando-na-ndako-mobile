@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { Headphones, Paperclip, Phone, Send, ShieldCheck } from 'lucide-react-native';
+import { useState, useCallback, useEffect } from 'react';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
+import { CheckCheck, Headphones, Paperclip, Phone, Send, ShieldCheck } from 'lucide-react-native';
 import { D, DeliveryScreen, Header, PrimaryButton, styles } from '@/components/delivery-ui';
 import { useDelivery } from '@/contexts/delivery-context';
 import { useTheme } from '@/contexts/theme-context';
@@ -10,10 +11,14 @@ import { EmptyMessages } from '@/components/delivery/empty-states';
 const SUPPORT_PHONE = '+242060000000';
 
 export default function Support() {
-  const { supportMessages, sendMessage } = useDelivery();
+  const { supportMessages, supportLoading, supportError, sendMessage, fetchSupportMessages } = useDelivery();
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [inputText, setInputText] = useState('');
+
+  // Recharge la conversation réelle (ticket + réponses) à chaque ouverture de l'écran — elle
+  // survit désormais à un redémarrage de l'app puisqu'elle est persistée côté backend.
+  useEffect(() => { fetchSupportMessages(); }, [fetchSupportMessages]);
 
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;
@@ -41,24 +46,31 @@ export default function Support() {
         <Text style={{ color: colors.text, fontSize: 16, lineHeight: 25, marginTop: isSupport ? 10 : 0 }}>
           {item.text}
         </Text>
-        <Text
+        <View
           style={{
-            color: isSupport ? colors.textSecondary : colors.primary,
-            fontSize: 11,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: isSupport ? 'flex-start' : 'flex-end',
+            gap: 4,
             marginTop: 9,
-            textAlign: isSupport ? 'left' : 'right',
           }}
         >
-          {new Date(item.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-          {!isSupport && '  ✓✓'}
-        </Text>
+          <Text style={{ color: isSupport ? colors.textSecondary : colors.primary, fontSize: 11 }}>
+            {new Date(item.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            {!isSupport && item.status === 'sending' && `  ${t('deliverySupport.statusSending', 'Envoi...')}`}
+            {!isSupport && item.status === 'failed' && `  ${t('deliverySupport.statusFailed', 'Échec')}`}
+          </Text>
+          {!isSupport && (item.status === 'sent' || !item.status) && (
+            <CheckCheck color={colors.primary} size={13} />
+          )}
+        </View>
       </View>
     );
   }, [colors, t]);
 
   const handleCallSupport = useCallback(() => {
     Linking.openURL(`tel:${SUPPORT_PHONE}`).catch(() => {
-      Alert.alert('Erreur', t('deliverySupport.callErrorDesc', "Impossible de lancer l'appel."));
+      alert('Erreur', t('deliverySupport.callErrorDesc', "Impossible de lancer l'appel."));
     });
   }, [t]);
 
@@ -87,8 +99,15 @@ export default function Support() {
         </Pressable>
       </View>
       <Text style={[styles.sectionTitle, { marginTop: 30, marginBottom: 12, color: colors.text }]}>{t('deliverySupport.conversation', 'Conversation')}</Text>
+      {supportError && (
+        <Text style={{ color: colors.error, fontSize: 12.5, marginBottom: 8 }}>{supportError}</Text>
+      )}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        {supportMessages.length === 0 ? (
+        {supportLoading && supportMessages.length === 0 ? (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : supportMessages.length === 0 ? (
           <EmptyMessages />
         ) : (
           <FlatList
@@ -110,7 +129,7 @@ export default function Support() {
           />
           <Pressable
             accessibilityLabel={t('deliverySupport.attachAria', 'Joindre un fichier (bientôt disponible)')}
-            onPress={() => Alert.alert(t('deliverySupport.attachComingSoonTitle', 'Bientôt disponible'), t('deliverySupport.attachComingSoonDesc', "L'envoi de pièces jointes sera disponible dans une prochaine mise à jour."))}
+            onPress={() => alert(t('deliverySupport.attachComingSoonTitle', 'Bientôt disponible'), t('deliverySupport.attachComingSoonDesc', "L'envoi de pièces jointes sera disponible dans une prochaine mise à jour."))}
             hitSlop={8}
           >
             <Paperclip color={colors.textTertiary} size={21} />

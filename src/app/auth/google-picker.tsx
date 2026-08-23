@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 
 const GOOGLE_COLORS = ['#4285F4', '#EA4335', '#34A853', '#FBBC05'] as const;
 
@@ -35,7 +36,7 @@ function GoogleLogo({ size = 44 }: { size?: number }) {
 // (ex: photo de signalement livreur).
 export default function GooglePickerScreen() {
   const handleConnect = useCallback(() => {
-    Alert.alert('Bientôt disponible', 'La connexion avec Google sera disponible dans une prochaine mise à jour.');
+    alert('Bientôt disponible', 'La connexion avec Google sera disponible dans une prochaine mise à jour.');
   }, []);
 
   return (

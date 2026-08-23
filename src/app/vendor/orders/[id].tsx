@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import { ArrowLeft, CheckCircle2, User, Phone, MapPin, Star, XCircle } from 'lucide-react-native';
@@ -47,7 +48,7 @@ function RateClientCard({ commandeId }: { commandeId: string }) {
           setNotation(list.find((n) => n.type_notateur === 'vendeur' && n.type_cible === 'client') || null);
         } catch { /* garde le formulaire tel quel */ }
       } else {
-        Alert.alert(t('common.error', 'Erreur'), err instanceof Error ? err.message : t('rateClient.sendError', "Impossible d'envoyer votre avis."));
+        alert(t('common.error', 'Erreur'), err instanceof Error ? err.message : t('rateClient.sendError', "Impossible d'envoyer votre avis."));
       }
     } finally {
       setSubmitting(false);
@@ -244,7 +245,7 @@ export default function VendorOrderDetailScreen() {
             onPress={() => {
               acceptOrder(order.id)
                 .then(() => router.push(`/vendor/orders/${order.id}/prepare` as any))
-                .catch((e: any) => Alert.alert('Erreur', e.message || t('vendorOrderDetail.acceptErrorDesc', "Impossible d'accepter cette commande.")));
+                .catch((e: any) => alert('Erreur', e.message || t('vendorOrderDetail.acceptErrorDesc', "Impossible d'accepter cette commande.")));
             }}
             style={[styles.acceptBtn, { backgroundColor: colors.primary }]}
           >

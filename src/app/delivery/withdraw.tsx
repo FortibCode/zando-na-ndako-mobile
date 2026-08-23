@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Banknote, CheckCircle2, Clock3, Smartphone, XCircle } from 'lucide-react-native';
 import { Card, DeliveryScreen, Header, PrimaryButton, styles } from '@/components/delivery-ui';
@@ -8,12 +9,13 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { demanderRetraitLivreur, fetchHistoriqueRetraitsLivreur, type DeliveryRetrait } from '@/services/api';
 
-const MIN_RETRAIT = 1000;
-
 export default function Withdraw() {
   const { revenue, fetchRevenue } = useDelivery();
   const { colors } = useTheme();
   const { t } = useLanguage();
+  // Réglage admin (voir /admin/parametres, clé retrait_montant_minimum) — 1000 reste un simple
+  // repli tant que /livreur/revenus n'a pas encore répondu, jamais une valeur figée.
+  const minRetrait = revenue?.retrait_montant_minimum ?? 1000;
 
   const METHODS = [
     { key: 'mtn_momo' as const, label: t('deliveryWithdraw.mtnLabel', 'MTN Mobile Money'), icon: Smartphone },
@@ -46,19 +48,19 @@ export default function Withdraw() {
   }, [fetchRevenue, loadHistorique]);
 
   const montantNum = parseInt(montant.replace(/[^0-9]/g, ''), 10) || 0;
-  const canSubmit = montantNum >= MIN_RETRAIT && montantNum <= solde && numero.trim().length >= 8;
+  const canSubmit = montantNum >= minRetrait && montantNum <= solde && numero.trim().length >= 8;
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
       await demanderRetraitLivreur({ montant: montantNum, methodeRetrait: methode, numeroReception: numero.trim() });
-      Alert.alert(t('deliveryWithdraw.requestSentTitle', 'Demande envoyée'), t('deliveryWithdraw.requestSentDesc', 'Votre demande de retrait a été soumise et sera traitée sous peu.'));
+      alert(t('deliveryWithdraw.requestSentTitle', 'Demande envoyée'), t('deliveryWithdraw.requestSentDesc', 'Votre demande de retrait a été soumise et sera traitée sous peu.'));
       setMontant('');
       setNumero('');
       await Promise.all([fetchRevenue(), loadHistorique()]);
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('deliveryWithdraw.errorDesc', 'Impossible de soumettre la demande de retrait.'));
+      alert('Erreur', err.message || t('deliveryWithdraw.errorDesc', 'Impossible de soumettre la demande de retrait.'));
     } finally {
       setSubmitting(false);
     }
@@ -85,7 +87,7 @@ export default function Withdraw() {
         <Text style={[styles.sectionTitle, { marginTop: 26, fontSize: 18, color: colors.text }]}>{t('deliveryWithdraw.amountToWithdraw', 'Montant à retirer')}</Text>
         <TextInput
           keyboardType="number-pad"
-          placeholder={`${t('deliveryWithdraw.minPrefix', 'Min.')} ${MIN_RETRAIT.toLocaleString('fr-FR')} FCFA`}
+          placeholder={`${t('deliveryWithdraw.minPrefix', 'Min.')} ${minRetrait.toLocaleString('fr-FR')} FCFA`}
           placeholderTextColor={colors.textTertiary}
           value={montant}
           onChangeText={(v) => setMontant(v.replace(/[^0-9]/g, ''))}

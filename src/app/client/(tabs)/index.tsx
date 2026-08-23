@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import {
   Search, Bell, ShoppingCart, MapPin, ChevronDown,
-  Tag, Globe2, ChevronRight,
+  Tag, Globe2, ChevronRight, Scooter,
 } from 'lucide-react-native';
 import { useClient } from '@/contexts/client-context';
 import { ClientMenu, ProductCard, SectionTitle, BLUE } from '@/components/client-ui';
@@ -21,11 +21,13 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 import { ThemeToggle, LanguageToggle } from '@/design/components';
+import { fetchVendeurs, resolveMediaUrl, FALLBACK_DELIVERY_FEE, type ApiVendeur } from '@/services/api';
+import { Store, Star } from 'lucide-react-native';
 
 const CATEGORY_COLORS = ['#EAF4FF', '#FFEDE8', '#FFF6E8', '#E8F9EE', '#FFF0E8', '#F3EEFF'];
 
 export default function ClientHomeScreen() {
-  const { products, popularProducts, promotedProduct, categories, categoryIcons, addToCart, cartCount, favorites, isFavorite, userFirstName, isDiaspora, refreshUser, zones } = useClient();
+  const { products, promotedProduct, boutiqueTypes, addToCart, cartCount, favorites, isFavorite, userFirstName, isDiaspora, refreshUser, zones } = useClient();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const { animatedStyle: promoStyle, onPressIn, onPressOut } = useScalePress(0.98);
@@ -37,10 +39,12 @@ export default function ClientHomeScreen() {
     () => products.filter((p) => isFavorite(p.id)).slice(0, 4),
     [products, favorites]
   );
+  const [boutiques, setBoutiques] = useState<ApiVendeur[]>([]);
 
   // Rafraîchit le profil connecté (détecte correctement le client diaspora)
   useEffect(() => {
     refreshUser();
+    fetchVendeurs().then(setBoutiques).catch(() => setBoutiques([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -124,9 +128,7 @@ export default function ClientHomeScreen() {
             onPressIn={onPressIn}
             onPressOut={onPressOut}
             onPress={() => router.push(
-              promotedProduct
-                ? `/client/product/${promotedProduct.id}`
-                : `/client/category/${encodeURIComponent(fish?.category || '')}` as any
+              (promotedProduct ? `/client/product/${promotedProduct.id}` : fish ? `/client/product/${fish.id}` : '/client/search') as any
             )}
             style={[styles.promo, promoStyle as any]}
           >
@@ -156,11 +158,11 @@ export default function ClientHomeScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* ── Quick Categories ────────────────────────── */}
+        {/* ── Types de boutique ────────────────────────── */}
         <Animated.View entering={FadeInLeft.duration(400).delay(200).springify()}>
           <SectionTitle
-            title={t('home.sections.rays', 'Vos rayons')}
-            onSeeAll={() => router.push('/client/search' as any)}
+            title={t('home.sections.boutiqueTypes', 'Types de boutique')}
+            onSeeAll={() => router.push('/client/(tabs)/categories' as any)}
           />
         </Animated.View>
 
@@ -169,46 +171,53 @@ export default function ClientHomeScreen() {
           style={styles.categoryRow}
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4 }}>
-            {categories.slice(0, 6).map((category, index) => (
+            {boutiqueTypes.slice(0, 6).map((type, index) => (
               <Animated.View
-                key={category}
+                key={type}
                 entering={ZoomIn.duration(350).delay(250 + index * 70).springify()}
               >
                 <Pressable
-                  onPress={() => router.push(`/client/category/${category}` as any)}
+                  onPress={() => router.push(`/client/boutiques/${encodeURIComponent(type)}` as any)}
                   style={styles.category}
                 >
                   <View style={[styles.categoryIcon, { backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }]}>
-                    <Image
-                      accessibilityLabel={category}
-                      contentFit="cover"
-                      source={{ uri: categoryIcons[category] || products.find((product) => product.category === category)?.image }}
-                      style={styles.categoryImage}
-                    />
+                    <Store color={colors.primary} size={26} />
                   </View>
-<Text numberOfLines={2} style={[styles.categoryText, { color: colors.text }]}>{category}</Text>
+                  <Text numberOfLines={2} style={[styles.categoryText, { color: colors.text, textTransform: 'capitalize' }]}>{type}</Text>
                 </Pressable>
               </Animated.View>
             ))}
           </ScrollView>
         </Animated.View>
 
-        {/* ── Produits populaires ─────────────────────── */}
+        {/* ── Vos boutiques ─────────────────────────────── */}
         <Animated.View entering={FadeInRight.duration(400).delay(320).springify()}>
           <SectionTitle
-            title={t('home.sections.popular', 'Produits populaires')}
-            onSeeAll={() => router.push('/client/search' as any)}
+            title={t('home.sections.boutiques', 'Vos boutiques')}
+            onSeeAll={() => router.push('/client/(tabs)/categories' as any)}
           />
         </Animated.View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20, gap: 12 }}>
-          {(popularProducts.length > 0 ? popularProducts : products.slice(0, 5)).map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              compact
-              onAdd={() => addToCart(product.id)}
-            />
+          {boutiques.map((v) => (
+            <Pressable
+              key={v.id}
+              onPress={() => router.push(`/client/boutique/${v.id}` as any)}
+              style={[styles.boutiqueCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <View style={[styles.boutiqueAvatar, { backgroundColor: colors.primarySoft }]}>
+                {v.photo_boutique ? (
+                  <Image accessibilityLabel={v.nom_commerce} contentFit="cover" source={{ uri: resolveMediaUrl(v.photo_boutique) }} style={styles.boutiqueAvatarImage} />
+                ) : (
+                  <Store color={colors.primary} size={22} />
+                )}
+              </View>
+              <Text numberOfLines={1} style={[styles.boutiqueName, { color: colors.text }]}>{v.nom_commerce}</Text>
+              <View style={styles.boutiqueMeta}>
+                <Star color={colors.gold} size={12} fill={v.note_moyenne > 0 ? colors.gold : 'transparent'} />
+                <Text style={[styles.boutiqueMetaText, { color: colors.textSecondary }]}>{v.note_moyenne > 0 ? v.note_moyenne.toFixed(1) : '—'}</Text>
+              </View>
+            </Pressable>
           ))}
         </ScrollView>
 
@@ -217,7 +226,7 @@ export default function ClientHomeScreen() {
           <>
             <Animated.View entering={FadeInLeft.duration(400).delay(380).springify()}>
               <SectionTitle
-                title={`${t('home.sections.favorites', 'Mes favoris')} ❤️`}
+                title={t('home.sections.favorites', 'Mes favoris')}
                 onSeeAll={() => router.push('/client/favorites' as any)}
               />
             </Animated.View>
@@ -237,12 +246,12 @@ export default function ClientHomeScreen() {
 {/* ── Livraison rapide promo ──────────────────── */}
         <Animated.View entering={FadeInUp.duration(400).delay(400).springify()} style={[styles.deliverBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.deliverIcon}>
-            <Text style={styles.deliverEmoji}>🛵</Text>
+            <Scooter color={Palette.gold} size={24} />
           </View>
           <View style={styles.deliverCopy}>
             <Text style={[styles.deliverTitle, { color: colors.text }]}>{t('home.sections.delivery', 'Livraison express à Brazzaville')}</Text>
             <Text style={[styles.deliverSub, { color: colors.textSecondary }]}>
-              En 30–60 min · dès {(Number(zones[0]?.frais_livraison_base) || 800).toLocaleString('fr-FR')} FCFA
+              En 30–60 min · dès {(Number(zones[0]?.frais_livraison_base) || FALLBACK_DELIVERY_FEE).toLocaleString('fr-FR')} FCFA
             </Text>
           </View>
           <View style={styles.deliverBadge}>
@@ -370,6 +379,13 @@ const styles = StyleSheet.create({
   categoryImage: { width: 56, height: 50, borderRadius: Radii.sm },
   categoryText: { color: Palette.navy, fontSize: 11.5, fontWeight: '700', textAlign: 'center' },
 
+  boutiqueCard: { width: 140, borderRadius: Radii.md, borderWidth: 1, padding: Spacing.md, ...Shadows.soft },
+  boutiqueAvatar: { width: 44, height: 44, borderRadius: Radii.sm, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 8 },
+  boutiqueAvatarImage: { width: '100%', height: '100%' },
+  boutiqueName: { fontSize: 13, fontWeight: '800' },
+  boutiqueMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  boutiqueMetaText: { fontSize: 11.5, fontWeight: '600' },
+
   // Delivery banner
   deliverBanner: {
     marginTop: 22, borderRadius: Radii.md,
@@ -382,7 +398,6 @@ const styles = StyleSheet.create({
     width: 46, height: 46, borderRadius: Radii.md,
     backgroundColor: Palette.goldSoft, alignItems: 'center', justifyContent: 'center',
   },
-  deliverEmoji: { fontSize: 24 },
   deliverCopy: { flex: 1 },
   deliverTitle: { color: Palette.navy, fontSize: 14, fontWeight: '800' },
   deliverSub: { color: Palette.muted, fontSize: 12, marginTop: 3 },

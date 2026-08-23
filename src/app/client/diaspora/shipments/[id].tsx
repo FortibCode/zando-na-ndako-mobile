@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import { ArrowLeft, Upload, ShoppingBag, MapPin, Star } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
@@ -142,7 +143,7 @@ export default function ShipmentDetailScreen() {
 
         <Animated.View entering={FadeInUp.duration(400).delay(320).springify()}>
           <Pressable
-            onPress={() => Alert.alert(t('diaspora.shipmentDetail.invoiceAlertTitle', 'Facture'), t('diaspora.shipmentDetail.invoiceAlertDesc', 'Le téléchargement de la facture sera bientôt disponible.'))}
+            onPress={() => alert(t('diaspora.shipmentDetail.invoiceAlertTitle', 'Facture'), t('diaspora.shipmentDetail.invoiceAlertDesc', 'Le téléchargement de la facture sera bientôt disponible.'))}
             style={[styles.invoiceBtn, { borderColor: colors.primary }]}
           >
             <Upload color={colors.primary} size={18} />

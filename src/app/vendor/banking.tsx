@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Phone, Landmark, CreditCard, Check, DollarSign, History } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useVendor } from '@/contexts/vendor-context';
+import { useClient } from '@/contexts/client-context';
 import { useLanguage } from '@/contexts/language-context';
 import { demanderRetraitVendeur, fetchHistoriqueRetraitsVendeur, type ApiVendeurRetrait } from '@/services/api';
 
@@ -13,7 +15,8 @@ type PaymentType = 'mtn' | 'airtel' | 'bank';
 
 export default function VendorBankingScreen() {
   const { colors, isDark } = useTheme();
-  const { stats } = useVendor();
+  const { stats, numeroMobileMoneyReception, updateNumeroMobileMoneyReception } = useVendor();
+  const { currentUser } = useClient();
   const { t } = useLanguage();
 
   const METHODS: { id: PaymentType; apiMethod: 'mtn_momo' | 'airtel_money' | 'virement'; label: string; desc: string; icon: any }[] = [
@@ -23,10 +26,22 @@ export default function VendorBankingScreen() {
   ];
 
   const [method, setMethod] = useState<PaymentType>('mtn');
-  const [numero, setNumero] = useState('+242 06 123 45 67');
-  const [titulaire, setTitulaire] = useState('Maman Clémentine');
+  // Ne démarrent plus sur un faux numéro / faux nom fixes (le même pour tous les vendeurs) qui
+  // laissaient croire à des coordonnées réelles déjà enregistrées : l'état honnête tant que rien
+  // n'est chargé est un champ vide, rempli dès que les vraies données arrivent (voir les deux
+  // useEffect ci-dessous — ils n'écrasent jamais une saisie déjà commencée par le vendeur).
+  const [numero, setNumero] = useState('');
+  const [titulaire, setTitulaire] = useState('');
   const [montant, setMontant] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!numero && numeroMobileMoneyReception) setNumero(numeroMobileMoneyReception);
+  }, [numeroMobileMoneyReception]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!titulaire && currentUser?.nom_complet) setTitulaire(currentUser.nom_complet);
+  }, [currentUser?.nom_complet]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [historique, setHistorique] = useState<ApiVendeurRetrait[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -47,14 +62,16 @@ export default function VendorBankingScreen() {
     loadHistory();
   }, []);
 
+  const minRetrait = stats.retraitMontantMinimum;
+
   const handleDemandeRetrait = async () => {
     const montantNum = parseFloat(montant.trim());
-    if (!montantNum || montantNum < 1000) {
-      Alert.alert(t('vendorBanking.invalidAmountTitle', 'Montant invalide'), t('vendorBanking.invalidAmountDesc', 'Le montant minimum de retrait est de 1 000 FCFA.'));
+    if (!montantNum || montantNum < minRetrait) {
+      alert(t('vendorBanking.invalidAmountTitle', 'Montant invalide'), `${t('vendorBanking.invalidAmountDescPrefix', 'Le montant minimum de retrait est de')} ${minRetrait.toLocaleString('fr-FR')} FCFA.`);
       return;
     }
     if (!numero.trim()) {
-      Alert.alert(t('vendorBanking.missingNumberTitle', 'Numéro manquant'), t('vendorBanking.missingNumberDesc', 'Veuillez saisir votre numéro mobile ou RIB.'));
+      alert(t('vendorBanking.missingNumberTitle', 'Numéro manquant'), t('vendorBanking.missingNumberDesc', 'Veuillez saisir votre numéro mobile ou RIB.'));
       return;
     }
 
@@ -67,11 +84,20 @@ export default function VendorBankingScreen() {
         numero_reception: numero.trim(),
       });
 
-      Alert.alert(t('vendorBanking.requestSentTitle', '✅ Demande envoyée'), `${t('vendorBanking.requestSentDescPrefix', 'Votre demande de retrait de')} ${montantNum.toLocaleString('fr-FR')} FCFA ${t('vendorBanking.requestSentDescSuffix', 'a été soumise avec succès.')}`, [
+      // Retient le numéro mobile money pour les prochains retraits (vendeurs.numero_mobile_money_
+      // reception) — ce champ existait déjà côté contexte/serveur mais n'était appelé nulle part :
+      // le vendeur devait ressaisir son numéro à chaque demande. Ignoré pour "virement" (RIB, pas
+      // un numéro mobile money) ; best-effort, une erreur ici ne doit pas remettre en cause le
+      // retrait déjà soumis avec succès.
+      if (method !== 'bank' && numero.trim() !== numeroMobileMoneyReception) {
+        updateNumeroMobileMoneyReception(numero.trim()).catch(() => {});
+      }
+
+      alert(t('vendorBanking.requestSentTitle', '✅ Demande envoyée'), `${t('vendorBanking.requestSentDescPrefix', 'Votre demande de retrait de')} ${montantNum.toLocaleString('fr-FR')} FCFA ${t('vendorBanking.requestSentDescSuffix', 'a été soumise avec succès.')}`, [
         { text: 'OK', onPress: () => { setMontant(''); loadHistory(); } },
       ]);
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('vendorBanking.errorDefault', 'Impossible d\'envoyer la demande de retrait.'));
+      alert('Erreur', err.message || t('vendorBanking.errorDefault', 'Impossible d\'envoyer la demande de retrait.'));
     } finally {
       setSubmitting(false);
     }
@@ -144,7 +170,7 @@ export default function VendorBankingScreen() {
                 <TextInput
                   value={montant}
                   onChangeText={setMontant}
-                  placeholder={t('vendorBanking.amountPlaceholder', 'Min 1 000 FCFA')}
+                  placeholder={`${t('vendorBanking.amountPlaceholderPrefix', 'Min')} ${minRetrait.toLocaleString('fr-FR')} FCFA`}
                   placeholderTextColor={colors.textTertiary}
                   keyboardType="numeric"
                   style={[styles.input, { color: colors.text }]}

@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -20,6 +21,7 @@ export default function ManualOrderScreen() {
   const [email, setEmail] = useState('');
   const [adresse, setAdresse] = useState('');
   const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const isValid = nom.trim().length >= 2 && telephone.trim().length >= 6 && adresse.trim().length >= 5;
 
@@ -33,12 +35,19 @@ export default function ManualOrderScreen() {
     }
   };
 
-  const handleSave = () => {
-    if (!isValid) return;
-    const order = createManualOrder({ nom: nom.trim(), telephone: telephone.trim(), email: email.trim() || undefined, adresse: adresse.trim(), message: message.trim() || undefined });
-    Alert.alert(t('vendorManualOrder.createdTitle', '✅ Commande créée'), `${t('vendorManualOrder.createdDescPrefix', 'La commande pour')} ${nom.trim()} ${t('vendorManualOrder.createdDescSuffix', 'a été enregistrée.')}`, [
-      { text: 'OK', onPress: () => router.replace(`/vendor/orders/${order.id}` as any) },
-    ]);
+  const handleSave = async () => {
+    if (!isValid || saving) return;
+    setSaving(true);
+    try {
+      const order = await createManualOrder({ nom: nom.trim(), telephone: telephone.trim(), email: email.trim() || undefined, adresse: adresse.trim(), message: message.trim() || undefined });
+      alert(t('vendorManualOrder.createdTitle', '✅ Commande créée'), `${t('vendorManualOrder.createdDescPrefix', 'La commande pour')} ${nom.trim()} ${t('vendorManualOrder.createdDescSuffix', 'a été enregistrée.')}`, [
+        { text: 'OK', onPress: () => router.replace(`/vendor/orders/${order.id}` as any) },
+      ]);
+    } catch (e: any) {
+      alert('Erreur', e.message || t('vendorManualOrder.errorDesc', 'Impossible d\'enregistrer cette commande.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -128,8 +137,8 @@ export default function ManualOrderScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInUp.duration(400).delay(340).springify()}>
-          <Pressable onPress={handleSave} disabled={!isValid} style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }, !isValid && { backgroundColor: colors.borderStrong, shadowOpacity: 0 }]}>
-            <Text style={styles.saveBtnText}>{t('vendorManualOrder.save', 'Enregistrer')}</Text>
+          <Pressable onPress={handleSave} disabled={!isValid || saving} style={[styles.saveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }, (!isValid || saving) && { backgroundColor: colors.borderStrong, shadowOpacity: 0 }]}>
+            {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>{t('vendorManualOrder.save', 'Enregistrer')}</Text>}
           </Pressable>
         </Animated.View>
       </ScrollView>

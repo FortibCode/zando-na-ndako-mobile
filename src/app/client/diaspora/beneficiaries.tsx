@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, {
   FadeInDown, FadeInUp, FadeInLeft, ZoomIn,
   useAnimatedStyle, useSharedValue, withSpring,
@@ -76,7 +77,7 @@ export default function ChooseBeneficiaryScreen() {
   );
 
   const handleDelete = (b: Beneficiary) => {
-    Alert.alert(
+    alert(
       t('diaspora.beneficiariesManage.deleteConfirmTitle', 'Supprimer ce bénéficiaire ?'),
       `« ${b.nom} » ${t('diaspora.beneficiariesManage.deleteConfirmDesc', 'sera définitivement supprimé de votre liste.')}`,
       [
@@ -89,7 +90,7 @@ export default function ChooseBeneficiaryScreen() {
             if (localSelected?.id === b.id) {
               setLocalSelected(null);
             }
-            Alert.alert('✅ Supprimé', `Le bénéficiaire « ${b.nom} » a été supprimé.`);
+            alert('Supprimé', `Le bénéficiaire « ${b.nom} » a été supprimé.`);
           },
         },
       ],

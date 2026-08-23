@@ -4,7 +4,7 @@ import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'rea
 import Animated, {
   FadeInDown, FadeInUp, BounceIn,
 } from 'react-native-reanimated';
-import { ArrowRight, Home, Package, CheckCircle2, Clock } from 'lucide-react-native';
+import { ArrowRight, Home, Package, CheckCircle2, Clock, PartyPopper, Mail } from 'lucide-react-native';
 import { useClient } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -39,9 +39,12 @@ export default function ConfirmedScreen() {
           <SuccessState message="" size={160} />
         </Animated.View>
 
-        <Animated.Text entering={FadeInDown.duration(400).delay(300).springify()} style={[styles.title, { color: colors.text }]}>
-          {t('checkout.orderConfirmed', 'Commande confirmée !')} 🎉
-        </Animated.Text>
+        <Animated.View entering={FadeInDown.duration(400).delay(300).springify()} style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {t('checkout.orderConfirmed', 'Commande confirmée !')}
+          </Text>
+          <PartyPopper color={colors.primary} size={26} />
+        </Animated.View>
 
         <Animated.Text entering={FadeInDown.duration(400).delay(400).springify()} style={[styles.subtitle, { color: colors.textSecondary }]}>
           {t('checkout.orderConfirmedSub', 'Merci pour votre confiance. Votre commande est en cours de préparation.')}
@@ -86,9 +89,12 @@ export default function ConfirmedScreen() {
         </Animated.View>
 
         {/* Email note */}
-        <Animated.Text entering={FadeInUp.duration(400).delay(650).springify()} style={[styles.email, { color: colors.textSecondary }]}>
-          📧 {t('checkout.smsRecap', 'Un récapitulatif vous a été envoyé par SMS.')}
-        </Animated.Text>
+        <Animated.View entering={FadeInUp.duration(400).delay(650).springify()} style={styles.emailRow}>
+          <Mail color={colors.textSecondary} size={14} />
+          <Text style={[styles.email, { color: colors.textSecondary }]}>
+            {t('checkout.smsRecap', 'Un récapitulatif vous a été envoyé par SMS.')}
+          </Text>
+        </Animated.View>
 
         {/* Actions */}
         <Animated.View entering={FadeInUp.duration(400).delay(750).springify()} style={{ width: '100%', gap: 12 }}>
@@ -124,6 +130,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { alignItems: 'center', padding: 22, paddingTop: 32, gap: 16 },
   animWrap: { marginBottom: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   title: { fontSize: 28, fontWeight: '900', textAlign: 'center' },
   subtitle: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
 
@@ -150,6 +157,7 @@ const styles = StyleSheet.create({
   },
   timelineLabel: { fontSize: 13, flex: 1 },
 
+  emailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   email: { fontSize: 13, textAlign: 'center' },
 
   button: {

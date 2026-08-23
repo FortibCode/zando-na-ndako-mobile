@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, {
   FadeInDown, FadeInUp, ZoomIn,
   useAnimatedStyle, useSharedValue, withSpring, withSequence,
@@ -162,9 +163,9 @@ export default function RatingScreen() {
     setComment('');
 
     if (lastErrorMessage) {
-      Alert.alert(t('common.error', 'Erreur'), lastErrorMessage);
+      alert(t('common.error', 'Erreur'), lastErrorMessage);
     } else if (anySuccess) {
-      Alert.alert(
+      alert(
         t('rating.successTitle', 'Merci !'),
         t('rating.successDesc', 'Votre avis a bien été envoyé.'),
         [{ text: 'OK', onPress: () => router.back() }]

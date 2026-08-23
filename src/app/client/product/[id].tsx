@@ -6,7 +6,7 @@ import Animated, {
   FadeIn, FadeInDown, FadeInUp, ZoomIn, SlideInDown,
   useAnimatedStyle, useSharedValue, withSpring, withSequence, withTiming,
 } from 'react-native-reanimated';
-import { ArrowLeft, Heart, ShoppingCart, Star, MapPin, Check, Plus, Minus } from 'lucide-react-native';
+import { ArrowLeft, Heart, ShoppingCart, Star, MapPin, Check, Plus, Minus, Store, ChevronRight } from 'lucide-react-native';
 import { useClient } from '@/contexts/client-context';
 import { BLUE, RED } from '@/components/client-ui';
 import { useDiaspora, formatEur, formatUsd } from '@/contexts/diaspora-context';
@@ -146,6 +146,23 @@ export default function ProductDetailsScreen() {
           </Text>
         </Animated.View>
 
+        {/* Boutique */}
+        {product.vendorId && (
+          <Animated.View entering={FadeInUp.duration(400).delay(470).springify()}>
+            <Pressable
+              onPress={() => router.push(`/client/boutique/${product.vendorId}` as any)}
+              style={styles.vendorRow}
+            >
+              <View style={styles.vendorIcon}><Store color={BLUE} size={18} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.vendorLabel}>{t('productExtra.soldBy', 'Vendu par')}</Text>
+                <Text style={styles.vendorName}>{product.vendorName}</Text>
+              </View>
+              <ChevronRight color={Palette.muted} size={18} />
+            </Pressable>
+          </Animated.View>
+        )}
+
         {/* Add to Cart Button */}
         <Animated.View
           entering={SlideInDown.duration(500).delay(500).springify()}
@@ -157,9 +174,9 @@ export default function ProductDetailsScreen() {
             onPressOut={() => { btnScale.value = withSpring(1); }}
             style={styles.button}
           >
-            <ShoppingCart color="#FFF" size={22} />
+            {added ? <Check color="#FFF" size={22} /> : <ShoppingCart color="#FFF" size={22} />}
             <Text style={styles.buttonText}>
-              {added ? t('product.added', 'Ajouté ✓') : t('product.addToCart', 'Ajouter au panier')}
+              {added ? t('product.added', 'Ajouté') : t('product.addToCart', 'Ajouter au panier')}
             </Text>
           </Pressable>
         </Animated.View>
@@ -222,6 +239,17 @@ const styles = StyleSheet.create({
   outOfStockBadge: { backgroundColor: Palette.coralSoft },
   outOfStockText: { color: Palette.coral },
   divider: { height: 1, backgroundColor: Palette.border, marginVertical: 22 },
+  vendorRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radii.md,
+    backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border,
+  },
+  vendorIcon: {
+    width: 38, height: 38, borderRadius: Radii.sm,
+    backgroundColor: Palette.navySoft, alignItems: 'center', justifyContent: 'center',
+  },
+  vendorLabel: { color: Palette.muted, fontSize: 11, fontWeight: '700' },
+  vendorName: { color: Palette.ink, fontSize: 15, fontWeight: '800', marginTop: 1 },
   heading: {
     color: Palette.ink,
     fontSize: 19,

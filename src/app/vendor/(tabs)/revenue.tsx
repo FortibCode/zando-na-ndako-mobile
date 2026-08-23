@@ -26,7 +26,7 @@ export default function VendorRevenueScreen() {
 
   const periodData: Record<PeriodId, { revenue: number; orders: number; label: string }> = {
     jour: { revenue: stats.revenuJour, orders: stats.commandesJour, label: t('vendorRevenue.revenueOfDay', 'du jour') },
-    semaine: { revenue: stats.ventesSemaine.reduce((s, v) => s + v.montant, 0), orders: 42, label: t('vendorRevenue.revenueOfWeek', 'de la semaine') },
+    semaine: { revenue: stats.ventesSemaine.reduce((s, v) => s + v.montant, 0), orders: stats.commandesSemaine, label: t('vendorRevenue.revenueOfWeek', 'de la semaine') },
     mois: { revenue: stats.chiffreAffaires, orders: stats.commandesTotal, label: t('vendorRevenue.revenueOfMonth', 'du mois') },
     total: { revenue: stats.chiffreAffaires, orders: stats.commandesTotal, label: t('vendorRevenue.revenueTotalLabel', 'total') },
   };

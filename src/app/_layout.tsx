@@ -9,6 +9,7 @@ import { VendorProvider } from '@/contexts/vendor-context';
 import { DeliveryProvider } from '@/contexts/delivery-context';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { LanguageProvider } from '@/contexts/language-context';
+import { AlertProvider } from '@/contexts/alert-context';
 import {
   initPushNotificationListeners,
   registerForPushNotificationsAsync,
@@ -42,23 +43,25 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <LanguageProvider>
-        <LocalSignupProvider>
-          <VendorSignupProvider>
-            <DeliverySignupProvider>
-              <DeliveryProvider>
-                <ClientProvider>
-                  <DiasporaProvider>
-                    <VendorProvider>
-                      <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 220 }} />
-                    </VendorProvider>
-                  </DiasporaProvider>
-                </ClientProvider>
-              </DeliveryProvider>
-            </DeliverySignupProvider>
-          </VendorSignupProvider>
-        </LocalSignupProvider>
-      </LanguageProvider>
+      <AlertProvider>
+        <LanguageProvider>
+          <LocalSignupProvider>
+            <VendorSignupProvider>
+              <DeliverySignupProvider>
+                <DeliveryProvider>
+                  <ClientProvider>
+                    <DiasporaProvider>
+                      <VendorProvider>
+                        <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 220 }} />
+                      </VendorProvider>
+                    </DiasporaProvider>
+                  </ClientProvider>
+                </DeliveryProvider>
+              </DeliverySignupProvider>
+            </VendorSignupProvider>
+          </LocalSignupProvider>
+        </LanguageProvider>
+      </AlertProvider>
     </ThemeProvider>
   );
 }

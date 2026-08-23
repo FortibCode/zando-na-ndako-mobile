@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { Bike, Clock3, MapPin, Phone, Store, UserRound, WalletCards, X, PackageSearch } from 'lucide-react-native';
 import { Card, D, DeliveryScreen, Header, OutlineButton, PrimaryButton, deliveryStyles, styles } from '@/components/delivery-ui';
@@ -83,7 +84,7 @@ export default function Mission() {
       setAccepted(true);
       router.push('/delivery/navigation' as any);
     } catch (err: any) {
-      Alert.alert(t('deliveryMission.unavailableAlertTitle', 'Mission indisponible'), err.message || t('deliveryMission.unavailableAlertDesc', "Cette mission n'est plus disponible, elle a probablement déjà été prise."));
+      alert(t('deliveryMission.unavailableAlertTitle', 'Mission indisponible'), err.message || t('deliveryMission.unavailableAlertDesc', "Cette mission n'est plus disponible, elle a probablement déjà été prise."));
       setAccepting(false);
     }
   }, [details, acceptMission]);

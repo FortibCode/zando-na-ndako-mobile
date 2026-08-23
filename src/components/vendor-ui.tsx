@@ -19,9 +19,12 @@ export { BLUE, RED, GOLD, GREEN };
 
 export function VendorMenu() {
   const [open, setOpen] = useState(false);
-  const { boutique } = useVendor();
+  const { boutique, documents } = useVendor();
   const { colors } = useTheme();
   const { t } = useLanguage();
+  // Même correctif que vendor/(tabs)/profile.tsx : affiche la vraie photo de la boutique si le
+  // vendeur en a envoyé une, sinon l'emoji dérivé du type de commerce en repli.
+  const boutiquePhotoUrl = documents.find((d) => d.id === 'photo_boutique')?.url;
 
   const MENU_ITEMS = [
     [t('vendorNav.home', 'Accueil'), Home, '/vendor/(tabs)'],
@@ -75,7 +78,11 @@ export function VendorMenu() {
 
             <View style={[styles.drawerProfile, { borderBottomColor: colors.border }]}>
               <View style={[styles.drawerAvatarWrap, { backgroundColor: colors.primarySoft }]}>
-                <Text style={styles.drawerAvatarEmoji}>{boutique.emoji}</Text>
+                {boutiquePhotoUrl ? (
+                  <Image source={{ uri: boutiquePhotoUrl }} style={styles.drawerAvatarImg} contentFit="cover" />
+                ) : (
+                  <Text style={styles.drawerAvatarEmoji}>{boutique.emoji}</Text>
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text numberOfLines={1} style={[styles.drawerName, { color: colors.text }]}>{boutique.nom}</Text>
@@ -241,9 +248,10 @@ const styles = StyleSheet.create({
     paddingBottom: 14, marginBottom: 8,
   },
   drawerAvatarWrap: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
     alignItems: 'center', justifyContent: 'center',
   },
+  drawerAvatarImg: { width: 40, height: 40 },
   drawerAvatarEmoji: { fontSize: 18 },
   drawerName: { fontSize: 13.5, fontWeight: '800' },
   drawerSub: { fontSize: 11.5, marginTop: 1 },

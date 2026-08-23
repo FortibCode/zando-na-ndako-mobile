@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View, Pressable, Linking } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
-import { ArrowLeft, Phone, MessageCircle, Bike, Home, MapPin, CheckCircle, Package, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, Phone, MessageCircle, Bike, Home, MapPin, CheckCircle, Package, RefreshCw, User } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { fetchClientCommandeSuivi, type ApiCommandeSuivi } from '@/services/api';
@@ -119,7 +119,7 @@ export default function TrackingScreen() {
             style={[styles.driverCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
           >
             <View style={[styles.driverAvatar, { backgroundColor: colors.primarySoft }]}>
-              <Text style={styles.driverEmoji}>👨🏾</Text>
+              <User color={colors.primary} size={32} />
             </View>
             <View style={styles.driverCopy}>
               <Text style={[styles.driverName, { color: colors.text }]}>{driverName}</Text>
@@ -232,7 +232,6 @@ const styles = StyleSheet.create({
     width: 60, height: 60, borderRadius: 30,
     alignItems: 'center', justifyContent: 'center',
   },
-  driverEmoji: { fontSize: 38 },
   driverCopy: { flex: 1 },
   driverName: { fontSize: 19, fontWeight: '800' },
   driverRating: { fontSize: 15, marginTop: 4 },

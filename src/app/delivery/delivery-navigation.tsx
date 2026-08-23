@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -80,9 +81,9 @@ export default function DeliveryNavigation() {
     setDeparting(true);
     try {
       await confirmDepart();
-      Alert.alert(t('deliveryToClient.departConfirmedTitle', 'Départ confirmé'), t('deliveryToClient.departConfirmedDesc', 'Vous êtes en route vers le client.'));
+      alert(t('deliveryToClient.departConfirmedTitle', 'Départ confirmé'), t('deliveryToClient.departConfirmedDesc', 'Vous êtes en route vers le client.'));
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('deliveryToClient.departErrorDesc', 'Impossible de confirmer le départ.'));
+      alert('Erreur', err.message || t('deliveryToClient.departErrorDesc', 'Impossible de confirmer le départ.'));
     } finally {
       setDeparting(false);
     }
@@ -91,7 +92,7 @@ export default function DeliveryNavigation() {
   const handleTakeProofPhoto = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t('deliveryToClient.photoPermTitle', 'Autorisation requise'), t('deliveryToClient.photoPermDesc', "Activez l'accès à l'appareil photo pour prendre la preuve de livraison."));
+      alert(t('deliveryToClient.photoPermTitle', 'Autorisation requise'), t('deliveryToClient.photoPermDesc', "Activez l'accès à l'appareil photo pour prendre la preuve de livraison."));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -106,7 +107,7 @@ export default function DeliveryNavigation() {
 
   const handleConfirmLivraison = useCallback(async () => {
     if (!proofPhoto) {
-      Alert.alert(t('deliveryToClient.photoRequiredTitle', 'Photo requise'), t('deliveryToClient.photoRequiredDesc', 'Prenez une photo de preuve de livraison avant de confirmer.'));
+      alert(t('deliveryToClient.photoRequiredTitle', 'Photo requise'), t('deliveryToClient.photoRequiredDesc', 'Prenez une photo de preuve de livraison avant de confirmer.'));
       return;
     }
     setDelivering(true);
@@ -114,7 +115,7 @@ export default function DeliveryNavigation() {
       await confirmLivraison(proofPhoto);
       handleComplete();
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('deliveryToClient.deliverErrorDesc', 'Impossible de confirmer la livraison.'));
+      alert('Erreur', err.message || t('deliveryToClient.deliverErrorDesc', 'Impossible de confirmer la livraison.'));
       setDelivering(false);
     }
   }, [confirmLivraison, handleComplete, proofPhoto]);

@@ -1,5 +1,19 @@
-import React, { createContext, useContext, useCallback, useMemo, useReducer, type ReactNode } from 'react';
-import api, { DELIVERY_ENDPOINTS, clearAuthToken, setDeliveryUser, getDeliveryUser, fetchDeliveryNavigation, fetchLivreurAvis } from '@/services/api';
+import React, { createContext, useContext, useCallback, useMemo, useReducer, useRef, type ReactNode } from 'react';
+import api, {
+  DELIVERY_ENDPOINTS,
+  clearAuthToken,
+  setDeliveryUser,
+  getDeliveryUser,
+  onSessionChange,
+  fetchDeliveryNavigation,
+  fetchLivreurAvis,
+  fetchSupportTickets,
+  fetchSupportTicketDetail,
+  ouvrirTicketSupport,
+  repondreTicketSupport,
+  appendFilePart,
+  type ApiSupportTicket,
+} from '@/services/api';
 import { AppState } from 'react-native';
 import type {
   DeliveryContextType,
@@ -8,6 +22,31 @@ import type {
   DeliveryMission,
   SupportMessage,
 } from '@/types/delivery';
+
+// Convertit un ticket support (description + fil de réponses) en messages de conversation :
+// la description initiale du ticket EST le premier message ("driver"), les réponses suivent,
+// et le sender est déduit de l'auteur réel (le livreur lui-même vs. un agent support/admin).
+function ticketToSupportMessages(ticket: ApiSupportTicket, driverId?: string): SupportMessage[] {
+  const messages: SupportMessage[] = [
+    {
+      id: `ticket_${ticket.id}`,
+      text: ticket.description,
+      sender: 'driver',
+      timestamp: ticket.created_at,
+      status: 'sent',
+    },
+  ];
+  for (const reponse of ticket.reponses || []) {
+    messages.push({
+      id: reponse.id,
+      text: reponse.message,
+      sender: reponse.auteur_id === driverId ? 'driver' : 'support',
+      timestamp: reponse.created_at,
+      status: 'sent',
+    });
+  }
+  return messages;
+}
 
 // ─── Initial State ───
 const initialState: DeliveryState = {
@@ -74,6 +113,13 @@ function deliveryReducer(state: DeliveryState, action: any): DeliveryState {
         supportLoading: false,
       };
     }
+    case 'UPDATE_SUPPORT_MESSAGE':
+      return {
+        ...state,
+        supportMessages: state.supportMessages.map((m) =>
+          m.id === action.payload.id ? { ...m, ...action.payload.changes } : m
+        ),
+      };
     case 'SET_SUPPORT_LOADING':
       return { ...state, supportLoading: action.payload };
     case 'SET_SUPPORT_ERROR':
@@ -101,6 +147,9 @@ const DeliveryContext = createContext<DeliveryContextType | null>(null);
 // ─── Provider ───
 export function DeliveryProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(deliveryReducer, initialState);
+  // Le fil de support est porté par un seul ticket "actif" (POST /support/tickets pour l'ouvrir,
+  // POST /support/tickets/{id}/repondre ensuite) — son id n'a pas besoin de déclencher de re-render.
+  const activeTicketIdRef = useRef<string | null>(null);
 
   // ─── Dashboard ───
   const fetchDashboard = useCallback(async () => {
@@ -271,11 +320,7 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
     try {
       const formData = new FormData();
       if (photo) {
-        formData.append('photo_preuve', {
-          uri: photo,
-          name: `preuve_${Date.now()}.jpg`,
-          type: 'image/jpeg',
-        } as any);
+        await appendFilePart(formData, 'photo_preuve', { uri: photo, type: 'image/jpeg' }, `preuve_${Date.now()}.jpg`);
       }
       await api.post(DELIVERY_ENDPOINTS.LIVRAISON_LIVRER(livraisonId), formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -302,11 +347,7 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
       const formData = new FormData();
       formData.append('motif', `${categorie}: ${motif}`);
       if (photo) {
-        formData.append('photo_incident', {
-          uri: photo,
-          name: `incident_${Date.now()}.jpg`,
-          type: 'image/jpeg',
-        } as any);
+        await appendFilePart(formData, 'photo_incident', { uri: photo, type: 'image/jpeg' }, `incident_${Date.now()}.jpg`);
       }
       await api.post(DELIVERY_ENDPOINTS.LIVRAISON_PROBLEME(livraisonId), formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -375,33 +416,68 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // ─── Fetch Support Conversation ───
+  // /api/support/tickets accepte déjà les rôles client/vendeur/livreur (même endpoint, scope par
+  // request()->user()->id côté contrôleur) : on récupère le ticket le plus récent du livreur (index
+  // renvoie déjà triés par created_at desc) et son détail (description + réponses) pour reconstituer
+  // le fil — la conversation survit ainsi à un redémarrage de l'app au lieu de vivre en state local.
+  const fetchSupportMessages = useCallback(async () => {
+    dispatch({ type: 'SET_SUPPORT_LOADING', payload: true });
+    try {
+      const tickets = await fetchSupportTickets();
+      if (tickets.length === 0) {
+        activeTicketIdRef.current = null;
+        dispatch({ type: 'SET_SUPPORT_MESSAGES', payload: [] });
+        return;
+      }
+      const latest = tickets[0];
+      activeTicketIdRef.current = latest.id;
+      const detail = await fetchSupportTicketDetail(latest.id);
+      dispatch({ type: 'SET_SUPPORT_MESSAGES', payload: ticketToSupportMessages(detail, state.driver?.id) });
+    } catch (err: any) {
+      dispatch({ type: 'SET_SUPPORT_ERROR', payload: err.message || 'Erreur chargement de la conversation' });
+    }
+  }, [state.driver]);
+
   // ─── Send Support Message ───
+  // Premier message : ouvre un nouveau ticket (categorie 'livreur') via POST /support/tickets.
+  // Messages suivants : POST /support/tickets/{id}/repondre sur le ticket actif. `repondre` ne
+  // renvoie pas la réponse créée, donc on recharge le détail du ticket ensuite pour resynchroniser
+  // le fil complet avec les id/horodatages réels du serveur (et faire disparaître le message
+  // optimiste temporaire au profit de la version canonique).
   const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
     const tempId = `msg_${Date.now()}`;
-    const newMsg: SupportMessage = {
+    const optimistic: SupportMessage = {
       id: tempId,
-      text: text.trim(),
+      text: trimmed,
       sender: 'driver',
       timestamp: new Date().toISOString(),
       status: 'sending',
     };
-    dispatch({ type: 'ADD_SUPPORT_MESSAGE', payload: newMsg });
+    dispatch({ type: 'ADD_SUPPORT_MESSAGE', payload: optimistic });
 
     try {
-      // Simulate API call - replace with actual endpoint when available
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      dispatch({
-        type: 'ADD_SUPPORT_MESSAGE',
-        payload: { ...newMsg, status: 'sent', id: `msg_sent_${Date.now()}` },
-      });
-    } catch {
-      dispatch({
-        type: 'ADD_SUPPORT_MESSAGE',
-        payload: { ...newMsg, status: 'sent', id: `msg_failed_${Date.now()}` },
-      });
+      let ticketId = activeTicketIdRef.current;
+      if (!ticketId) {
+        const ticket = await ouvrirTicketSupport({
+          categorie: 'livreur',
+          sujet: trimmed.length > 60 ? `${trimmed.slice(0, 57)}...` : trimmed,
+          description: trimmed,
+        });
+        ticketId = ticket.id;
+        activeTicketIdRef.current = ticketId;
+      } else {
+        await repondreTicketSupport(ticketId, trimmed);
+      }
+      const detail = await fetchSupportTicketDetail(ticketId);
+      dispatch({ type: 'SET_SUPPORT_MESSAGES', payload: ticketToSupportMessages(detail, state.driver?.id) });
+    } catch (err: any) {
+      dispatch({ type: 'UPDATE_SUPPORT_MESSAGE', payload: { id: tempId, changes: { status: 'failed' } } });
+      dispatch({ type: 'SET_SUPPORT_ERROR', payload: err.message || "Erreur lors de l'envoi du message" });
     }
-  }, []);
+  }, [state.driver]);
 
   // ─── Logout ───
   const logout = useCallback(async () => {
@@ -415,16 +491,23 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ─── Initial load: try to restore session ───
-  React.useEffect(() => {
-    (async () => {
-      const savedUser = await getDeliveryUser<DeliveryDriver>();
-      if (savedUser) {
-        dispatch({ type: 'SET_DRIVER', payload: savedUser });
-        dispatch({ type: 'SET_AUTHENTICATED', payload: true });
-        dispatch({ type: 'SET_AVAILABILITY', payload: savedUser.statut_disponibilite === 'disponible' });
-      }
-    })();
+  // Relancé à chaque connexion (voir onSessionChange dans services/api.ts), pas seulement au
+  // montage : DeliveryProvider est monté une seule fois pour toute la durée de vie de l'app (voir
+  // _layout.tsx), donc sans ça un changement de compte pendant que l'app tourne déjà laissait le
+  // profil du livreur précédent affiché.
+  const restoreSession = useCallback(async () => {
+    const savedUser = await getDeliveryUser<DeliveryDriver>();
+    if (savedUser) {
+      dispatch({ type: 'SET_DRIVER', payload: savedUser });
+      dispatch({ type: 'SET_AUTHENTICATED', payload: true });
+      dispatch({ type: 'SET_AVAILABILITY', payload: savedUser.statut_disponibilite === 'disponible' });
+    }
   }, []);
+
+  React.useEffect(() => {
+    restoreSession();
+    return onSessionChange(restoreSession);
+  }, [restoreSession]);
 
   // ─── Memoized value ───
   const value = useMemo<DeliveryContextType>(
@@ -443,6 +526,7 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
       fetchRevenue,
       toggleAvailability,
       sendMessage,
+      fetchSupportMessages,
       fetchAvis,
       logout,
     }),
@@ -460,6 +544,7 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
       fetchRevenue,
       toggleAvailability,
       sendMessage,
+      fetchSupportMessages,
       fetchAvis,
       logout,
     ]

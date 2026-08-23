@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { CheckCircle2, Fish, Phone, Store } from 'lucide-react-native';
 import { Card, DeliveryScreen, Header, PrimaryButton, deliveryStyles, styles } from '@/components/delivery-ui';
@@ -22,7 +23,7 @@ export default function Products() {
 
   const handleConfirmCollecte = useCallback(async () => {
     if (!currentMission) {
-      Alert.alert('Erreur', t('deliveryProducts.errorDesc', 'Aucune mission en cours.'));
+      alert('Erreur', t('deliveryProducts.errorDesc', 'Aucune mission en cours.'));
       return;
     }
     setCollecting(true);
@@ -30,7 +31,7 @@ export default function Products() {
       await confirmCollecte();
       router.push('/delivery/delivery-navigation' as any);
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('deliveryProducts.confirmErrorDesc', 'Impossible de confirmer la collecte.'));
+      alert('Erreur', err.message || t('deliveryProducts.confirmErrorDesc', 'Impossible de confirmer la collecte.'));
       setCollecting(false);
     }
   }, [currentMission, confirmCollecte]);

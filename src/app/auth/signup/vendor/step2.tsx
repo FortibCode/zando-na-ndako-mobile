@@ -18,17 +18,7 @@ import { SignupStepper } from '@/components/signup/signup-stepper';
 import { useVendorSignup } from '@/contexts/vendor-signup-context';
 import { BrandColors } from '@/constants/brand';
 import { AUTH_ICONS } from '@/constants/icons';
-import { fetchZones } from '@/services/api';
-
-const CATEGORIES = [
-  { id: 'poissonnier', label: 'Poissonnier & Produits de mer' },
-  { id: 'boucher', label: 'Boucher & Charcutier' },
-  { id: 'maraicher', label: 'Maraîcher & Fruits / Légumes' },
-  { id: 'epicier', label: 'Épicier & Produits alimentaires' },
-  { id: 'artisan', label: 'Artisanat & Fait maison' },
-  { id: 'mode', label: 'Mode & Habillement' },
-  { id: 'autre', label: 'Autre commerce' },
-];
+import { fetchVendeurTypesDisponibles, fetchZones } from '@/services/api';
 
 export default function VendorSignupStep2Screen() {
   const { data, update } = useVendorSignup();
@@ -41,6 +31,18 @@ export default function VendorSignupStep2Screen() {
   const [email, setEmail] = useState(data.email);
   const [zones, setZones] = useState<PickerOption[]>([]);
   const [zonesLoading, setZonesLoading] = useState(true);
+  const [categories, setCategories] = useState<PickerOption[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Liste des types de boutique chargée depuis le backend (App\Models\Vendeur::TYPES_BOUTIQUE) —
+  // remplace une liste codée en dur ici indépendamment de 3 autres copies (web, profil vendeur,
+  // seeder), qui avaient fini par diverger dans les données réelles.
+  useEffect(() => {
+    fetchVendeurTypesDisponibles()
+      .then((types) => setCategories(types.map((t) => ({ id: t, label: t }))))
+      .catch(() => setCategories([]))
+      .finally(() => setCategoriesLoading(false));
+  }, []);
 
   // Les zones venaient d'une liste codée en dur incluant des villes (Pointe-Noire, Dolisie,
   // Nkayi) qui n'existent pas dans zones_livraison — le choix de l'utilisateur n'était jamais
@@ -90,14 +92,18 @@ export default function VendorSignupStep2Screen() {
             onChangeText={setStoreName}
           />
 
-          <SignupPickerField
-            label="Catégorie principale de produits"
-            options={CATEGORIES}
-            pickerTitle="Sélectionnez une catégorie"
-            required
-            value={storeCategory}
-            onSelect={(option) => setStoreCategory(option.label)}
-          />
+          {categoriesLoading ? (
+            <ActivityIndicator color={BrandColors.blue} style={{ marginVertical: 12 }} />
+          ) : (
+            <SignupPickerField
+              label="Catégorie principale de produits"
+              options={categories}
+              pickerTitle="Sélectionnez une catégorie"
+              required
+              value={storeCategory}
+              onSelect={(option) => setStoreCategory(option.label)}
+            />
+          )}
 
           {zonesLoading ? (
             <ActivityIndicator color={BrandColors.blue} style={{ marginVertical: 12 }} />

@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -68,11 +69,11 @@ export default function EditProductScreen() {
         description: description.trim(), disponible, image: photo,
         derniereMaj: new Date().toLocaleDateString('fr-FR'),
       });
-      Alert.alert(t('vendorEditProduct.updatedTitle', '✅ Produit mis à jour'), `« ${nom.trim()} » ${t('vendorEditProduct.updatedDescSuffix', 'a bien été enregistré.')}`, [
+      alert(t('vendorEditProduct.updatedTitle', '✅ Produit mis à jour'), `« ${nom.trim()} » ${t('vendorEditProduct.updatedDescSuffix', 'a bien été enregistré.')}`, [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      Alert.alert('Erreur', e.message || t('vendorEditProduct.updateErrorDesc', 'Impossible de mettre à jour ce produit.'));
+      alert('Erreur', e.message || t('vendorEditProduct.updateErrorDesc', 'Impossible de mettre à jour ce produit.'));
     } finally {
       setSaving(false);
     }

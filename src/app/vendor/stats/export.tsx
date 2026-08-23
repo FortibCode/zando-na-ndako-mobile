@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
@@ -23,7 +24,7 @@ export default function ExportRevenueScreen() {
   const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');
 
   const handleExport = () => {
-    Alert.alert(t('vendorExport.comingSoonTitle', 'Bientôt disponible'), `${t('vendorExport.comingSoonDescPrefix', "L'export")} ${format === 'pdf' ? 'PDF' : 'Excel'} ${t('vendorExport.comingSoonDescMid', 'de vos revenus')} (${period}) ${t('vendorExport.comingSoonDescSuffix', 'sera bientôt disponible.')}`);
+    alert(t('vendorExport.comingSoonTitle', 'Bientôt disponible'), `${t('vendorExport.comingSoonDescPrefix', "L'export")} ${format === 'pdf' ? 'PDF' : 'Excel'} ${t('vendorExport.comingSoonDescMid', 'de vos revenus')} (${period}) ${t('vendorExport.comingSoonDescSuffix', 'sera bientôt disponible.')}`);
   };
 
   return (

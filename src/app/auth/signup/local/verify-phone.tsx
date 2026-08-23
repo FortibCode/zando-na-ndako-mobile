@@ -3,7 +3,8 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 
 import { AuthBrand, BackButton, SecurityNote } from '@/components/auth-ui';
 import { SignupOtpFields } from '@/components/signup/signup-otp-fields';
@@ -59,7 +60,7 @@ export default function LocalSignupVerifyPhoneScreen() {
         setStatus('ready');
       } catch (error) {
         setStatus('registration_failed');
-        Alert.alert(
+        alert(
           'Inscription impossible',
           error instanceof Error ? error.message : 'Vérifiez les informations saisies et le serveur.',
         );
@@ -88,9 +89,9 @@ export default function LocalSignupVerifyPhoneScreen() {
       setOtpDev(code || null);
       setResendTimer(RESEND_DELAY);
       setOtpKey((k) => k + 1);
-      Alert.alert('Code renvoyé', 'Un nouveau code vous a été envoyé.');
+      alert('Code renvoyé', 'Un nouveau code vous a été envoyé.');
     } catch (error) {
-      Alert.alert('Erreur', error instanceof Error ? error.message : "Impossible de renvoyer le code.");
+      alert('Erreur', error instanceof Error ? error.message : "Impossible de renvoyer le code.");
     }
   }, [canResend, phoneNumber]);
 
@@ -107,7 +108,7 @@ export default function LocalSignupVerifyPhoneScreen() {
       router.replace('/auth/signup/local/success' as any);
     } catch (error) {
       setOtpKey((k) => k + 1);
-      Alert.alert('Code incorrect', error instanceof Error ? error.message : 'Vérifiez le code reçu et réessayez.');
+      alert('Code incorrect', error instanceof Error ? error.message : 'Vérifiez le code reçu et réessayez.');
     } finally {
       setVerifying(false);
     }

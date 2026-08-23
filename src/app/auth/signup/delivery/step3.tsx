@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 
 import { BackButton, InputField, PrimaryButton, StepProgress, authStyles } from '@/components/auth-ui';
 import { useDeliverySignup } from '@/contexts/delivery-signup-context';
@@ -68,7 +69,7 @@ export default function DeliverySignupStep3Screen() {
       // Ne plus avancer vers l'écran de vérification quand l'inscription a réellement échoué —
       // le compte n'existe pas côté serveur, la vérification OTP suivante n'aurait aucun sens.
       setSubmitting(false);
-      Alert.alert(
+      alert(
         'Inscription impossible',
         error instanceof Error ? error.message : 'Vérifiez les informations saisies et le serveur.',
       );

@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import { ArrowLeft, Plus, Minus } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
@@ -25,7 +26,7 @@ export default function ProductStockScreen() {
     if (!n) return;
     setAddQty('');
     adjustStock(product.id, n, 'ajout').catch((e: any) => {
-      Alert.alert('Erreur', e.message || t('vendorStock.updateErrorDesc', 'Impossible de mettre à jour le stock.'));
+      alert('Erreur', e.message || t('vendorStock.updateErrorDesc', 'Impossible de mettre à jour le stock.'));
     });
   };
 
@@ -34,7 +35,7 @@ export default function ProductStockScreen() {
     if (!n) return;
     setRemoveQty('');
     adjustStock(product.id, n, 'retrait').catch((e: any) => {
-      Alert.alert('Erreur', e.message || t('vendorStock.updateErrorDesc', 'Impossible de mettre à jour le stock.'));
+      alert('Erreur', e.message || t('vendorStock.updateErrorDesc', 'Impossible de mettre à jour le stock.'));
     });
   };
 

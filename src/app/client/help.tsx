@@ -1,8 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import {
-  Alert, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View,
-} from 'react-native';
+import { Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
   ArrowLeft, MessageCircle, Phone, Mail, HelpCircle, ChevronRight,
@@ -52,7 +51,7 @@ const { colors, isDark } = useTheme();
             <Text style={[styles.contactText, { color: colors.primary }]}>{t('helpFaq.email', 'Email')}</Text>
           </Pressable>
           <Pressable
-            onPress={() => Alert.alert(t('helpFaq.chat', 'Chat'), t('helpFaq.chatComingSoon', 'Le chat en direct sera bientôt disponible. Contactez-nous par téléphone ou email en attendant.'))}
+            onPress={() => alert(t('helpFaq.chat', 'Chat'), t('helpFaq.chatComingSoon', 'Le chat en direct sera bientôt disponible. Contactez-nous par téléphone ou email en attendant.'))}
             style={[styles.contactBtn, { backgroundColor: colors.error + '15', borderColor: colors.error + '40' }]}
           >
             <MessageCircle color={colors.error} size={22} />
@@ -79,7 +78,10 @@ const { colors, isDark } = useTheme();
 
         <Animated.View entering={FadeInUp.duration(350).delay(500).springify()}>
           <View style={[styles.contactCard, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
-            <Text style={[styles.contactTitle, { color: colors.primary }]}>📞 {t('helpFaq.supportClient', 'Support client')}</Text>
+            <View style={styles.contactTitleRow}>
+              <Phone color={colors.primary} size={15} />
+              <Text style={[styles.contactTitle, { color: colors.primary }]}>{t('helpFaq.supportClient', 'Support client')}</Text>
+            </View>
             <Text style={[styles.contactLine, { color: colors.textSecondary }]}>+242 06 000 00 00</Text>
             <Text style={[styles.contactLine, { color: colors.textSecondary }]}>support@zandonandako.cg</Text>
             <Text style={[styles.contactHours, { color: colors.textTertiary }]}>{t('helpFaq.hours', 'Lun–Dim · 7h–21h')}</Text>
@@ -146,7 +148,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 8,
   },
-  contactTitle: { fontSize: 15, fontWeight: '800', marginBottom: 6 },
+  contactTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  contactTitle: { fontSize: 15, fontWeight: '800' },
   contactLine: { fontSize: 13.5, marginTop: 2 },
   contactHours: { fontSize: 12, marginTop: 6 },
 });

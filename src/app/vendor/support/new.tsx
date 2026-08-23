@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Send } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
@@ -31,11 +32,11 @@ export default function NewSupportScreen() {
     setSubmitting(true);
     try {
       await envoyerMessageVendeur(objet, message.trim());
-      Alert.alert(t('vendorSupportNew.sentTitle', '✅ Message envoyé'), t('vendorSupportNew.sentDesc', 'Votre demande a été transmise à l\'équipe Zando na Ndako. Vous recevrez une réponse sous 24h.'), [
+      alert(t('vendorSupportNew.sentTitle', '✅ Message envoyé'), t('vendorSupportNew.sentDesc', 'Votre demande a été transmise à l\'équipe Zando na Ndako. Vous recevrez une réponse sous 24h.'), [
         { text: 'OK', onPress: () => router.replace('/vendor/support' as any) },
       ]);
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('vendorSupportNew.errorDesc', 'Impossible d\'envoyer le message.'));
+      alert('Erreur', err.message || t('vendorSupportNew.errorDesc', 'Impossible d\'envoyer le message.'));
     } finally {
       setSubmitting(false);
     }

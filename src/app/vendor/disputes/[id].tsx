@@ -1,10 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, SafeAreaView,
-  ScrollView, StyleSheet, Text, TextInput, View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Send, Paperclip, ShieldAlert, Wallet } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -73,7 +71,7 @@ export default function VendorDisputeDetailScreen() {
     if (!id || uploading) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t('vendorDisputeDetail.photoPermTitle', 'Permission requise'), t('vendorDisputeDetail.photoPermDesc', "L'accès aux photos est nécessaire pour joindre une preuve."));
+      alert(t('vendorDisputeDetail.photoPermTitle', 'Permission requise'), t('vendorDisputeDetail.photoPermDesc', "L'accès aux photos est nécessaire pour joindre une preuve."));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
@@ -84,7 +82,7 @@ export default function VendorDisputeDetailScreen() {
       await uploaderPreuveLitige(id, { uri: asset.uri, fileName: asset.fileName, type: asset.mimeType || 'image/jpeg' });
       await load({ silent: true });
     } catch (err: any) {
-      Alert.alert('Erreur', err.message || t('vendorDisputeDetail.uploadError', "Impossible d'envoyer cette preuve."));
+      alert('Erreur', err.message || t('vendorDisputeDetail.uploadError', "Impossible d'envoyer cette preuve."));
     } finally {
       setUploading(false);
     }

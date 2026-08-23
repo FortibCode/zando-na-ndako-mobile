@@ -58,7 +58,7 @@ export default function DeliveryReviewsScreen() {
           </View>
         ) : reviews.length === 0 ? (
           <Animated.View entering={FadeInUp.duration(400).springify()} style={styles.empty}>
-            <Text style={styles.emptyEmoji}>⭐</Text>
+            <Star color={colors.gold} fill={colors.gold} size={48} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('deliveryReviews.emptyTitle', 'Aucun avis pour le moment')}</Text>
             <Text style={[styles.emptySub, { color: colors.textSecondary }]}>{t('deliveryReviews.emptyDesc', 'Les avis laissés par vos clients après une livraison apparaîtront ici.')}</Text>
           </Animated.View>
@@ -113,7 +113,6 @@ const styles = StyleSheet.create({
 
   loadingBox: { paddingVertical: 40, alignItems: 'center' },
   empty: { alignItems: 'center', paddingVertical: 48, gap: 8 },
-  emptyEmoji: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '900' },
   emptySub: { fontSize: 14, textAlign: 'center' },
 

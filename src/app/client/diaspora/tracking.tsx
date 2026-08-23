@@ -7,7 +7,7 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withTiming, withRepeat, withSequence, Easing,
 } from 'react-native-reanimated';
 import {
-  ArrowLeft, MessageCircle, Bike, Home, CheckCircle, CheckCircle2, Package, ShoppingBag,
+  ArrowLeft, MessageCircle, Bike, Home, CheckCircle, CheckCircle2, Package, ShoppingBag, User,
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useDiaspora } from '@/contexts/diaspora-context';
@@ -171,7 +171,7 @@ export default function DiasporaTrackingScreen() {
           {/* Driver Card — uniquement si un livreur est réellement assigné */}
           {shipment?.livreur ? (
             <Animated.View entering={FadeInUp.duration(400).delay(220).springify()} style={[styles.driverCard, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow }]}>
-              <View style={[styles.driverAvatar, { backgroundColor: colors.primarySoft }]}><Text style={styles.driverEmoji}>👨🏾</Text></View>
+              <View style={[styles.driverAvatar, { backgroundColor: colors.primarySoft }]}><User color={colors.primary} size={26} /></View>
               <View style={styles.driverCopy}>
                 <Text style={[styles.driverName, { color: colors.text }]}>{shipment.livreur}</Text>
                 <Text style={[styles.driverRating, { color: colors.textSecondary }]}>{t('diaspora.tracking.driverLabel', 'Livreur')}</Text>
@@ -274,7 +274,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
   driverAvatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  driverEmoji: { fontSize: 30 },
   driverCopy: { flex: 1 },
   driverName: { fontSize: 16, fontWeight: '800' },
   driverRating: { fontSize: 13, marginTop: 2 },

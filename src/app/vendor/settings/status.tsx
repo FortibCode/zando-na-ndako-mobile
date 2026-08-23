@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react-native';
 import { useVendor, type BoutiqueStatut } from '@/contexts/vendor-context';
@@ -20,10 +21,22 @@ export default function StoreStatusScreen() {
   ];
   const [statut, setStatut] = useState<BoutiqueStatut>(boutique.statut);
   const [message, setMessage] = useState(boutique.messageClients);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    updateBoutiqueStatus(statut, message.trim());
-    router.back();
+  // N'attendait auparavant jamais la promesse renvoyée par updateBoutiqueStatus() (qui appelle
+  // désormais réellement PUT /vendeur/statut-boutique) : l'écran revenait en arrière et laissait
+  // croire à un succès même en cas d'échec réseau, sans jamais informer le vendeur.
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await updateBoutiqueStatus(statut, message.trim());
+      router.back();
+    } catch (e: any) {
+      alert('Erreur', e.message || t('vendorStoreStatus.errorDesc', 'Impossible de mettre à jour le statut de la boutique.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -73,8 +86,8 @@ export default function StoreStatusScreen() {
       </ScrollView>
 
       <Animated.View entering={FadeInUp.duration(400).delay(340).springify()} style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        <Pressable onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-          <Text style={styles.saveBtnText}>{t('vendorStoreStatus.save', 'Enregistrer')}</Text>
+        <Pressable onPress={handleSave} disabled={saving} style={[styles.saveBtn, { backgroundColor: colors.primary }, saving && { opacity: 0.6 }]}>
+          {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>{t('vendorStoreStatus.save', 'Enregistrer')}</Text>}
         </Pressable>
       </Animated.View>
     </SafeAreaView>

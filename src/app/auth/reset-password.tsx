@@ -1,16 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 
 import { AuthBrand, BackButton, InputField, OtpFields, PrimaryButton, authStyles } from '@/components/auth-ui';
 import { ApiError, forgotPassword, resetPassword } from '@/services/api';
@@ -32,9 +24,9 @@ export default function ResetPasswordScreen() {
     setResending(true);
     try {
       await forgotPassword(credential);
-      Alert.alert('Code renvoyé', 'Un nouveau code vous a été envoyé.');
+      alert('Code renvoyé', 'Un nouveau code vous a été envoyé.');
     } catch {
-      Alert.alert('Erreur', 'Impossible de renvoyer le code. Veuillez réessayer.');
+      alert('Erreur', 'Impossible de renvoyer le code. Veuillez réessayer.');
     } finally {
       setResending(false);
     }
@@ -46,7 +38,7 @@ export default function ResetPasswordScreen() {
     setErrorMessage('');
     try {
       await resetPassword(credential, code, password);
-      Alert.alert(
+      alert(
         'Mot de passe réinitialisé',
         'Votre mot de passe a été changé avec succès. Connectez-vous avec votre nouveau mot de passe.',
         [{ text: 'OK', onPress: () => router.replace('/auth' as any) }],

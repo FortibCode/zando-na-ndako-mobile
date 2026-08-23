@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
   ArrowLeft, ChevronDown, MessageSquare, Mail,
@@ -123,7 +124,7 @@ export default function DiasporaSettingsScreen() {
 
         <Animated.View entering={FadeInUp.duration(400).delay(240).springify()}>
           <Pressable
-            onPress={() => Alert.alert(t('diaspora.settings.logout', 'Déconnexion'), t('diaspora.settings.logoutConfirm', 'Voulez-vous vraiment vous déconnecter ?'), [
+            onPress={() => alert(t('diaspora.settings.logout', 'Déconnexion'), t('diaspora.settings.logoutConfirm', 'Voulez-vous vraiment vous déconnecter ?'), [
               { text: t('common.cancel', 'Annuler'), style: 'cancel' },
               { text: t('diaspora.settings.logout', 'Déconnexion'), style: 'destructive', onPress: () => { clearAuthToken(); router.replace('/auth'); } },
             ])}

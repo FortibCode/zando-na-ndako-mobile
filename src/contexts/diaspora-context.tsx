@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useClient } from '@/contexts/client-context';
 import {
   fetchBeneficiaires, createBeneficiaire, updateBeneficiaire, deleteBeneficiaire, fetchDiasporaHistorique,
-  convertirDevise, getUser, updateUserProfile,
+  convertirDevise, getUser, onSessionChange, updateUserProfile,
   type ApiBeneficiaire, type BeneficiaireInputPayload, type ApiCommande,
 } from '@/services/api';
 
@@ -266,7 +266,12 @@ export function DiasporaProvider({ children }: { children: ReactNode }) {
     }
   }, [isDiaspora, selectedBeneficiary]);
 
-  useEffect(() => {
+  // Extrait en fonction nommée (plutôt qu'inline dans le useEffect) pour pouvoir la relancer à
+  // chaque connexion (voir onSessionChange dans services/api.ts) : DiasporaProvider est monté une
+  // seule fois pour toute la durée de vie de l'app (voir _layout.tsx), donc sans ça un changement
+  // de compte pendant que l'app tourne déjà laissait bénéficiaires/réglages/historique de l'ancien
+  // compte affichés.
+  const bootstrap = useCallback(async () => {
     (async () => {
       // Bénéficiaires : source de vérité = API. Le cache local ne sert que de repli
       // (hors-ligne ou backend indisponible en dev), jamais affiché s'il y a une réponse serveur.
@@ -341,6 +346,11 @@ export function DiasporaProvider({ children }: { children: ReactNode }) {
       } catch { /* ignore */ }
     })();
   }, []);
+
+  useEffect(() => {
+    bootstrap();
+    return onSessionChange(bootstrap);
+  }, [bootstrap]);
 
   const persistBeneficiaries = useCallback(async (next: Beneficiary[]) => {
     setBeneficiaries(next);

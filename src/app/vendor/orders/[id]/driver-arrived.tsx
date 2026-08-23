@@ -1,21 +1,52 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
-import { Star, User as UserIcon, Phone, MessageCircle } from 'lucide-react-native';
+import { Star, User as UserIcon, Phone, MessageCircle, Truck } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 
-const DEFAULT_DRIVER = { nom: 'Jean-Paul', telephone: '+242 06 987 65 43', vehicule: 'TVS Apache RTR', note: 4.9 };
-
 export default function DriverArrivedScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getOrder } = useVendor();
+  const { getOrder, refreshOrders } = useVendor();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const order = getOrder(id || '');
-  const driver = order?.livreur || DEFAULT_DRIVER;
+  // Un vrai livreur peut ne pas encore être chargé si l'attribution vient de se faire (le
+  // polling du contexte tourne toutes les 20s) : un rafraîchissement immédiat en arrivant sur cet
+  // écran évite d'afficher l'état "en attente" ci-dessous plus longtemps que nécessaire.
+  const [refreshing, setRefreshing] = useState(true);
+  useEffect(() => {
+    refreshOrders().finally(() => setRefreshing(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const driver = order?.livreur;
+
+  if (!driver) {
+    // Remplace l'ancien DEFAULT_DRIVER ("Jean-Paul", numéro et véhicule fixes) affiché à la place
+    // de tout livreur non encore assigné en base : le vendeur pouvait croire qu'un vrai livreur
+    // était arrivé et l'appeler / lui écrire alors qu'aucune mission n'était réellement attribuée.
+    return (
+      <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <View style={[styles.content, { flex: 1, justifyContent: 'center' }]}>
+          <Animated.View entering={ZoomIn.duration(400).springify()} style={[styles.driverCard, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow, justifyContent: 'center' }]}>
+            {refreshing ? <ActivityIndicator color={colors.primary} /> : <Truck color={colors.textTertiary} size={30} />}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.driverName, { color: colors.text, fontSize: 16 }]}>
+                {t('vendorDriverArrived.waitingTitle', "En attente d'un livreur")}
+              </Text>
+              <Text style={[styles.ratingText, { color: colors.textSecondary, fontWeight: '600', marginTop: 4 }]}>
+                {t('vendorDriverArrived.waitingDesc', "Aucun livreur n'est encore assigné à cette commande.")}
+              </Text>
+            </View>
+          </Animated.View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>

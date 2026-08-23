@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { alert } from '@/contexts/alert-context';
 import { OtpVerificationLayout, authStyles } from '@/components/auth-ui';
 import { useVendorSignup } from '@/contexts/vendor-signup-context';
 import { registerVendor, verifyOtp, login, resendOtp } from '@/services/api';
@@ -53,7 +54,7 @@ export default function VendorVerifyEmailScreen() {
         setStatus('ready');
       } catch (error) {
         setStatus('registration_failed');
-        Alert.alert(
+        alert(
           'Inscription impossible',
           error instanceof Error ? error.message : 'Vérifiez les informations saisies et le serveur.',
         );
@@ -77,9 +78,9 @@ export default function VendorVerifyEmailScreen() {
       setResendTimer(RESEND_DELAY);
       setCanResend(false);
       setOtpKey((k) => k + 1);
-      Alert.alert('Code renvoyé', 'Un nouveau code de vérification a été envoyé par email.');
+      alert('Code renvoyé', 'Un nouveau code de vérification a été envoyé par email.');
     } catch (error) {
-      Alert.alert('Erreur', error instanceof Error ? error.message : "Impossible de renvoyer le code.");
+      alert('Erreur', error instanceof Error ? error.message : "Impossible de renvoyer le code.");
     }
   }, [canResend, data.email]);
 
@@ -96,7 +97,7 @@ export default function VendorVerifyEmailScreen() {
       router.push('/auth/signup/vendor/profile' as any);
     } catch (error) {
       setOtpKey((k) => k + 1);
-      Alert.alert('Code incorrect', error instanceof Error ? error.message : 'Vérifiez le code reçu et réessayez.');
+      alert('Code incorrect', error instanceof Error ? error.message : 'Vérifiez le code reçu et réessayez.');
     } finally {
       setVerifying(false);
     }
