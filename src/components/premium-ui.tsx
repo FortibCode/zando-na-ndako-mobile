@@ -46,4 +46,46 @@ export function FloatingActionButton({ children, onPress }: { children: ReactNod
 
 export const premiumColors = { blue: Palette.navy, blueDeep: Palette.navyDeep, ink: Palette.ink, muted: Palette.muted, border: Palette.border, surface: Palette.surface, canvas: Palette.canvas, green: Palette.fresh };
 export const premiumAnimations = { enter: FadeInUp.duration(420).springify(), enterFast: FadeInDown.duration(300).springify() };
-export const styles = StyleSheet.create({ button: { minHeight: 56, borderRadius: Radii.md, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', shadowOpacity: .22, shadowRadius: 14, shadowOffset: { width: 0, height: 7 }, elevation: 5 }, buttonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 }, buttonText: { fontSize: 16, fontWeight: '900', letterSpacing: -.1 }, card: { padding: 20 }, glass: { padding: 20 }, fab: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', shadowOpacity: .25, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 7 } });
+export const styles = StyleSheet.create({
+  button: {
+    minHeight: 48,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  buttonText: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  card: {
+    padding: 14,
+    borderRadius: 18,
+  },
+  glass: {
+    padding: 14,
+    borderRadius: 18,
+  },
+  fab: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 5,
+  },
+});

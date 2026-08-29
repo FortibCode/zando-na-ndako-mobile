@@ -14,8 +14,11 @@ import {
 } from 'lucide-react-native';
 import { BLUE, RED, GREEN } from '@/components/client-ui';
 import { useClient } from '@/contexts/client-context';
-import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
+import { useTheme } from '@/contexts/theme-context';
+import { Spacing, Radii, Shadows } from '@/design/tokens';
+import type { ThemeColors } from '@/design/theme';
 import { clearAuthToken, fetchClientCommandes, resolveMediaUrl } from '@/services/api';
+import { confirmLogout } from '@/contexts/alert-context';
 
 const MENU = [
   { icon: User, label: 'Mes informations', route: '/client/my-info', color: BLUE },
@@ -33,7 +36,7 @@ const MENU = [
   { icon: HelpCircle, label: 'Aide et support', route: '/client/help', color: '#64748B' },
 ];
 
-function MenuItem({ item, index }: { item: typeof MENU[0]; index: number }) {
+function MenuItem({ item, index, colors }: { item: typeof MENU[0]; index: number; colors: ThemeColors }) {
   const Icon = item.icon;
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -44,13 +47,13 @@ function MenuItem({ item, index }: { item: typeof MENU[0]; index: number }) {
         onPressIn={() => { scale.value = withSpring(0.97); }}
         onPressOut={() => { scale.value = withSpring(1); }}
         onPress={() => { if (item.route) router.push(item.route as any); }}
-        style={styles.row}
+        style={[styles.row, { borderBottomColor: colors.border }]}
       >
         <View style={[styles.rowIcon, { backgroundColor: item.color + '15' }]}>
           <Icon color={item.color} size={20} />
         </View>
-        <Text style={styles.label}>{item.label}</Text>
-        <ChevronRight color="#C0CADC" size={18} />
+        <Text style={[styles.label, { color: colors.text }]}>{item.label}</Text>
+        <ChevronRight color={colors.textTertiary} size={18} />
       </Pressable>
     </Animated.View>
   );
@@ -58,6 +61,7 @@ function MenuItem({ item, index }: { item: typeof MENU[0]; index: number }) {
 
 export default function ProfileScreen() {
   const { favorites, currentUser, isDiaspora, refreshUser } = useClient();
+  const { colors, isDark } = useTheme();
   const [ordersCount, setOrdersCount] = useState<number | null>(null);
 
   // Rafraîchit le profil connecté (détecte correctement le client diaspora)
@@ -81,15 +85,15 @@ export default function ProfileScreen() {
   const resolvedPhoto = resolveMediaUrl(currentUser?.photo_profil);
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         {/* Profile Header Card */}
-        <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.profileCard}>
+        <Animated.View entering={FadeInDown.duration(400).springify()} style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {/* Avatar */}
           <View style={styles.avatarWrap}>
-            <View style={styles.avatar}>
+            <View style={[styles.avatar, { backgroundColor: colors.primarySoft, borderColor: colors.primary + '30' }]}>
               {resolvedPhoto ? (
                 <Image
                   source={{ uri: resolvedPhoto }}
@@ -98,115 +102,114 @@ export default function ProfileScreen() {
                   accessibilityLabel="Photo de profil"
                 />
               ) : (
-                <Text style={styles.avatarText}>{initials}</Text>
+                <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
               )}
             </View>
           </View>
 
           {/* Name & Contact */}
           <View style={styles.profileInfo}>
-            <Text style={styles.name}>{currentUser?.nom_complet || 'Client Zando'}</Text>
+            <Text style={[styles.name, { color: colors.text }]}>{currentUser?.nom_complet || 'Client Zando'}</Text>
             <View style={styles.contactRow}>
-              <Phone color="#94A3B8" size={13} />
-              <Text style={styles.contact}>{currentUser?.telephone || '—'}</Text>
+              <Phone color={colors.textTertiary} size={13} />
+              <Text style={[styles.contact, { color: colors.textSecondary }]}>{currentUser?.telephone || '—'}</Text>
             </View>
             <View style={styles.contactRow}>
-              <Mail color="#94A3B8" size={13} />
-              <Text style={styles.contact}>{currentUser?.email || '—'}</Text>
+              <Mail color={colors.textTertiary} size={13} />
+              <Text style={[styles.contact, { color: colors.textSecondary }]}>{currentUser?.email || '—'}</Text>
             </View>
           </View>
         </Animated.View>
 
         {/* Stats */}
         <Animated.View entering={FadeInDown.duration(400).delay(100).springify()} style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{ordersCount === null ? '—' : String(ordersCount)}</Text>
-            <Text style={styles.statLabel}>Commandes</Text>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.statValue, { color: colors.text }]}>{ordersCount === null ? '—' : String(ordersCount)}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Commandes</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{String(favorites.length)}</Text>
-            <Text style={styles.statLabel}>Favoris</Text>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.statValue, { color: colors.text }]}>{String(favorites.length)}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Favoris</Text>
           </View>
         </Animated.View>
 
 {/* Menu Items */}
-        <Animated.View entering={FadeInUp.duration(350).delay(150).springify()} style={styles.menuCard}>
+        <Animated.View entering={FadeInUp.duration(350).delay(150).springify()} style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {visibleMenu.map((item, index) => (
-            <MenuItem key={item.label} item={item} index={index} />
+            <MenuItem key={item.label} item={item} index={index} colors={colors} />
           ))}
         </Animated.View>
 
         {/* Logout */}
         <Animated.View entering={FadeInUp.duration(400).delay(300).springify()}>
-          <Pressable onPress={() => { clearAuthToken(); router.replace('/auth'); }} style={styles.logout}>
+          <Pressable onPress={() => confirmLogout(() => { clearAuthToken(); router.replace('/auth'); })} style={[styles.logout, { borderColor: colors.error + '40', backgroundColor: colors.error + '10' }]}>
             <LogOut color={RED} size={20} />
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
         </Animated.View>
 
         {/* Version */}
-        <Text style={styles.version}>Zando na Ndako v1.0.0 · © 2024</Text>
+        <Text style={[styles.version, { color: colors.textTertiary }]}>Zando na Ndako v1.0.0 · © 2024</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Palette.canvas },
+  screen: { flex: 1 },
   content: { padding: Spacing.xl, paddingTop: Spacing.xl, gap: Radii.md, paddingBottom: 30 },
 
   profileCard: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.lg,
-    backgroundColor: Palette.surface, padding: Spacing.xl, borderRadius: Radii.lg,
-    borderWidth: 1, borderColor: Palette.border, ...Shadows.card,
+    padding: Spacing.xl, borderRadius: Radii.lg,
+    borderWidth: 1, ...Shadows.card,
   },
   avatarWrap: { position: 'relative' },
   avatar: {
     width: 70, height: 70, borderRadius: 35,
-    backgroundColor: Palette.navySoft,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: Palette.navy + '30',
+    borderWidth: 3,
   },
-  avatarText: { color: Palette.navy, fontSize: 22, fontWeight: '900' },
+  avatarText: { fontSize: 22, fontWeight: '900' },
   avatarImage: {
     width: 70,
     height: 70,
     borderRadius: 35,
   },
   profileInfo: { flex: 1, gap: 4 },
-  name: { color: Palette.navy, fontSize: 17.5, fontWeight: '900' },
+  name: { fontSize: 17.5, fontWeight: '900' },
   contactRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  contact: { color: Palette.muted, fontSize: 12.5 },
+  contact: { fontSize: 12.5 },
 
   statsRow: { flexDirection: 'row', gap: Spacing.sm },
   statCard: {
-    flex: 1, backgroundColor: Palette.surface, borderRadius: Radii.md,
+    flex: 1, borderRadius: Radii.md,
     padding: Radii.md, alignItems: 'center',
-    borderWidth: 1, borderColor: Palette.border,
+    borderWidth: 1,
     ...Shadows.soft,
   },
-  statValue: { color: Palette.navy, fontSize: 22, fontWeight: '900' },
-  statLabel: { color: Palette.muted, fontSize: 11.5, marginTop: 3, fontWeight: '600' },
+  statValue: { fontSize: 22, fontWeight: '900' },
+  statLabel: { fontSize: 11.5, marginTop: 3, fontWeight: '600' },
 
   menuCard: {
-    backgroundColor: Palette.surface, borderRadius: Radii.lg,
-    borderWidth: 1, borderColor: Palette.border, overflow: 'hidden',
+    borderRadius: Radii.lg,
+    borderWidth: 1, overflow: 'hidden',
     ...Shadows.soft,
   },
   row: {
     minHeight: 58, flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: Spacing.lg, gap: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Palette.border,
+    borderBottomWidth: 1,
   },
   rowIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  label: { color: Palette.ink, fontSize: 14.5, fontWeight: '600', flex: 1 },
+  label: { fontSize: 14.5, fontWeight: '600', flex: 1 },
 
   logout: {
     height: 56, borderRadius: Radii.md,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-    borderWidth: 1.5, borderColor: Palette.coralSoft, backgroundColor: '#FFF5F5',
+    borderWidth: 1.5,
   },
-  logoutText: { color: Palette.coral, fontSize: 16, fontWeight: '800' },
+  logoutText: { color: RED, fontSize: 16, fontWeight: '800' },
 
-  version: { color: Palette.faint, fontSize: 12, textAlign: 'center', marginTop: 4 },
+  version: { fontSize: 12, textAlign: 'center', marginTop: 4 },
 });

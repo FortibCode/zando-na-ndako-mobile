@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowUpRight, Banknote, Bike, History, TrendingUp, Wallet } from 'lucide-react-native';
-import { Card, D, DeliveryScreen, deliveryStyles, styles } from '@/components/delivery-ui';
+import { Card, D, DeliveryScreen, deliveryStyles, monoLabel, styles } from '@/components/delivery-ui';
 import { useDelivery } from '@/contexts/delivery-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -69,7 +69,7 @@ const historique = revenue?.historique ?? [];
   const max7JoursRevenue = Math.max(...revenus7Jours.map((d) => d.montant), 1);
 
   return (
-    <DeliveryScreen refreshing={refreshing} onRefresh={onRefresh}>
+    <DeliveryScreen refreshing={refreshing} onRefresh={onRefresh} tabBar>
       <Animated.View entering={FadeInDown.duration(350).springify()} style={{ marginTop: 12, marginBottom: 16 }}>
         <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>{t('deliveryRevenueTab.eyebrow', 'VOTRE PERFORMANCE')}</Text>
         <Text style={[styles.headerTitle, { fontSize: 22, marginTop: 2, color: colors.text }]}>{t('deliveryRevenueTab.title', 'Mes revenus')}</Text>
@@ -79,16 +79,18 @@ const historique = revenue?.historique ?? [];
       <Animated.View entering={FadeInUp.duration(350).delay(30).springify()}>
         <Pressable
           onPress={() => router.push('/delivery/withdraw' as any)}
-          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.freshSoft, borderRadius: 16, padding: 14, marginBottom: 14 }}
+          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.freshSoft, borderRadius: 18, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: colors.fresh + '30' }}
         >
-          <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: colors.fresh, alignItems: 'center', justifyContent: 'center' }}>
-            <Wallet color="#FFF" size={19} />
+          <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: colors.fresh, alignItems: 'center', justifyContent: 'center' }}>
+            <Wallet color="#FFF" size={20} strokeWidth={2.3} />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={{ fontSize: 11, fontWeight: '900', color: colors.fresh, letterSpacing: .4 }}>{t('deliveryRevenueTab.availableBalance', 'SOLDE DISPONIBLE')}</Text>
-            <Text style={[styles.sectionTitle, { fontSize: 18, marginTop: 2, color: colors.text }]}>{(revenue?.solde_disponible ?? 0).toLocaleString('fr-FR')} FCFA</Text>
+            <Text style={{ fontSize: 10.5, fontWeight: '900', color: colors.fresh, letterSpacing: .5 }}>{t('deliveryRevenueTab.availableBalance', 'SOLDE DISPONIBLE')}</Text>
+            <Text style={[styles.sectionTitle, { fontSize: 19, marginTop: 2, color: colors.text }]}>{(revenue?.solde_disponible ?? 0).toLocaleString('fr-FR')} FCFA</Text>
           </View>
-          <Text style={{ color: colors.fresh, fontSize: 12, fontWeight: '900' }}>{t('deliveryRevenueTab.withdraw', 'Retirer ›')}</Text>
+          <View style={{ backgroundColor: colors.fresh, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
+            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '900' }}>{t('deliveryRevenueTab.withdraw', 'Retirer ›')}</Text>
+          </View>
         </Pressable>
       </Animated.View>
 
@@ -97,62 +99,72 @@ const historique = revenue?.historique ?? [];
           <Pressable
             key={x}
             onPress={() => setPeriod(i)}
-            style={[deliveryStyles.filter, { flex: 1, borderColor: colors.border }, i === period && [deliveryStyles.filterActive, { backgroundColor: colors.primary, borderColor: colors.primary }]]}
+            style={[
+              deliveryStyles.filter,
+              { flex: 1, borderRadius: 999, borderColor: colors.border },
+              i === period && [deliveryStyles.filterActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
+            ]}
           >
             <Text style={[deliveryStyles.filterText, { color: i === period ? '#FFF' : colors.textSecondary }, i === period && deliveryStyles.filterTextActive]}>{x}</Text>
           </Pressable>
         ))}
       </Animated.View>
 
-      <Card index={1} style={{ marginTop: 16, backgroundColor: D.blue, borderColor: D.blue, padding: 18, borderRadius: 20 }}>
+      <Card index={1} style={{ marginTop: 14, backgroundColor: colors.primaryDeep, borderColor: colors.primaryDeep, padding: 18, borderRadius: 22 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: '#BBD0FF', fontSize: 11, fontWeight: '900', letterSpacing: .7 }}>{t('deliveryRevenueTab.revenueOfPrefix', 'REVENU DU')} {PERIODS[period].toUpperCase()}</Text>
-          <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,.14)', alignItems: 'center', justifyContent: 'center' }}>
-            <Banknote color="#FFF" size={18} />
+          <Text style={{ color: '#BBD0FF', fontSize: 10.5, fontWeight: '900', letterSpacing: .7 }}>{t('deliveryRevenueTab.revenueOfPrefix', 'REVENU DU')} {PERIODS[period].toUpperCase()}</Text>
+          <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,.14)', alignItems: 'center', justifyContent: 'center' }}>
+            <Banknote color="#FFF" size={19} />
           </View>
         </View>
-        <Text style={{ color: '#FFF', fontSize: 28, fontWeight: '900', marginTop: 12 }}>{solde.toLocaleString('fr-FR')} FCFA</Text>
+        <Text style={{ color: '#FFF', fontSize: 28, fontWeight: '900', marginTop: 10 }}>{solde.toLocaleString('fr-FR')} FCFA</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 }}>
-          <TrendingUp color="#9BE7B7" size={15} />
-          <Text style={{ color: '#C9F4D8', fontWeight: '800', fontSize: 12 }}>{nbLivraisons} {nbLivraisons > 1 ? t('deliveryRevenueTab.deliveryWordPlural', 'livraisons') : t('deliveryRevenueTab.deliveryWord', 'livraison')} {t('deliveryRevenueTab.thisPeriodSuffix', 'cette période')}</Text>
+          <TrendingUp color="#34D399" size={15} strokeWidth={2.5} />
+          <Text style={{ color: '#A7F3D0', fontWeight: '800', fontSize: 12 }}>{nbLivraisons} {nbLivraisons > 1 ? t('deliveryRevenueTab.deliveryWordPlural', 'livraisons') : t('deliveryRevenueTab.deliveryWord', 'livraison')} {t('deliveryRevenueTab.thisPeriodSuffix', 'cette période')}</Text>
         </View>
       </Card>
 
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-        <Card index={2} style={{ flex: 1, padding: 15 }}>
-          <Bike color={colors.primary} size={20} />
-          <Text style={[styles.big, { fontSize: 25, marginTop: 12, color: colors.text }]}>{nbLivraisons}</Text>
-          <Text style={[styles.muted, { fontSize: 12, color: colors.textSecondary }]}>{t('deliveryRevenueTab.deliveries', 'Livraisons')}</Text>
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+        <Card index={2} style={{ flex: 1, padding: 14, borderRadius: 18 }}>
+          <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+            <Bike color={colors.primary} size={18} strokeWidth={2.3} />
+          </View>
+          <Text style={[styles.big, { fontSize: 22, marginTop: 10, color: colors.text }]}>{nbLivraisons}</Text>
+          <Text style={[styles.muted, { fontSize: 11.5, color: colors.textSecondary }]}>{t('deliveryRevenueTab.deliveries', 'Livraisons')}</Text>
         </Card>
-        <Card index={2} style={{ flex: 1, padding: 15 }}>
-          <ArrowUpRight color={colors.fresh} size={20} />
-          <Text style={[styles.big, { fontSize: 25, marginTop: 12, color: colors.text }]}>
+        <Card index={2} style={{ flex: 1, padding: 14, borderRadius: 18 }}>
+          <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: colors.freshSoft, alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowUpRight color={colors.fresh} size={18} strokeWidth={2.3} />
+          </View>
+          <Text style={[styles.big, { fontSize: 22, marginTop: 10, color: colors.text }]}>
             {current.distance_totale_km ? `${Math.round(current.distance_totale_km)}km` : '--'}
           </Text>
-          <Text style={[styles.muted, { fontSize: 12, color: colors.textSecondary }]}>{t('deliveryRevenueTab.distance', 'Distance')}</Text>
+          <Text style={[styles.muted, { fontSize: 11.5, color: colors.textSecondary }]}>{t('deliveryRevenueTab.distance', 'Distance')}</Text>
         </Card>
-        <Card index={2} style={{ flex: 1, padding: 15 }}>
-          <Banknote color={colors.primary} size={20} />
-          <Text style={[styles.big, { fontSize: 25, marginTop: 12, color: colors.text }]}>{gainMoyen.toLocaleString('fr-FR')}</Text>
-          <Text style={[styles.muted, { fontSize: 12, color: colors.textSecondary }]}>{t('deliveryRevenueTab.avgGain', 'Gain moyen')}</Text>
+        <Card index={2} style={{ flex: 1, padding: 14, borderRadius: 18 }}>
+          <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+            <Banknote color={colors.primary} size={18} strokeWidth={2.3} />
+          </View>
+          <Text style={[styles.big, { fontSize: 22, marginTop: 10, color: colors.text }]}>{gainMoyen.toLocaleString('fr-FR')}</Text>
+          <Text style={[styles.muted, { fontSize: 11.5, color: colors.textSecondary }]}>{t('deliveryRevenueTab.avgGain', 'Gain moyen')}</Text>
         </Card>
       </View>
 
-      {/* Graphique des 7 derniers jours — un point par jour, données réelles */}
-      <Text style={[styles.sectionTitle, { marginTop: 32, marginBottom: 14, color: colors.text }]}>{t('deliveryRevenueTab.last7Days', '7 derniers jours')}</Text>
-      <Card index={3} style={{ padding: 18 }}>
+      {/* Graphique des 7 derniers jours */}
+      <Text style={[styles.sectionTitle, { marginTop: 24, marginBottom: 12, fontSize: 17, color: colors.text }]}>{t('deliveryRevenueTab.last7Days', '7 derniers jours')}</Text>
+      <Card index={3} style={{ padding: 16, borderRadius: 20 }}>
         {revenus7Jours.length > 0 ? (
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 130 }}>
             {revenus7Jours.map((day, i) => {
-              const barHeight = Math.max(Math.round((day.montant / max7JoursRevenue) * 90), day.montant > 0 ? 6 : 2);
+              const barHeight = Math.max(Math.round((day.montant / max7JoursRevenue) * 85), day.montant > 0 ? 8 : 4);
               const isToday = i === revenus7Jours.length - 1;
               return (
                 <View key={`${day.jour}-${i}`} style={{ alignItems: 'center', flex: 1 }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: '800', marginBottom: 6 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 9.5, fontWeight: '800', marginBottom: 6 }}>
                     {day.montant >= 1000 ? `${Math.round(day.montant / 1000)}k` : day.montant}
                   </Text>
-                  <View style={{ height: 90, justifyContent: 'flex-end', width: '60%' }}>
-                    <View style={{ height: barHeight, borderRadius: 6, backgroundColor: isToday ? colors.primary : colors.primarySoft }} />
+                  <View style={{ height: 85, justifyContent: 'flex-end', width: '55%' }}>
+                    <View style={{ height: barHeight, borderRadius: 8, backgroundColor: isToday ? colors.primary : colors.primarySoft }} />
                   </View>
                   <Text style={{ color: isToday ? colors.primary : colors.textSecondary, fontSize: 11, fontWeight: '800', marginTop: 8 }}>{day.jour}</Text>
                 </View>
@@ -164,20 +176,20 @@ const historique = revenue?.historique ?? [];
         )}
       </Card>
 
-      <Text style={[styles.sectionTitle, { marginTop: 32, marginBottom: 14, color: colors.text }]}>{t('deliveryRevenueTab.recentHistory', 'Historique récent')}</Text>
+      <Text style={[styles.sectionTitle, { marginTop: 24, marginBottom: 12, fontSize: 17, color: colors.text }]}>{t('deliveryRevenueTab.recentHistory', 'Historique récent')}</Text>
 
       {historique.length === 0 ? (
         <EmptyRevenue />
       ) : (
         historique.slice(0, 10).map((item, i) => (
-          <Card key={item.id} index={Math.min(i, 5)} style={{ marginBottom: 10, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Card key={item.id} index={Math.min(i, 5)} style={{ marginBottom: 10, padding: 14, borderRadius: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{item.numero_commande}</Text>
-              <Text style={[styles.muted, { marginTop: 6, fontSize: 13, color: colors.textSecondary }]}>
+              <Text style={[monoLabel, { fontSize: 14.5, color: colors.text }]}>{item.numero_commande}</Text>
+              <Text style={[styles.muted, { marginTop: 4, fontSize: 12, color: colors.textSecondary }]}>
                 {new Date(item.date_livraison ?? item.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}  •  {t('deliveryRevenueTab.deliverySuffix', 'Livraison')} {item.statut === 'terminee' ? t('deliveryRevenueTab.deliveredWord', 'terminée') : t('deliveryRevenueTab.ongoingWord', 'en cours')}
               </Text>
             </View>
-            <Text style={{ color: colors.fresh, fontSize: 17, fontWeight: '900' }}>
+            <Text style={{ color: colors.fresh, fontSize: 15, fontWeight: '900' }}>
               +{item.montant.toLocaleString('fr-FR')} FCFA
             </Text>
           </Card>
@@ -186,10 +198,10 @@ const historique = revenue?.historique ?? [];
 
       <Pressable
         onPress={() => router.push('/delivery/history' as any)}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 18, paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface }}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14, paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface }}
       >
-        <History color={colors.primary} size={20} />
-        <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '900' }}>{t('deliveryRevenueTab.viewFullHistory', "Voir tout l'historique")}</Text>
+        <History color={colors.primary} size={19} strokeWidth={2.2} />
+        <Text style={{ color: colors.primary, fontSize: 14.5, fontWeight: '900' }}>{t('deliveryRevenueTab.viewFullHistory', "Voir tout l'historique")}</Text>
       </Pressable>
     </DeliveryScreen>
   );

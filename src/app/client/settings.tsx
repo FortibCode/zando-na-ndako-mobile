@@ -6,13 +6,12 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
-  ArrowLeft, Moon, Sun, Monitor, Globe, Coins,
+  ArrowLeft, Moon, Sun, Monitor, Globe,
   Bell, Shield, Info, ChevronRight,
 } from 'lucide-react-native';
 import { BLUE, RED } from '@/components/client-ui';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
-import { useCurrency, type Currency } from '@/hooks/use-currency';
 import type { Language } from '@/i18n/translations';
 
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -24,7 +23,6 @@ function SectionLabel({ text }: { text: string }) {
 export default function SettingsScreen() {
 const { mode, setMode, colors, isDark } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { currency, setCurrency } = useCurrency();
 
   const themeOptions: { id: ThemeMode; label: string; icon: any }[] = [
     { id: 'light', label: t('settings.light', 'Clair'), icon: Sun },
@@ -37,12 +35,6 @@ const { mode, setMode, colors, isDark } = useTheme();
     { id: 'lingala', label: 'Lingala' },
     { id: 'kituba', label: 'Kituba' },
     { id: 'en', label: 'English' },
-  ];
-
-  const currencyOptions: { id: Currency; label: string }[] = [
-    { id: 'FCFA', label: t('currency.fcfa', 'Franc CFA (FCFA)') },
-    { id: 'USD', label: t('currency.usd', 'Dollar US ($)') },
-    { id: 'EUR', label: t('currency.eur', 'Euro (€)') },
   ];
 
   return (
@@ -107,33 +99,6 @@ const { mode, setMode, colors, isDark } = useTheme();
                   <Pressable
                     key={opt.id}
                     onPress={() => setLanguage(opt.id)}
-                    style={[styles.optionChip, { borderColor: selected ? colors.primary : colors.surfaceBorder, backgroundColor: selected ? colors.primaryLight : colors.surface }]}
-                  >
-                    <Text style={[styles.optionChipText, { color: selected ? colors.primary : colors.textSecondary }]}>{opt.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Devise */}
-        <Animated.View entering={FadeInUp.duration(350).delay(200).springify()}>
-          <SectionLabel text={t('settings.currency', 'Devise')} />
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIcon, { backgroundColor: colors.primaryLight }]}>
-                <Coins color={colors.primary} size={18} />
-              </View>
-              <Text style={[styles.cardTitle, { color: colors.primary }]}>{t('settings.currency', 'Devise')}</Text>
-            </View>
-            <View style={styles.optionRow}>
-              {currencyOptions.map((opt) => {
-                const selected = currency === opt.id;
-                return (
-                  <Pressable
-                    key={opt.id}
-                    onPress={() => setCurrency(opt.id)}
                     style={[styles.optionChip, { borderColor: selected ? colors.primary : colors.surfaceBorder, backgroundColor: selected ? colors.primaryLight : colors.surface }]}
                   >
                     <Text style={[styles.optionChipText, { color: selected ? colors.primary : colors.textSecondary }]}>{opt.label}</Text>

@@ -7,20 +7,39 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withSpring, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { ArrowLeft, Heart, ShoppingCart, Star, MapPin, Check, Plus, Minus, Store, ChevronRight } from 'lucide-react-native';
-import { useClient } from '@/contexts/client-context';
+import { useClient, mapApiProduitToProduct, type Product } from '@/contexts/client-context';
 import { BLUE, RED } from '@/components/client-ui';
 import { useDiaspora, formatEur, formatUsd } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
+import { useTheme } from '@/contexts/theme-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
-import { useState } from 'react';
+import { fetchProduitDetail } from '@/services/api';
+import { useEffect, useState } from 'react';
 
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { products, addToCart, toggleFavorite, isFavorite } = useClient();
-  const product = products.find((p) => p.id === id) || products[0];
+  const localProduct = products.find((p) => p.id === id);
   const { diasporaModeActive } = useDiaspora();
   const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const [added, setAdded] = useState(false);
+  const [fetchedProduct, setFetchedProduct] = useState<Product | null>(null);
+  const [notFound, setNotFound] = useState(false);
+
+  // Le produit peut ne pas être dans la liste générale déjà chargée (ex: venu du carrousel promo/
+  // populaires, alimenté par un autre endpoint) — on va alors le chercher directement par id plutôt
+  // que d'afficher silencieusement un produit différent au hasard (ancien bug : `|| products[0]`).
+  useEffect(() => {
+    if (localProduct || !id) return;
+    let cancelled = false;
+    fetchProduitDetail(id)
+      .then((p) => { if (!cancelled) setFetchedProduct(mapApiProduitToProduct(p)); })
+      .catch(() => { if (!cancelled) setNotFound(true); });
+    return () => { cancelled = true; };
+  }, [id, localProduct]);
+
+  const product = localProduct || fetchedProduct;
 
   const btnScale = useSharedValue(1);
   const heartScale = useSharedValue(1);
@@ -31,6 +50,7 @@ export default function ProductDetailsScreen() {
   const imageStyle = useAnimatedStyle(() => ({ transform: [{ scale: imageScale.value }] }));
 
   const handleAdd = () => {
+    if (!product) return;
     btnScale.value = withSequence(
       withSpring(1.08, { damping: 10, stiffness: 200 }),
       withSpring(1, { damping: 15, stiffness: 200 })
@@ -42,16 +62,25 @@ export default function ProductDetailsScreen() {
 
   if (!product) {
     return (
-      <SafeAreaView style={[styles.screen, { alignItems: 'center', justifyContent: 'center' }]}>
-        <StatusBar style="dark" />
-        <Text style={styles.title}>{t('productExtra.loadingProduct', 'Chargement du produit…')}</Text>
+      <SafeAreaView style={[styles.screen, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Text style={[styles.title, { color: colors.text }]}>
+          {notFound
+            ? t('productExtra.notFound', 'Produit introuvable.')
+            : t('productExtra.loadingProduct', 'Chargement du produit…')}
+        </Text>
+        {notFound && (
+          <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+            <Text style={{ color: BLUE, fontWeight: '800' }}>{t('common.back', 'Retour')}</Text>
+          </Pressable>
+        )}
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Top Actions */}
         <Animated.View
@@ -75,7 +104,7 @@ export default function ProductDetailsScreen() {
         {/* Hero Image */}
         <Animated.View
           entering={ZoomIn.duration(500).springify()}
-          style={[styles.hero, imageStyle]}
+          style={[styles.hero, { backgroundColor: colors.backgroundAlt }, imageStyle]}
         >
           <Image accessibilityLabel={product.name} contentFit="cover" source={{ uri: product.image }} style={styles.heroImage} />
         </Animated.View>
@@ -83,7 +112,7 @@ export default function ProductDetailsScreen() {
         {/* Product Info */}
         <Animated.Text
           entering={FadeInDown.duration(400).delay(200).springify()}
-          style={styles.title}
+          style={[styles.title, { color: colors.text }]}
         >
           {product.name}
         </Animated.Text>
@@ -96,11 +125,11 @@ export default function ProductDetailsScreen() {
             <>
               <Star color="#F5A623" size={20} fill="#F5A623" />
               <Text style={styles.rating}>
-                {product.rating} <Text style={styles.ratingText}>({product.reviews} {t('productExtra.reviewsSuffix', 'avis')})</Text>
+                {product.rating} <Text style={[styles.ratingText, { color: colors.textSecondary }]}>({product.reviews} {t('productExtra.reviewsSuffix', 'avis')})</Text>
               </Text>
             </>
           ) : (
-            <Text style={styles.ratingText}>{t('productExtra.noReviews', 'Aucun avis pour le moment')}</Text>
+            <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{t('productExtra.noReviews', 'Aucun avis pour le moment')}</Text>
           )}
         </Animated.View>
 
@@ -110,10 +139,10 @@ export default function ProductDetailsScreen() {
         >
           <View>
             <Text style={styles.price}>
-              {product.price.toLocaleString('fr-FR')} <Text style={styles.unit}>{product.unit}</Text>
+              {product.price.toLocaleString('fr-FR')} <Text style={[styles.unit, { color: colors.textSecondary }]}>{product.unit}</Text>
             </Text>
             {diasporaModeActive && (
-              <Text style={styles.priceEquivalent}>
+              <Text style={[styles.priceEquivalent, { color: colors.textSecondary }]}>
                 {formatEur(product.price)} · {formatUsd(product.price)}
               </Text>
             )}
@@ -128,21 +157,21 @@ export default function ProductDetailsScreen() {
 
         <Animated.View
           entering={FadeInUp.duration(400).delay(350).springify()}
-          style={styles.divider}
+          style={[styles.divider, { backgroundColor: colors.border }]}
         />
 
         {/* Description */}
         <Animated.View entering={FadeInUp.duration(400).delay(400).springify()}>
-          <Text style={styles.heading}>{t('product.description', 'Description')}</Text>
-          <Text style={styles.description}>
+          <Text style={[styles.heading, { color: colors.text }]}>{t('product.description', 'Description')}</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>
             {product.description || t('productExtra.defaultDescription', 'Produit frais sélectionné avec soin. Idéal pour des repas sains et savoureux.')}
           </Text>
         </Animated.View>
 
         <Animated.View entering={FadeInUp.duration(400).delay(450).springify()}>
-          <Text style={styles.heading}>{t('product.origin', 'Origine')}</Text>
-          <Text style={styles.description}>
-            <MapPin color="#435271" size={16} /> {product.origin || t('productExtra.defaultOrigin', 'Pointe-Noire, Congo')}
+          <Text style={[styles.heading, { color: colors.text }]}>{t('product.origin', 'Origine')}</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>
+            <MapPin color={colors.textTertiary} size={16} /> {product.origin || t('productExtra.defaultOrigin', 'Pointe-Noire, Congo')}
           </Text>
         </Animated.View>
 
@@ -151,14 +180,14 @@ export default function ProductDetailsScreen() {
           <Animated.View entering={FadeInUp.duration(400).delay(470).springify()}>
             <Pressable
               onPress={() => router.push(`/client/boutique/${product.vendorId}` as any)}
-              style={styles.vendorRow}
+              style={[styles.vendorRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
             >
-              <View style={styles.vendorIcon}><Store color={BLUE} size={18} /></View>
+              <View style={[styles.vendorIcon, { backgroundColor: colors.primarySoft }]}><Store color={BLUE} size={18} /></View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.vendorLabel}>{t('productExtra.soldBy', 'Vendu par')}</Text>
-                <Text style={styles.vendorName}>{product.vendorName}</Text>
+                <Text style={[styles.vendorLabel, { color: colors.textSecondary }]}>{t('productExtra.soldBy', 'Vendu par')}</Text>
+                <Text style={[styles.vendorName, { color: colors.text }]}>{product.vendorName}</Text>
               </View>
-              <ChevronRight color={Palette.muted} size={18} />
+              <ChevronRight color={colors.textTertiary} size={18} />
             </Pressable>
           </Animated.View>
         )}
@@ -186,7 +215,7 @@ export default function ProductDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Palette.surface },
+  screen: { flex: 1 },
   content: { padding: Spacing.xl, paddingBottom: 30 },
   top: {
     flexDirection: 'row',
@@ -196,7 +225,6 @@ const styles = StyleSheet.create({
   hero: {
     height: 300,
     borderRadius: Radii.xl,
-    backgroundColor: Palette.canvas,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.sm,
@@ -204,7 +232,6 @@ const styles = StyleSheet.create({
   },
   heroImage: { width: '100%', height: '100%' },
   title: {
-    color: Palette.ink,
     fontSize: 32,
     fontWeight: '800',
     marginTop: 22,
@@ -216,7 +243,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   rating: { color: Palette.gold, fontSize: 20, fontWeight: '700' },
-  ratingText: { color: Palette.muted, fontSize: 15, fontWeight: '500' },
+  ratingText: { fontSize: 15, fontWeight: '500' },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -224,8 +251,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xl,
   },
   price: { color: Palette.coral, fontSize: 30, fontWeight: '800' },
-  unit: { fontSize: 16, fontWeight: '500', color: Palette.muted },
-  priceEquivalent: { fontSize: 13.5, fontWeight: '600', color: Palette.muted, marginTop: 2 },
+  unit: { fontSize: 16, fontWeight: '500' },
+  priceEquivalent: { fontSize: 13.5, fontWeight: '600', marginTop: 2 },
   stockBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,26 +265,24 @@ const styles = StyleSheet.create({
   stockText: { color: Palette.fresh, fontWeight: '800', fontSize: 13 },
   outOfStockBadge: { backgroundColor: Palette.coralSoft },
   outOfStockText: { color: Palette.coral },
-  divider: { height: 1, backgroundColor: Palette.border, marginVertical: 22 },
+  divider: { height: 1, marginVertical: 22 },
   vendorRow: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
     marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radii.md,
-    backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border,
+    borderWidth: 1,
   },
   vendorIcon: {
     width: 38, height: 38, borderRadius: Radii.sm,
-    backgroundColor: Palette.navySoft, alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  vendorLabel: { color: Palette.muted, fontSize: 11, fontWeight: '700' },
-  vendorName: { color: Palette.ink, fontSize: 15, fontWeight: '800', marginTop: 1 },
+  vendorLabel: { fontSize: 11, fontWeight: '700' },
+  vendorName: { fontSize: 15, fontWeight: '800', marginTop: 1 },
   heading: {
-    color: Palette.ink,
     fontSize: 19,
     fontWeight: '800',
     marginTop: Spacing.lg,
   },
   description: {
-    color: Palette.slate,
     fontSize: 17,
     lineHeight: 26,
     marginTop: Spacing.sm,

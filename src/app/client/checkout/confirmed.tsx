@@ -80,7 +80,7 @@ export default function ConfirmedScreen() {
             { icon: Clock, label: slotLabel, done: false },
           ].map(({ icon: Icon, label, done }, i) => (
             <View key={i} style={styles.timelineRow}>
-              <View style={[styles.timelineDot, done && { backgroundColor: colors.success }]}>
+              <View style={[styles.timelineDot, { backgroundColor: colors.border }, done && { backgroundColor: colors.success }]}>
                 <Icon color={done ? '#FFF' : colors.textTertiary} size={14} />
               </View>
               <Text style={[styles.timelineLabel, done && { color: colors.text, fontWeight: '700' }, !done && { color: colors.textTertiary }]}>{label}</Text>

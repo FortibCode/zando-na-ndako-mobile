@@ -435,7 +435,7 @@ type VendorContextValue = {
   promotionsLoading: boolean;
   refreshPromotions: () => Promise<void>;
   togglePromotion: (id: string) => Promise<void>;
-  addPromotion: (input: { titre: string; produit: string; pourcentage: number }) => Promise<void>;
+  addPromotion: (input: { titre: string; produitId: string | null; pourcentage: number }) => Promise<void>;
   deletePromotion: (id: string) => Promise<void>;
 
   // Notifications réelles (GET/POST /user/notifications — identique à client/livreur), plus de
@@ -741,11 +741,20 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     const current = products.find((p) => p.id === id);
     if (!current) return;
 
-    if (patch.nom !== undefined || patch.description !== undefined || patch.prix !== undefined) {
+    // `patch.categorie` était jusqu'ici silencieusement ignoré : ni transmis à l'API, ni reflété
+    // dans l'écran d'édition (qui ne proposait qu'un champ texte libre, pas le vrai sélecteur déjà
+    // utilisé à la création). Résolu ici en categorie_id via la même correspondance nom → id que
+    // addProduct(), pour rester cohérent même si le nom de catégorie saisi ne correspond à rien.
+    const categorieId = patch.categorie !== undefined ? categoryIdByName[patch.categorie] : undefined;
+    if (patch.categorie !== undefined && !categorieId) {
+      throw new Error('Catégorie non résolue');
+    }
+    if (patch.nom !== undefined || patch.description !== undefined || patch.prix !== undefined || categorieId !== undefined) {
       await modifierProduitVendeur(id, {
         nom_produit: patch.nom,
         description: patch.description,
         prix_unitaire: patch.prix,
+        categorie_id: categorieId,
       });
     }
 
@@ -768,7 +777,7 @@ export function VendorProvider({ children }: { children: ReactNode }) {
       disponible: nextDisponible,
       image: patch.image ?? p.image,
     } : p)));
-  }, [products]);
+  }, [products, categoryIdByName]);
 
   const toggleProductAvailability = useCallback((id: string) => {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, disponible: !p.disponible } : p)));
@@ -865,19 +874,20 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     setPromotions((prev) => prev.map((p) => (p.id === id ? mapApiPromotionToPromotion(updated) : p)));
   }, [promotions]);
 
-  // `input.produit` est le nom d'un produit du catalogue du vendeur (voir promotions.tsx, qui ne
-  // laisse choisir que parmi `products`) — résolu ici en produit_id réel pour l'API. Si aucun
-  // produit ne correspond (catalogue vide), la promotion s'applique à toute la boutique.
-  const addPromotion = useCallback(async (input: { titre: string; produit: string; pourcentage: number }) => {
-    const matched = products.find((p) => p.nom === input.produit);
+  // `produitId` est passé directement par promotions.tsx (sélectionné dans un vrai menu déroulant
+  // sur tous les produits du vendeur) — avant, l'écran ne transmettait qu'un nom de produit
+  // recopié depuis un texte affiché, résolu ici par correspondance exacte de chaîne : un nom
+  // dupliqué ou modifié entre l'affichage et la soumission envoyait silencieusement `produit_id:
+  // null` (promotion sur toute la boutique) au lieu du produit réellement choisi.
+  const addPromotion = useCallback(async (input: { titre: string; produitId: string | null; pourcentage: number }) => {
     const created = await creerPromotionVendeur({
       titre: input.titre,
-      produit_id: matched?.id ?? null,
+      produit_id: input.produitId,
       valeur_reduction: input.pourcentage,
       type_reduction: 'pourcentage',
     });
     setPromotions((prev) => [mapApiPromotionToPromotion(created), ...prev]);
-  }, [products]);
+  }, []);
 
   const deletePromotion = useCallback(async (id: string) => {
     await supprimerPromotionVendeur(id);

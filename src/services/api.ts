@@ -74,7 +74,7 @@ api.interceptors.request.use(
 // ─── Response Interceptor: Handle 401 / Errors ───
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError<{ message?: string; success?: boolean }>) => {
+  async (error: AxiosError<{ message?: string; success?: boolean; error_code?: string }>) => {
     if (error.response?.status === 401) {
       // Token expired or invalid — clear storage
       await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -87,17 +87,19 @@ api.interceptors.response.use(
       error.message ||
       'Une erreur réseau est survenue. Vérifiez votre connexion.';
 
-    return Promise.reject(new ApiError(message, error.response?.status));
+    return Promise.reject(new ApiError(message, error.response?.status, error.response?.data?.error_code));
   }
 );
 
 // ─── Custom Error Class ───
 export class ApiError extends Error {
   status?: number;
-  constructor(message: string, status?: number) {
+  errorCode?: string;
+  constructor(message: string, status?: number, errorCode?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.errorCode = errorCode;
   }
 }
 
@@ -392,6 +394,27 @@ const { token, user } = response.data.data;
   return user;
 }
 
+// ─── Connexion / inscription via Google ───
+// Un compte inconnu de Google renvoie error_code === 'GOOGLE_ACCOUNT_NOT_FOUND' (voir
+// AuthController::loginWithGoogle) : l'appelant doit alors redemander le téléphone puis rappeler
+// cette fonction avec typeUtilisateur + telephone pour créer le compte.
+export async function loginWithGoogle(
+  idToken: string,
+  extra?: { typeUtilisateur?: 'client'; telephone?: string },
+): Promise<LoginUser> {
+  const response = await api.post<LoginResponse>('/auth/google', {
+    id_token: idToken,
+    ...(extra?.typeUtilisateur ? { type_utilisateur: extra.typeUtilisateur } : {}),
+    ...(extra?.telephone ? { telephone: extra.telephone } : {}),
+  });
+
+  const { token, user } = response.data.data;
+  await setAuthToken(token);
+  await setUser(user);
+  notifySessionChange();
+  return user;
+}
+
 // ─── Récupération du profil utilisateur connecté (backend) ───
 export async function fetchMe(): Promise<LoginUser> {
   const response = await api.get<ApiResponse<LoginUser>>(DELIVERY_ENDPOINTS.USER_ME);
@@ -616,16 +639,25 @@ export interface ApiVendeur {
   statut_boutique?: 'ouverte' | 'pause' | 'fermee';
 }
 
-export async function fetchVendeurTypes(): Promise<string[]> {
-  const response = await api.get<ApiResponse<string[]>>('/vendeurs/types');
-  return response.data.data || [];
-}
-
 // Liste COMPLÈTE des types de boutique autorisés (pas seulement ceux déjà utilisés) — source
 // unique pour tout formulaire qui choisit un type (inscription vendeur, édition profil), remplace
 // les listes codées en dur précédemment dupliquées à plusieurs endroits.
 export async function fetchVendeurTypesDisponibles(): Promise<string[]> {
   const response = await api.get<ApiResponse<string[]>>('/vendeurs/types-disponibles');
+  return response.data.data || [];
+}
+
+export interface ApiTypeBoutiqueLogo {
+  type: string;
+  logo: string | null;
+}
+
+// Même endpoint que admin_web (lib/api.ts:fetchVendeurTypesLogos) : liste canonique gérée par
+// l'admin (/admin/types-boutique), avec logo, indépendante des boutiques actuellement actives —
+// à utiliser pour l'écran "types de boutique" client plutôt que /vendeurs/types, qui ne renvoie
+// que les types ayant au moins un vendeur validé et ouvert.
+export async function fetchVendeurTypesLogos(): Promise<ApiTypeBoutiqueLogo[]> {
+  const response = await api.get<ApiResponse<ApiTypeBoutiqueLogo[]>>('/vendeurs/types-logos');
   return response.data.data || [];
 }
 
@@ -810,16 +842,6 @@ export async function confirmerPaiementLivraison(commandeId: string): Promise<Ap
   return response.data.data;
 }
 
-export async function initierCarteLocale(commandeId: string): Promise<ApiPaiement> {
-  const response = await api.post<ApiResponse<ApiPaiement>>('/payment/carte-locale/init', { commande_id: commandeId });
-  if (!response.data.data) throw new ApiError(response.data.message || 'Erreur de paiement.');
-  return response.data.data;
-}
-
-export async function confirmerCarteLocale(paiementId: string, reference: string): Promise<void> {
-  await api.post<ApiResponse>('/payment/carte-locale/confirm', { paiement_id: paiementId, reference });
-}
-
 export async function initierMtnMoMo(commandeId: string, telephone?: string): Promise<ApiPaiement> {
   const response = await api.post<ApiResponse<ApiPaiement>>('/payment/mtn-momo/init', {
     commande_id: commandeId,
@@ -829,7 +851,7 @@ export async function initierMtnMoMo(commandeId: string, telephone?: string): Pr
   return response.data.data;
 }
 
-export interface MtnMomoConfirmResult {
+export interface MobileMoneyConfirmResult {
   status: 'valide' | 'en_attente' | 'echoue';
   message: string;
   reason?: string;
@@ -837,8 +859,8 @@ export interface MtnMomoConfirmResult {
 
 // Interrogeable en polling — tant que le paiement n'a pas de statut définitif côté MTN, l'API
 // renvoie status:'en_attente' (HTTP 200, ce n'est pas une erreur) plutôt que de valider par défaut.
-export async function confirmerMtnMoMo(paiementId: string): Promise<MtnMomoConfirmResult> {
-  const response = await api.post<ApiResponse & { status: MtnMomoConfirmResult['status']; reason?: string }>(
+export async function confirmerMtnMoMo(paiementId: string): Promise<MobileMoneyConfirmResult> {
+  const response = await api.post<ApiResponse & { status: MobileMoneyConfirmResult['status']; reason?: string }>(
     '/payment/mtn-momo/confirm',
     { paiement_id: paiementId }
   );
@@ -849,14 +871,28 @@ export async function confirmerMtnMoMo(paiementId: string): Promise<MtnMomoConfi
   };
 }
 
-export async function initierAirtelMoney(commandeId: string): Promise<ApiPaiement> {
-  const response = await api.post<ApiResponse<ApiPaiement>>('/payment/airtel-money/init', { commande_id: commandeId });
+export async function initierAirtelMoney(commandeId: string, telephone?: string): Promise<ApiPaiement> {
+  const response = await api.post<ApiResponse<ApiPaiement>>('/payment/airtel-money/init', {
+    commande_id: commandeId,
+    telephone,
+  });
   if (!response.data.data) throw new ApiError(response.data.message || 'Erreur de paiement.');
   return response.data.data;
 }
 
-export async function confirmerAirtelMoney(paiementId: string, reference: string): Promise<void> {
-  await api.post<ApiResponse>('/payment/airtel-money/confirm', { paiement_id: paiementId, reference });
+// Même contrat que confirmerMtnMoMo : interrogeable en polling, ne fait plus confiance à une
+// référence fournie par le client (le champ n'existe plus) — seul un vrai statut Airtel Money
+// SUCCESSFUL (ou le mode simulation si non configuré côté serveur) valide le paiement.
+export async function confirmerAirtelMoney(paiementId: string): Promise<MobileMoneyConfirmResult> {
+  const response = await api.post<ApiResponse & { status: MobileMoneyConfirmResult['status']; reason?: string }>(
+    '/payment/airtel-money/confirm',
+    { paiement_id: paiementId }
+  );
+  return {
+    status: response.data.status,
+    message: response.data.message || '',
+    reason: response.data.reason,
+  };
 }
 
 export async function initierStripe(commandeId: string, successUrl: string, cancelUrl: string): Promise<{ url: string; session_id: string | null }> {
@@ -1261,7 +1297,7 @@ export async function ajouterProduitVendeur(input: VendeurProduitInput): Promise
 }
 
 export async function modifierProduitVendeur(id: string, input: Partial<{
-  nom_produit: string; description: string; prix_unitaire: number; unite_mesure: string; type_fraicheur: string;
+  nom_produit: string; description: string; prix_unitaire: number; unite_mesure: string; type_fraicheur: string; categorie_id: string;
 }>): Promise<ApiProduit> {
   const response = await api.put<ApiResponse<ApiProduit>>(`/vendeur/produits/${id}`, input);
   if (!response.data.data) throw new ApiError(response.data.message || 'Erreur lors de la mise à jour.');

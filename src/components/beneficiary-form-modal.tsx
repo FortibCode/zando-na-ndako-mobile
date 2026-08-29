@@ -2,9 +2,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
-import Animated, { FadeIn, FadeInUp, SlideInRight, SlideOutRight } from 'react-native-reanimated';
-import { ArrowLeft, User, Phone, MapPin, Crosshair, StickyNote, Check, AlertTriangle } from 'lucide-react-native';
+import Animated, { FadeIn, FadeInDown, FadeInUp, SlideInRight, SlideOutRight } from 'react-native-reanimated';
+import { ArrowLeft, User, Phone, MapPin, Crosshair, StickyNote, Check, ChevronDown, AlertTriangle } from 'lucide-react-native';
 import { BLUE, RED } from '@/components/client-ui';
+import { useClient } from '@/contexts/client-context';
 import { useDiaspora, type Beneficiary, type BeneficiaryInput } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
 
@@ -19,15 +20,25 @@ const EMPTY_FORM: BeneficiaryInput = { nom: '', telephone: '', ville: '', adress
 
 export default function BeneficiaryFormModal({ visible, onClose, beneficiary, onSaved }: Props) {
   const { addBeneficiary, editBeneficiary, beneficiaries } = useDiaspora();
+  const { zones } = useClient();
   const { t } = useLanguage();
   const [form, setForm] = useState<BeneficiaryInput>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quartierOpen, setQuartierOpen] = useState(false);
+
+  // Même correctif que address-form-modal.tsx : "quartier" doit correspondre à une vraie valeur
+  // de zones_livraison.quartiers_couverts pour que la livraison au bénéficiaire soit facturée/
+  // acceptée correctement, plutôt qu'un texte libre qui pouvait ne matcher aucune zone réelle.
+  const quartierOptions = zones
+    .flatMap((z) => (z.quartiers_couverts || []).map((quartier) => ({ quartier, ville: z.ville })))
+    .sort((a, b) => a.quartier.localeCompare(b.quartier));
 
   const isEditing = Boolean(beneficiary);
 
 const handleOpen = useCallback(() => {
     setError(null);
+    setQuartierOpen(false);
     setForm(beneficiary
       ? {
           nom: beneficiary.nom,
@@ -159,17 +170,36 @@ const handleOpen = useCallback(() => {
 
               <View style={styles.block}>
                 <Text style={styles.label}>{t('diaspora.beneficiaryForm.district', 'Quartier *')}</Text>
-                <View style={styles.fieldWrap}>
+                <Pressable onPress={() => setQuartierOpen((o) => !o)} style={styles.fieldWrap}>
                   <MapPin color="#94A3B8" size={18} />
-                  <TextInput
-                    value={form.quartier || ''}
-                    onChangeText={(v) => updateField('quartier', v)}
-                    placeholder={t('diaspora.beneficiaryForm.districtPlaceholder', 'Ex : Talangaï')}
-                    placeholderTextColor="#94A3B8"
-                    autoCapitalize="words"
-                    style={styles.field}
-                  />
-                </View>
+                  <Text style={[styles.field, !form.quartier && { color: '#94A3B8' }]} numberOfLines={1}>
+                    {form.quartier || t('diaspora.beneficiaryForm.districtPlaceholder', 'Ex : Talangaï')}
+                  </Text>
+                  <ChevronDown color="#94A3B8" size={18} style={{ transform: [{ rotate: quartierOpen ? '180deg' : '0deg' }] }} />
+                </Pressable>
+                {quartierOpen && (
+                  <Animated.View entering={FadeInDown.duration(200)} style={styles.dropdownPanel}>
+                    <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled showsVerticalScrollIndicator>
+                      {quartierOptions.length === 0 ? (
+                        <Text style={styles.dropdownEmpty}>{t('diaspora.beneficiaryForm.noZones', 'Aucune zone de livraison disponible pour l\'instant.')}</Text>
+                      ) : (
+                        quartierOptions.map(({ quartier, ville }) => (
+                          <Pressable
+                            key={quartier}
+                            onPress={() => {
+                              setForm((prev) => ({ ...prev, quartier, ville }));
+                              setQuartierOpen(false);
+                            }}
+                            style={[styles.dropdownOption, quartier === form.quartier && styles.dropdownOptionSelected]}
+                          >
+                            <Text style={[styles.dropdownOptionText, quartier === form.quartier && { color: BLUE, fontWeight: '800' }]}>{quartier}</Text>
+                            {quartier === form.quartier && <Check color={BLUE} size={16} strokeWidth={3} />}
+                          </Pressable>
+                        ))
+                      )}
+                    </ScrollView>
+                  </Animated.View>
+                )}
               </View>
 
               <View style={styles.block}>
@@ -286,6 +316,11 @@ const styles = StyleSheet.create({
   },
 field: { flex: 1, color: BLUE, fontSize: 15, fontWeight: '500', paddingVertical: 12 },
   fieldTextArea: { minHeight: 72, alignItems: 'flex-start', paddingTop: 14 },
+  dropdownPanel: { borderRadius: 14, borderWidth: 1.2, borderColor: '#E2E8F0', backgroundColor: '#FFF', overflow: 'hidden', marginTop: -4, marginBottom: 12 },
+  dropdownOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EEF2FA' },
+  dropdownOptionSelected: { backgroundColor: '#EEF2FA' },
+  dropdownOptionText: { color: BLUE, fontSize: 14, fontWeight: '600' },
+  dropdownEmpty: { color: '#94A3B8', fontSize: 13, fontWeight: '600', padding: 14, textAlign: 'center' },
   errorBox: { backgroundColor: '#FFF0F0', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#FFCDD2' },
   errorBoxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   errorText: { color: RED, fontSize: 13, fontWeight: '700', flexShrink: 1 },

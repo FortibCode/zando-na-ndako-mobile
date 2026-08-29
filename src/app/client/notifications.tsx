@@ -11,7 +11,7 @@ import Animated, {
 import { ArrowLeft, Bell, Bike, Gift, Package, CheckCheck } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
-import { fetchNotifications, markAllNotificationsRead, type UserNotification } from '@/services/api';
+import { fetchNotifications, markAllNotificationsRead, markNotificationRead, type UserNotification } from '@/services/api';
 import { EmptyState } from '@/components/lottie-animations';
 
 // Map notification type -> icon
@@ -45,7 +45,7 @@ function timeAgo(iso: string | undefined, t: (key: string, fallback?: string) =>
   return date.toLocaleDateString('fr-FR');
 }
 
-function NotificationCard({ item, index }: { item: UserNotification; index: number }) {
+function NotificationCard({ item, index, onPress }: { item: UserNotification; index: number; onPress: () => void }) {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const scale = useSharedValue(1);
@@ -58,6 +58,7 @@ function NotificationCard({ item, index }: { item: UserNotification; index: numb
       style={animatedStyle}
     >
       <Pressable
+        onPress={onPress}
         onPressIn={() => { scale.value = withSpring(0.98); }}
         onPressOut={() => { scale.value = withSpring(1); }}
         style={[
@@ -117,6 +118,20 @@ export default function NotificationsScreen() {
     setRefreshing(false);
   }, [load]);
 
+  // L'API ne relie pas une notification à une commande/produit précis (pas de champ id/lien) — on
+  // ne peut honnêtement naviguer que vers la section concernée, jamais un enregistrement inventé.
+  // Même convention que vendor/notifications.tsx et delivery/notifications.tsx.
+  const handlePress = useCallback((item: UserNotification) => {
+    if (!item.statut_lecture) {
+      setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, statut_lecture: true } : n)));
+      markNotificationRead(item.id).catch(() => {});
+    }
+    const type = item.type?.toLowerCase();
+    if (type === 'commande' || type === 'livraison') router.push('/client/(tabs)/orders' as any);
+    else if (type === 'promo' || type === 'promotion') router.push('/client/promo' as any);
+    else if (type === 'produit' || type === 'catalogue') router.push('/client/(tabs)/categories' as any);
+  }, []);
+
   const unreadCount = items.filter((n) => !n.statut_lecture).length;
 
   return (
@@ -162,7 +177,7 @@ export default function NotificationsScreen() {
           }
         >
           {items.map((item, index) => (
-            <NotificationCard key={item.id} item={item} index={index} />
+            <NotificationCard key={item.id} item={item} index={index} onPress={() => handlePress(item)} />
           ))}
         </ScrollView>
       )}

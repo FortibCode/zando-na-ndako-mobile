@@ -14,6 +14,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { GlassSurface } from '@/design/components';
 import { clearAuthToken } from '@/services/api';
+import { confirmLogout } from '@/contexts/alert-context';
 
 export { BLUE, RED, GOLD, GREEN };
 
@@ -108,7 +109,7 @@ export function VendorMenu() {
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => { setOpen(false); clearAuthToken(); router.replace('/auth'); }}
+              onPress={() => { setOpen(false); confirmLogout(() => { clearAuthToken(); router.replace('/auth'); }); }}
               style={[styles.drawerLogout, { borderTopColor: colors.border }]}
             >
               <LogOut color={colors.error} size={20} />

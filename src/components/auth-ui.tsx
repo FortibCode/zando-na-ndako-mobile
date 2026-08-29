@@ -482,17 +482,12 @@ export function OtpFields({
   const inputs = useRef<(TextInput | null)[]>([]);
   const completedRef = useRef(false);
 
-  const autoTriggeredRef = useRef(false);
-
-  // Auto-soumettre si le code initial est complet (otp_dev reçu du backend)
-  useEffect(() => {
-    if (initialCode && initialCode.replace(/\D/g, '').length === 6 && onComplete && !autoTriggeredRef.current) {
-      autoTriggeredRef.current = true;
-      const cleanCode = initialCode.replace(/\D/g, '').slice(0, 6);
-      const timer = setTimeout(() => onComplete(cleanCode), 600);
-      return () => clearTimeout(timer);
-    }
-  }, [initialCode, onComplete]);
+  // Pas d'effet dédié "auto-soumettre" ici : quand initialCode est un code complet (otp_dev), le
+  // state code[] en est déjà rempli dès le premier rendu (voir useState ci-dessus), donc l'effet de
+  // complétion normal juste en dessous se déclenche déjà tout seul au montage. Un second effet
+  // séparé faisait doublon et déclenchait deux appels onComplete() quasi simultanés avec le même
+  // code — la 2e vérification arrivait après que le serveur ait déjà marqué le code "utilise" et
+  // renvoyait donc "Code invalide" même quand la 1re avait réussi.
 
   useEffect(() => {
     completedRef.current = false;

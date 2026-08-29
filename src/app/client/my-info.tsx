@@ -35,6 +35,9 @@ export default function MyInfoScreen() {
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
+  // Aperçu local de la photo tout juste choisie — sans ça, l'écran continuait d'afficher l'ancienne
+  // photo (juste assombrie par le spinner) pendant tout l'envoi, jamais celle réellement choisie.
+  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [dateError, setDateError] = useState<string | null>(null);
 
@@ -88,6 +91,7 @@ export default function MyInfoScreen() {
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
+      setLocalPhotoUri(asset.uri);
 
       setPhotoLoading(true);
       try {
@@ -99,6 +103,7 @@ export default function MyInfoScreen() {
         alert('Photo mise à jour', 'Votre photo de profil a bien été enregistrée.');
       } catch (e: any) {
         alert('Erreur', e.message || 'Impossible d\'enregistrer la photo.');
+        setLocalPhotoUri(null);
       } finally {
         setPhotoLoading(false);
       }
@@ -107,7 +112,7 @@ export default function MyInfoScreen() {
     }
   }, [uploadPhoto]);
 
-  const resolvedPhoto = resolveMediaUrl(currentUser?.photo_profil);
+  const resolvedPhoto = localPhotoUri || resolveMediaUrl(currentUser?.photo_profil);
 
   const fields = [
     { icon: User, label: t('myInfo.lastName', 'Nom'), value: currentUser?.nom || '', key: 'nom' as const, autoCapitalize: 'words' as const },

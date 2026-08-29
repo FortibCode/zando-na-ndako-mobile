@@ -85,6 +85,10 @@ export default function VendorProfileInfoScreen() {
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const selected = result.assets[0];
+        const previousPhotoUri = photoUri;
+        // Aperçu local immédiat — auparavant le spinner remplaçait toute l'image pendant l'envoi,
+        // donc la boutique ne voyait jamais la photo réellement choisie avant la fin de l'upload.
+        setPhotoUri(selected.uri);
         setUploadingPhoto(true);
         try {
           await uploadDocument('photo_boutique', {
@@ -92,9 +96,9 @@ export default function VendorProfileInfoScreen() {
             fileName: selected.fileName || `boutique_${Date.now()}.jpg`,
             type: selected.mimeType || 'image/jpeg',
           });
-          setPhotoUri(selected.uri);
           alert(t('vendorProfileInfo.photoUpdatedTitle', '✅ Photo mise à jour'), t('vendorProfileInfo.photoUpdatedDesc', 'Votre photo a bien été enregistrée.'));
         } catch (err: any) {
+          setPhotoUri(previousPhotoUri);
           alert('Erreur', err.message || t('vendorProfileInfo.photoErrorDesc', 'Échec de l\'envoi de la photo.'));
         } finally {
           setUploadingPhoto(false);
@@ -152,12 +156,15 @@ export default function VendorProfileInfoScreen() {
         <Animated.View entering={FadeInUp.duration(400).delay(60).springify()}>
           <Pressable onPress={handlePickPhoto} disabled={uploadingPhoto} style={[styles.avatarRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={[styles.avatar, { backgroundColor: colors.primarySoft }]}>
-              {uploadingPhoto ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : photoUri ? (
+              {photoUri ? (
                 <Image source={{ uri: photoUri }} style={styles.avatarImg} />
               ) : (
                 <Text style={styles.avatarEmoji}>{deriveStoreEmoji(categorie)}</Text>
+              )}
+              {uploadingPhoto && (
+                <View style={styles.avatarUploadOverlay}>
+                  <ActivityIndicator color="#FFF" size="small" />
+                </View>
               )}
             </View>
             <Text style={[styles.avatarText, { color: colors.primary }]}>
@@ -266,9 +273,13 @@ const styles = StyleSheet.create({
   content: { padding: 20, gap: 16, paddingBottom: 30 },
 
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 18, padding: 16, borderWidth: 1 },
-  avatar: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatar: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' },
   avatarImg: { width: 64, height: 64, borderRadius: 32 },
   avatarEmoji: { fontSize: 32 },
+  avatarUploadOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(6,24,59,0.45)', alignItems: 'center', justifyContent: 'center',
+  },
   avatarText: { fontSize: 14, fontWeight: '800' },
 
   sectionLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 1 },

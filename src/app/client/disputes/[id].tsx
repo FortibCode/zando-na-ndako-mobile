@@ -1,17 +1,44 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { ArrowLeft, Send, Paperclip, ShieldAlert, Wallet } from 'lucide-react-native';
+import { ArrowLeft, Send, Paperclip, ShieldAlert, Wallet, FileText } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import {
-  fetchClientLitigeDetail, envoyerMessageLitige, uploaderPreuveLitige,
-  type ApiLitige, type ApiLitigeMessage, type LitigeStatut,
+  fetchClientLitigeDetail, envoyerMessageLitige, uploaderPreuveLitige, resolveMediaUrl,
+  type ApiLitige, type ApiLitigeMessage, type ApiLitigePieceJointe, type LitigeStatut,
 } from '@/services/api';
+
+function PieceJointeChip({ piece, colors }: { piece: ApiLitigePieceJointe; colors: any }) {
+  const url = resolveMediaUrl(piece.file_path);
+  if (piece.file_type === 'image' && url) {
+    return (
+      <Pressable onPress={() => Linking.openURL(url)}>
+        <Image source={{ uri: url }} style={pieceStyles.thumb} contentFit="cover" />
+      </Pressable>
+    );
+  }
+  return (
+    <Pressable
+      onPress={() => url && Linking.openURL(url)}
+      style={[pieceStyles.fileChip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
+    >
+      <FileText color={colors.primary} size={16} />
+      <Text numberOfLines={1} style={[pieceStyles.fileChipText, { color: colors.text }]}>{piece.file_name}</Text>
+    </Pressable>
+  );
+}
+
+const pieceStyles = StyleSheet.create({
+  thumb: { width: 64, height: 64, borderRadius: 12 },
+  fileChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, height: 64, maxWidth: 160 },
+  fileChipText: { fontSize: 11, fontWeight: '700', flexShrink: 1 },
+});
 
 const STATUT_COLOR: Record<LitigeStatut, string> = {
   ouvert: '#C00000', attente_vendeur: '#F1A105', attente_client: '#F1A105',
@@ -117,6 +144,18 @@ export default function ClientDisputeDetailScreen() {
               </View>
             )}
 
+            {/* Preuves jointes hors message (voir handleAttach — envoyées sans message_id, donc
+                jamais rattachées à une bulle précise) : sans cette section elles restaient
+                uploadées mais invisibles nulle part dans l'écran. */}
+            {(litige?.pieces_jointes ?? []).length > 0 && (
+              <View style={styles.piecesSection}>
+                <Text style={[styles.piecesLabel, { color: colors.textSecondary }]}>{t('clientDisputeDetail.attachmentsLabel', 'Preuves jointes')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.piecesRow}>
+                  {(litige?.pieces_jointes ?? []).map((p) => <PieceJointeChip key={p.id} piece={p} colors={colors} />)}
+                </ScrollView>
+              </View>
+            )}
+
             {(litige?.remboursements ?? []).map((r) => (
               <View key={r.id} style={[styles.systemCard, { backgroundColor: colors.freshSoft }]}>
                 <Wallet color={colors.success} size={16} />
@@ -147,6 +186,11 @@ export default function ClientDisputeDetailScreen() {
                   <View style={[styles.bubble, mine ? [styles.bubbleMine, { backgroundColor: colors.freshSoft }] : [styles.bubbleTheirs, { backgroundColor: colors.surfaceAlt }]]}>
                     <Text style={[styles.bubbleText, { color: mine ? colors.success : colors.text }]}>{m.message}</Text>
                   </View>
+                  {(m.pieces_jointes ?? []).length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.piecesRow}>
+                      {(m.pieces_jointes ?? []).map((p) => <PieceJointeChip key={p.id} piece={p} colors={colors} />)}
+                    </ScrollView>
+                  )}
                   <Text style={[styles.time, { color: colors.textTertiary }]}>
                     {new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </Text>
@@ -199,6 +243,10 @@ const styles = StyleSheet.create({
   motifText: { flex: 1, fontSize: 13, fontWeight: '700', lineHeight: 19 },
   systemCard: { flexDirection: 'row', gap: 8, alignItems: 'center', borderRadius: 12, padding: 10, alignSelf: 'stretch' },
   systemText: { fontSize: 12.5, fontWeight: '700', flexShrink: 1 },
+
+  piecesSection: { gap: 6 },
+  piecesLabel: { fontSize: 11.5, fontWeight: '800' },
+  piecesRow: { gap: 8 },
 
   bubbleWrap: { maxWidth: '78%', gap: 4 },
   bubbleWrapMine: { alignSelf: 'flex-end', alignItems: 'flex-end' },

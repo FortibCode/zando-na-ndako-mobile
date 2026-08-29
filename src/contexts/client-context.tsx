@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { alert } from '@/contexts/alert-context';
-import type { DeliveryAddress, DeliveryAddressInput, LoginUser, ApiProduit, ApiCategorie, ApiZone, CommandeResult } from '@/services/api';
+import { deriveStoreEmoji } from '@/contexts/vendor-context';
+import type { DeliveryAddress, DeliveryAddressInput, LoginUser, ApiProduit, ApiCategorie, ApiZone, ApiVendeur, CommandeResult } from '@/services/api';
 import {
   fetchAddresses,
   createAddress as apiCreateAddress,
@@ -20,7 +21,8 @@ import {
   fetchProduitsPromotions,
   fetchCategories,
   fetchZones,
-  fetchVendeurTypes,
+  fetchVendeurTypesLogos,
+  fetchVendeurs,
   resolveMediaUrl,
   viderPanier,
   ajouterAuPanier,
@@ -30,12 +32,25 @@ import {
   ApiError,
 } from '@/services/api';
 
+// Type de boutique enrichi pour le parcours "boutique d'abord" : le vrai logo envoyé par l'admin
+// (/admin/types-boutique) quand il existe, sinon un emoji dérivé du libellé (même logique que
+// deriveStoreEmoji() utilisé côté vendeur pour la propre boutique d'un vendeur) — jamais une icône
+// générique unique pour tous les types.
+export interface BoutiqueTypeItem {
+  type: string;
+  logoUrl?: string;
+  emoji: string;
+}
+
 const ADDRESSES_STORAGE_KEY = '@zando_client_addresses';
 const SELECTED_ADDRESS_KEY = '@zando_client_selected_address';
 const FAVORITES_KEY = '@zando_client_favorites';
+const CART_STORAGE_KEY = '@zando_client_cart';
 const PRODUCTS_CACHE_KEY = '@zando_client_products_cache';
 const CATEGORIES_CACHE_KEY = '@zando_client_categories_cache';
 const CATEGORY_ICONS_CACHE_KEY = '@zando_client_category_icons_cache';
+const BOUTIQUE_TYPES_CACHE_KEY = '@zando_client_boutique_types_cache';
+const BOUTIQUES_CACHE_KEY = '@zando_client_boutiques_cache';
 
 // Utilisées uniquement si l'API et le cache local sont tous deux indisponibles (premier lancement hors-ligne).
 const FALLBACK_CATEGORIES = [
@@ -131,7 +146,14 @@ type ClientContextValue = {
   categories: string[];
   categoryIcons: Record<string, string>;
   categoriesLoading: boolean;
-  boutiqueTypes: string[];
+  boutiqueTypes: BoutiqueTypeItem[];
+  boutiques: ApiVendeur[];
+  boutiquesLoading: boolean;
+  refreshBoutiques: () => Promise<void>;
+  // Vrai indicateur "hors ligne" : passe à true dès qu'un rafraîchissement de catalogue
+  // (produits, catégories, types de boutique ou boutiques) a dû retomber sur le cache local faute
+  // de réseau — repasse à false au prochain rafraîchissement réussi depuis l'API.
+  catalogOffline: boolean;
   zones: ApiZone[];
   resolveZoneForAddress: (address: DeliveryAddress | null) => ApiZone | null;
   resolveZoneForQuartier: (quartier?: string | null) => ApiZone | null;
@@ -191,7 +213,10 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<string[]>(FALLBACK_CATEGORIES);
   const [categoryIcons, setCategoryIcons] = useState<Record<string, string>>({});
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [boutiqueTypes, setBoutiqueTypes] = useState<string[]>([]);
+  const [boutiqueTypes, setBoutiqueTypes] = useState<BoutiqueTypeItem[]>([]);
+  const [boutiques, setBoutiques] = useState<ApiVendeur[]>([]);
+  const [boutiquesLoading, setBoutiquesLoading] = useState(false);
+  const [catalogOffline, setCatalogOffline] = useState(false);
   const [zones, setZones] = useState<ApiZone[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<SlotSelection | null>(null);
 
@@ -248,6 +273,28 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => setCart({});
 
+  // Survit à un redémarrage de l'app, comme les favoris ci-dessous — un panier perdu à chaque
+  // fermeture de l'app est une vraie perte de vente, jamais souhaitable. `cartHydrated` évite
+  // qu'un premier passage de l'effet de sauvegarde (avec le cart={} initial) n'écrase le panier
+  // déjà persisté avant que le chargement asynchrone ci-dessus n'ait eu le temps de le restaurer.
+  const [cartHydrated, setCartHydrated] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(CART_STORAGE_KEY);
+        if (raw) setCart(JSON.parse(raw));
+      } catch { /* ignore */ } finally {
+        setCartHydrated(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!cartHydrated) return;
+    AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)).catch(() => {});
+  }, [cart, cartHydrated]);
+
   // Pas de favoris côté backend : persistés localement pour survivre à un redémarrage de l'app,
   // plutôt que de disparaître silencieusement (ce qu'ils faisaient avant, useState seul).
   useEffect(() => {
@@ -276,7 +323,11 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     0,
   );
 
-  // ─── Catalogue : produits & catégories (API avec repli cache local) ───
+  // ─── Catalogue : produits, catégories, types de boutique & boutiques (API avec repli cache local) ───
+  // Chaque refresh* suit le même contrat : écrire le cache dès qu'une réponse réseau arrive, et s'y
+  // replier silencieusement en cas d'échec — catalogOffline signale globalement qu'au moins une
+  // section du catalogue affiche des données en cache plutôt que fraîches, pour prévenir l'utilisateur
+  // sans bloquer la navigation (mode hors ligne partiel du cahier des charges).
   const refreshProducts = useCallback(async () => {
     setProductsLoading(true);
     setProductsError(null);
@@ -284,12 +335,14 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       const apiList = await fetchProduits();
       const mapped = apiList.map(mapApiProduitToProduct);
       setProducts(mapped);
+      setCatalogOffline(false);
       await AsyncStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(mapped)).catch(() => {});
     } catch (_e) {
       try {
         const raw = await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
         if (raw) {
           setProducts(JSON.parse(raw));
+          setCatalogOffline(true);
         } else {
           setProductsError('Impossible de charger le catalogue. Vérifiez votre connexion.');
         }
@@ -312,13 +365,14 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       if (names.length > 0) {
         setCategories(names);
         setCategoryIcons(icons);
+        setCatalogOffline(false);
         await AsyncStorage.setItem(CATEGORIES_CACHE_KEY, JSON.stringify(names)).catch(() => {});
         await AsyncStorage.setItem(CATEGORY_ICONS_CACHE_KEY, JSON.stringify(icons)).catch(() => {});
       }
     } catch (_e) {
       try {
         const raw = await AsyncStorage.getItem(CATEGORIES_CACHE_KEY);
-        if (raw) setCategories(JSON.parse(raw));
+        if (raw) { setCategories(JSON.parse(raw)); setCatalogOffline(true); }
         // sinon : conserve FALLBACK_CATEGORIES déjà en état initial
         const rawIcons = await AsyncStorage.getItem(CATEGORY_ICONS_CACHE_KEY);
         if (rawIcons) setCategoryIcons(JSON.parse(rawIcons));
@@ -335,13 +389,42 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     } catch { /* zones indisponibles : resolveZoneForAddress renverra null, géré côté écrans */ }
   }, []);
 
-  // Types de boutique (parcours "boutique d'abord") : valeurs réellement présentes en base
-  // (categorie_principale est un champ texte libre, pas un enum) plutôt qu'une liste codée en dur.
+  // Types de boutique (parcours "boutique d'abord") : liste canonique gérée par l'admin
+  // (/vendeurs/types-logos), pas seulement les types ayant déjà un vendeur actif — même source que
+  // admin_web (voir Categories.tsx côté web) pour que les deux plateformes restent synchronisées.
   const refreshBoutiqueTypes = useCallback(async () => {
     try {
-      const types = await fetchVendeurTypes();
-      setBoutiqueTypes(types);
-    } catch { /* liste vide : l'écran affiche son propre état vide */ }
+      const types = await fetchVendeurTypesLogos();
+      const mapped = types.map((t) => ({ type: t.type, logoUrl: resolveMediaUrl(t.logo), emoji: deriveStoreEmoji(t.type) }));
+      setBoutiqueTypes(mapped);
+      setCatalogOffline(false);
+      await AsyncStorage.setItem(BOUTIQUE_TYPES_CACHE_KEY, JSON.stringify(mapped)).catch(() => {});
+    } catch {
+      try {
+        const raw = await AsyncStorage.getItem(BOUTIQUE_TYPES_CACHE_KEY);
+        if (raw) { setBoutiqueTypes(JSON.parse(raw)); setCatalogOffline(true); }
+        // sinon : l'écran affiche son propre état vide
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  // Liste des boutiques (carrousel d'accueil "Vos boutiques") : même contrat de repli cache que le
+  // reste du catalogue — point d'entrée central de la navigation "boutique d'abord".
+  const refreshBoutiques = useCallback(async () => {
+    setBoutiquesLoading(true);
+    try {
+      const apiList = await fetchVendeurs();
+      setBoutiques(apiList);
+      setCatalogOffline(false);
+      await AsyncStorage.setItem(BOUTIQUES_CACHE_KEY, JSON.stringify(apiList)).catch(() => {});
+    } catch {
+      try {
+        const raw = await AsyncStorage.getItem(BOUTIQUES_CACHE_KEY);
+        if (raw) { setBoutiques(JSON.parse(raw)); setCatalogOffline(true); }
+      } catch { /* ignore */ }
+    } finally {
+      setBoutiquesLoading(false);
+    }
   }, []);
 
   // Produits populaires / récents / promotion active : sections d'accueil basées sur de vraies données
@@ -369,6 +452,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     refreshCategories();
     refreshZones();
     refreshBoutiqueTypes();
+    refreshBoutiques();
     refreshHighlights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -472,7 +556,11 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   }, []);
 
 const userFirstName = useMemo(() => {
-    if (!currentUser) return 'Invité';
+    // nom_complet a pu manquer sur une réponse serveur plus ancienne (voir correctif
+    // UserController::update() — un $user->fresh() seul omettait cet accesseur, un profil sans ce
+    // champ pouvait alors être mis en cache sur l'appareil) : ne jamais planter sur un profil réel
+    // mais incomplet.
+    if (!currentUser?.nom_complet) return 'Invité';
     const parts = currentUser.nom_complet.split(' ');
     return parts[0] || 'Invité';
   }, [currentUser]);
@@ -671,6 +759,10 @@ const userFirstName = useMemo(() => {
       categoryIcons,
       categoriesLoading,
       boutiqueTypes,
+      boutiques,
+      boutiquesLoading,
+      refreshBoutiques,
+      catalogOffline,
       zones,
       resolveZoneForAddress,
       resolveZoneForQuartier,
@@ -708,7 +800,7 @@ currentUser,
     }),
     [
       products, productsLoading, productsError, refreshProducts, popularProducts, recentProducts, promotedProduct,
-      categories, categoryIcons, categoriesLoading, boutiqueTypes,
+      categories, categoryIcons, categoriesLoading, boutiqueTypes, boutiques, boutiquesLoading, refreshBoutiques, catalogOffline,
       zones, resolveZoneForAddress, resolveZoneForQuartier, selectedSlot, setSelectedSlot, placeOrder,
       cart, cartCount, subtotal, favorites, searchQuery,
       addresses, addressesLoading, refreshAddresses, addAddress,

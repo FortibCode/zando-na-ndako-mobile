@@ -11,7 +11,11 @@ import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 
-const UNITES = ['kg', 'pièce', 'litre'];
+// Alignée avec admin_web/src/lib/produitConstants.ts (UNITES_MESURE_SUGGESTIONS) — les 3 valeurs
+// d'origine ne couvraient pas les unités réellement utilisées par de vrais produits (voir
+// ProduitsSeeder.php côté backend : "Sachet", "Régime", "Boîte"), forçant à en taper une hors-liste
+// de toute façon, ce qui revient au même problème qu'un champ texte libre.
+const UNITES = ['kg', 'pièce', 'litre', 'sachet', 'boîte', 'régime', 'sac'];
 const FRAICHEURS: { value: 'frais' | 'fume' | 'congele'; label: string }[] = [
   { value: 'frais', label: 'Frais' },
   { value: 'fume', label: 'Fumé' },

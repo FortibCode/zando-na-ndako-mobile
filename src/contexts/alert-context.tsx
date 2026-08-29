@@ -39,6 +39,19 @@ export function alert(title: string, message?: string, buttons?: AlertButton[]):
   }
 }
 
+// Confirmation avant déconnexion, même formulation partout (client/vendeur/livreur, web admin) —
+// évite qu'un appui accidentel sur "Se déconnecter" ferme la session sans aucune confirmation.
+export function confirmLogout(onConfirm: () => void): void {
+  alert(
+    'Déconnexion',
+    'Voulez-vous vraiment vous déconnecter ?',
+    [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Se déconnecter', style: 'destructive', onPress: onConfirm },
+    ],
+  );
+}
+
 const AlertContext = createContext<null>(null);
 
 export function AlertProvider({ children }: { children: ReactNode }) {

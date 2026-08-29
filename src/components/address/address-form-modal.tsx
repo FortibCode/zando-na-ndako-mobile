@@ -28,6 +28,7 @@ import {
   User,
   Star,
   Check,
+  ChevronDown,
   Navigation,
   AlertTriangle,
 } from 'lucide-react-native';
@@ -60,13 +61,23 @@ const EMPTY_FORM: DeliveryAddressInput = {
 };
 
 export default function AddressFormModal({ visible, onClose, address, initialCoords }: Props) {
-  const { addAddress, editAddress } = useClient();
+  const { addAddress, editAddress, zones } = useClient();
   const { colors, isDark } = useTheme();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quartierOpen, setQuartierOpen] = useState(false);
 
   // Initialiser le formulaire à partir de l'adresse (édition) ou vide (création)
   const [form, setForm] = useState<DeliveryAddressInput>(EMPTY_FORM);
+
+  // Remplace l'ancien champ texte libre : "quartier" doit correspondre EXACTEMENT à une valeur de
+  // zones_livraison.quartiers_couverts pour que resolveZoneForQuartier() (client-context.tsx)
+  // trouve la bonne zone — un simple "Moungali" au lieu de "Moungalie" faisait échouer la
+  // résolution (livraison refusée) ou, côté web, retombait silencieusement sur une zone/un tarif
+  // au hasard. Dérivé des vraies zones actives plutôt qu'une liste codée en dur.
+  const quartierOptions = zones
+    .flatMap((z) => (z.quartiers_couverts || []).map((quartier) => ({ quartier, ville: z.ville })))
+    .sort((a, b) => a.quartier.localeCompare(b.quartier));
 
   const isEditing = Boolean(address);
 
@@ -79,6 +90,7 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
 
   const handleOpen = useCallback(() => {
     setError(null);
+    setQuartierOpen(false);
     if (address) {
       setForm({
         label: address.label || 'Maison',
@@ -249,17 +261,41 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
                     style={[styles.field, { color: colors.text }]}
                   />
                 </View>
-                <View style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Pressable
+                  onPress={() => setQuartierOpen((o) => !o)}
+                  style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                >
                   <Navigation color={colors.textTertiary} size={18} />
-                  <TextInput
-                    value={form.quartier}
-                    onChangeText={(t) => updateField('quartier', t)}
-                    placeholder="Quartier (ex: Moungalie)"
-                    placeholderTextColor={colors.textTertiary}
-                    autoCapitalize="words"
-                    style={[styles.field, { color: colors.text }]}
-                  />
-                </View>
+                  <Text style={[styles.field, { color: form.quartier ? colors.text : colors.textTertiary }]} numberOfLines={1}>
+                    {form.quartier || 'Quartier'}
+                  </Text>
+                  <ChevronDown color={colors.textTertiary} size={18} style={{ transform: [{ rotate: quartierOpen ? '180deg' : '0deg' }] }} />
+                </Pressable>
+                {quartierOpen && (
+                  <Animated.View entering={FadeInDown.duration(200)} style={[styles.dropdownPanel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled showsVerticalScrollIndicator>
+                      {quartierOptions.length === 0 ? (
+                        <Text style={[styles.dropdownEmpty, { color: colors.textTertiary }]}>Aucune zone de livraison disponible pour l'instant.</Text>
+                      ) : (
+                        quartierOptions.map(({ quartier, ville }) => (
+                          <Pressable
+                            key={quartier}
+                            onPress={() => {
+                              setForm((prev) => ({ ...prev, quartier, ville }));
+                              setQuartierOpen(false);
+                            }}
+                            style={[styles.dropdownOption, { borderBottomColor: colors.border }, quartier === form.quartier && { backgroundColor: colors.primarySoft }]}
+                          >
+                            <Text style={[styles.dropdownOptionText, { color: colors.textSecondary }, quartier === form.quartier && { color: colors.primary, fontWeight: '800' }]}>
+                              {quartier}
+                            </Text>
+                            {quartier === form.quartier && <Check color={colors.primary} size={16} strokeWidth={3} />}
+                          </Pressable>
+                        ))
+                      )}
+                    </ScrollView>
+                  </Animated.View>
+                )}
                 <View style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                   <MapPin color={colors.textTertiary} size={18} />
                   <TextInput
@@ -407,6 +443,10 @@ const styles = StyleSheet.create({
   },
   field: { flex: 1, fontSize: 15, fontWeight: '500', paddingVertical: 12 },
   addressField: { minHeight: 70, textAlignVertical: 'top' },
+  dropdownPanel: { borderRadius: 14, borderWidth: 1.2, overflow: 'hidden', marginBottom: 12, marginTop: -4 },
+  dropdownOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1 },
+  dropdownOptionText: { fontSize: 14, fontWeight: '600' },
+  dropdownEmpty: { fontSize: 13, fontWeight: '600', padding: 14, textAlign: 'center' },
 
   // Default
   defaultRow: {

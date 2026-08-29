@@ -11,9 +11,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { useClient } from '@/contexts/client-context';
 import { useDiaspora, formatEur, formatUsd, formatFcfa, buildDeliveryAddress } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
-import { ApiError, initierPayPal, confirmerPayPal, initierStripe, confirmerStripe } from '@/services/api';
-
-const FALLBACK_DELIVERY_FEE = 2000;
+import { ApiError, initierPayPal, confirmerPayPal, initierStripe, confirmerStripe, FALLBACK_DELIVERY_FEE } from '@/services/api';
 
 type PaymentMethodId = 'paypal' | 'stripe' | 'card';
 

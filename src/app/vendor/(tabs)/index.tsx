@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Bell, Wallet, Star, Plus, ClipboardList } from 'lucide-react-native';
@@ -9,9 +10,12 @@ import { useLanguage } from '@/contexts/language-context';
 import { Palette, Radii } from '@/design/tokens';
 import { ThemeToggle, LanguageToggle } from '@/design/components';
 import { VendorMenu } from '@/components/vendor-ui';
+import { clearAuthToken } from '@/services/api';
+import { alert, confirmLogout } from '@/contexts/alert-context';
 
 export default function VendorHomeScreen() {
-  const { boutique, vendorFirstName, orders, products, unreadNotificationsCount, stats } = useVendor();
+  const { boutique, vendorFirstName, orders, products, unreadNotificationsCount, stats, documents } = useVendor();
+  const boutiquePhotoUrl = documents.find((d) => d.id === 'photo_boutique')?.url;
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
 
@@ -30,9 +34,14 @@ export default function VendorHomeScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Top bar */}
         <Animated.View entering={FadeInDown.duration(350).springify()} style={styles.top}>
-          <VendorMenu />
-          <Text style={[styles.greeting, { color: colors.text }]} numberOfLines={1}>{t('vendorHome.greeting', 'Bonjour')}, {vendorFirstName} 👋</Text>
-          <View style={styles.topRight}>
+          <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <VendorMenu />
+            <Text style={[styles.greeting, { color: colors.text, flexShrink: 1 }]} numberOfLines={1}>{t('vendorHome.greeting', 'Bonjour')}, {vendorFirstName}</Text>
+          </View>
+
+          {/* Largeur naturelle (pas flex:1) : avec 4 éléments ici, un partage strict en tiers avec la
+              colonne salutation (nom de longueur variable) écrasait le texte sur un espace trop étroit. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <LanguageToggle />
             <ThemeToggle />
             <View style={[styles.statusPill, { backgroundColor: colors.freshSoft }, !isOpen && { backgroundColor: colors.error + '1A' }]}>
@@ -46,6 +55,28 @@ export default function VendorHomeScreen() {
                 <View style={[styles.bellBadge, { backgroundColor: colors.error, borderColor: colors.background }]}>
                   <Text style={styles.bellBadgeText}>{unreadNotificationsCount}</Text>
                 </View>
+              )}
+            </Pressable>
+          </View>
+
+          <View style={{ marginLeft: 10 }}>
+            <Pressable
+              accessibilityLabel="Mon compte"
+              onPress={() => alert(
+                'Mon compte',
+                undefined,
+                [
+                  { text: 'Voir mon profil', onPress: () => router.push('/vendor/(tabs)/profile' as any) },
+                  { text: 'Se déconnecter', style: 'destructive', onPress: () => confirmLogout(() => { clearAuthToken(); router.replace('/auth' as any); }) },
+                  { text: 'Annuler', style: 'cancel' },
+                ],
+              )}
+              style={[styles.avatarBtn, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}
+            >
+              {boutiquePhotoUrl ? (
+                <Image source={{ uri: boutiquePhotoUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              ) : (
+                <Text style={{ fontSize: 18 }}>{boutique.emoji}</Text>
               )}
             </Pressable>
           </View>
@@ -121,8 +152,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { padding: 20, paddingBottom: 30, gap: 14 },
 
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   greeting: { fontSize: 19, fontWeight: '900', flex: 1 },
+  avatarBtn: {
+    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+  },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   statusPill: { borderRadius: Radii.md, paddingHorizontal: 10, paddingVertical: 6 },
   statusPillText: { fontSize: 12, fontWeight: '800' },

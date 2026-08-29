@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -42,6 +42,11 @@ function PulseDot({ color = '#2771EC' }: { color?: string }) {
 }
 
 export default function DiasporaTrackingScreen() {
+  // Route ouverte soit depuis "Mes envois" (numero/commandeId d'une commande précise, y compris
+  // plus ancienne que la dernière), soit juste après un paiement (aucun paramètre : on retombe sur
+  // lastOrder). Avant ce correctif, l'écran ne lisait QUE lastOrder — un client avec 2 commandes en
+  // cours perdait le suivi en direct de la première dès qu'il en passait une seconde.
+  const params = useLocalSearchParams<{ numero?: string; commandeId?: string }>();
   const { lastOrder, selectedBeneficiary, getShipment } = useDiaspora();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
@@ -49,10 +54,13 @@ export default function DiasporaTrackingScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const numeroCommande = params.numero || lastOrder?.numeroCommande;
+  const commandeId = params.commandeId || lastOrder?.id;
+
   const loadSuivi = useCallback(async () => {
-    if (!lastOrder?.numeroCommande) { setLoading(false); return; }
+    if (!numeroCommande) { setLoading(false); return; }
     try {
-      const data = await fetchDiasporaSuivi(lastOrder.numeroCommande);
+      const data = await fetchDiasporaSuivi(numeroCommande);
       setSuivi(data);
       setError(null);
     } catch {
@@ -60,7 +68,7 @@ export default function DiasporaTrackingScreen() {
     } finally {
       setLoading(false);
     }
-  }, [lastOrder?.numeroCommande, t]);
+  }, [numeroCommande, t]);
 
   useEffect(() => {
     loadSuivi();
@@ -70,11 +78,11 @@ export default function DiasporaTrackingScreen() {
 
   // Le livreur n'est connu (nom) qu'une fois assigné : on le lit dans l'historique local s'il y est déjà,
   // jamais inventé. Aucune ETA ni numéro de livreur ne sont exposés par l'API à ce stade du suivi.
-  const shipment = lastOrder?.numeroCommande ? getShipment(lastOrder.numeroCommande) : undefined;
+  const shipment = numeroCommande ? getShipment(numeroCommande) : undefined;
   const enRouteFait = suivi?.etapes.find((e) => e.code === 'en_route')?.fait ?? false;
   const livreeFait = suivi?.etapes.find((e) => e.code === 'livree')?.fait ?? false;
 
-  if (!lastOrder) {
+  if (!numeroCommande) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -99,7 +107,7 @@ export default function DiasporaTrackingScreen() {
         <Pressable onPress={() => router.back()}><ArrowLeft color={colors.primary} size={27} /></Pressable>
         <View>
           <Text style={[styles.title, { color: colors.text }]}>{t('diaspora.tracking.title', 'Suivi de commande')}</Text>
-          <Text style={[styles.orderId, { color: colors.textSecondary }]}>#{lastOrder.numeroCommande}</Text>
+          <Text style={[styles.orderId, { color: colors.textSecondary }]}>#{numeroCommande}</Text>
         </View>
       </Animated.View>
 
@@ -196,13 +204,13 @@ export default function DiasporaTrackingScreen() {
           </Animated.View>
 
           {/* Noter la commande — uniquement une fois livrée, comme le suivi client local */}
-          {livreeFait && (
+          {livreeFait && commandeId && (
             <Animated.View entering={FadeInUp.duration(400).delay(380).springify()}>
               <Pressable
                 onPress={() => router.push(
                   (shipment?.livreur
-                    ? `/client/rating?commandeId=${lastOrder.id}&driverName=${encodeURIComponent(shipment.livreur)}`
-                    : `/client/rating?commandeId=${lastOrder.id}`) as any
+                    ? `/client/rating?commandeId=${commandeId}&driverName=${encodeURIComponent(shipment.livreur)}`
+                    : `/client/rating?commandeId=${commandeId}`) as any
                 )}
                 style={styles.rateLink}
               >

@@ -34,7 +34,7 @@ function CartItem({ product, quantity, index }: { product: Product; quantity: nu
         onPressOut={() => { scale.value = withSpring(1); }}
         style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}
       >
-        <View style={styles.imageWrap}>
+        <View style={[styles.imageWrap, { backgroundColor: colors.backgroundAlt }]}>
           <Image
             accessibilityLabel={product.name}
             contentFit="cover"

@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
-import { ArrowLeft, Upload, ShoppingBag, MapPin, Star } from 'lucide-react-native';
+import { ArrowLeft, Upload, ShoppingBag, MapPin, Star, Truck } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import {
   useDiaspora, formatPreferred, formatFcfa, type ShipmentStatus,
@@ -124,6 +124,18 @@ export default function ShipmentDetailScreen() {
             <Text style={[styles.summaryValueSm, { color: colors.text }]}>{formatFcfa(shipment.fraisLivraison)}</Text>
           </View>
         </Animated.View>
+
+        {shipment.statut === 'en_cours' && (
+          <Animated.View entering={FadeInUp.duration(400).delay(280).springify()}>
+            <Pressable
+              onPress={() => router.push(`/client/diaspora/tracking?numero=${encodeURIComponent(shipment.id)}&commandeId=${encodeURIComponent(shipment.rawId)}` as any)}
+              style={[styles.invoiceBtn, { borderColor: colors.primary, backgroundColor: colors.primarySoft }]}
+            >
+              <Truck color={colors.primary} size={18} />
+              <Text style={[styles.invoiceText, { color: colors.primary }]}>{t('diaspora.shipmentDetail.trackLive', 'Suivre en direct')}</Text>
+            </Pressable>
+          </Animated.View>
+        )}
 
         {shipment.needsRating && (
           <Animated.View entering={FadeInUp.duration(400).delay(300).springify()}>

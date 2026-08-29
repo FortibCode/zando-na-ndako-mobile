@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { Linking, Modal, Platform, Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, RefreshControl, SafeAreaView, ScrollView, StatusBar as RNStatusBar, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 import * as React from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, Bell, CheckCircle2, ChevronRight, Clock3, Headphones, Home, ListChecks, LogOut, MapPin, Menu, Navigation2, Package, Phone, Settings, Store, UserRound, Wallet, X, XCircle } from 'lucide-react-native';
+import { AlertTriangle, ArrowLeft, ArrowRight, Bell, CheckCircle2, ChevronRight, Clock3, Headphones, Home, ListChecks, LogOut, MapPin, Menu, Navigation2, Package, Phone, Search, Settings, Store, UserRound, Wallet, X, XCircle } from 'lucide-react-native';
 import Animated, { FadeIn, SlideInLeft } from 'react-native-reanimated';
 import { PremiumButton, PremiumCard, PremiumPressable } from '@/components/premium-ui';
 import { useDelivery } from '@/contexts/delivery-context';
@@ -18,9 +18,14 @@ const StyleSheet = { ...RNStyleSheet, absoluteFillObject: RNStyleSheet.absoluteF
 
 export const D = { blue: Palette.navy, ink: Palette.ink, green: Palette.fresh, greenSoft: Palette.freshSoft, red: Palette.coral, border: Palette.border, muted: Palette.muted, orange: Palette.orange };
 
-export function DeliveryScreen({ children, scroll = true, dark = false, refreshing = false, onRefresh }: { children: ReactNode; scroll?: boolean; dark?: boolean; refreshing?: boolean; onRefresh?: () => void }) {
+// Les 4 écrans d'onglets (index/missions/revenue/profile) flottent sous la BottomNav dont le FAB
+// central déborde de ~24px au-dessus de la barre (voir centerFab.marginTop plus bas) — sans marge
+// dédiée, le dernier bloc de contenu se retrouve visuellement collé contre la barre/le FAB.
+export const TAB_BAR_CLEARANCE = 120;
+
+export function DeliveryScreen({ children, scroll = true, dark = false, refreshing = false, onRefresh, tabBar = false }: { children: ReactNode; scroll?: boolean; dark?: boolean; refreshing?: boolean; onRefresh?: () => void; tabBar?: boolean }) {
   const { colors, isDark } = useTheme();
-  return <SafeAreaView style={[styles.screen, { backgroundColor: dark ? colors.primaryDeep : colors.background }]}><StatusBar style={dark || isDark ? 'light' : 'dark'} />{scroll ? <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} /> : undefined}>{children}</ScrollView> : children}</SafeAreaView>;
+  return <SafeAreaView style={[styles.screen, { backgroundColor: dark ? colors.primaryDeep : colors.background }]}><StatusBar style={dark || isDark ? 'light' : 'dark'} />{scroll ? <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, tabBar && { paddingBottom: TAB_BAR_CLEARANCE }]} refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} /> : undefined}>{children}</ScrollView> : children}</SafeAreaView>;
 }
 
 export function Header({ title, back = true, action, showStatus = false }: { title: string; back?: boolean; action?: ReactNode; showStatus?: boolean }) {
@@ -95,7 +100,7 @@ export function SupportActions({ label }: { label?: string }) {
 }
 
 // ─── Aperçu d'itinéraire : distance/durée réelles renvoyées par le backend, présentées
-// dans une carte lisible plutôt qu'une fausse carte routière dessinée à la main.
+// dans une carte lisible et moderne inspirée des apps GPS pro.
 export function RouteCard({
   originLabel,
   originSub,
@@ -116,34 +121,36 @@ export function RouteCard({
     <View style={[deliveryStyles.routeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={[deliveryStyles.routeBanner, { backgroundColor: colors.primary }]}>
         <View style={deliveryStyles.routeBannerIcon}>
-          <Navigation2 color="#FFF" size={24} />
+          <Navigation2 color="#FFF" size={22} />
         </View>
-        <View style={{ flex: 1, marginLeft: 14 }}>
+        <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={deliveryStyles.routeBannerValue}>{distanceLabel}</Text>
-          {durationLabel ? <Text style={deliveryStyles.routeBannerSub}>≈ {durationLabel}</Text> : null}
+          {durationLabel ? <Text style={deliveryStyles.routeBannerSub}>Durée estimée ≈ {durationLabel}</Text> : null}
         </View>
-        <ArrowRight color="#FFF" size={22} />
+        <View style={deliveryStyles.routeBadge}>
+          <ArrowRight color="#FFF" size={18} />
+        </View>
       </View>
-      <View style={{ padding: 18, flexDirection: 'row' }}>
-        <View style={{ alignItems: 'center', width: 30 }}>
-          <View style={deliveryStyles.timelineDotBlue} />
-          <View style={[deliveryStyles.timelineLine, { backgroundColor: colors.border, height: 34 }]} />
-          <View style={deliveryStyles.timelineDotGreen} />
-        </View>
-        <View style={{ flex: 1, marginLeft: 10, gap: 22 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-            <Store color={D.blue} size={18} style={{ marginTop: 1 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.sectionTitle, { fontSize: 15, color: colors.text }]} numberOfLines={1}>{originLabel}</Text>
-              {originSub ? <Text style={[styles.muted, { fontSize: 12, marginTop: 2, color: colors.textSecondary }]} numberOfLines={1}>{originSub}</Text> : null}
-            </View>
+      <View style={{ padding: 16, flexDirection: 'row' }}>
+        <View style={{ alignItems: 'center', width: 28, paddingTop: 4 }}>
+          <View style={[deliveryStyles.timelineIconCircle, { backgroundColor: Palette.navy + '1A' }]}>
+            <Store color={D.blue} size={14} />
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-            <MapPin color={D.green} size={18} style={{ marginTop: 1 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.sectionTitle, { fontSize: 15, color: colors.text }]} numberOfLines={1}>{destinationLabel}</Text>
-              {destinationSub ? <Text style={[styles.muted, { fontSize: 12, marginTop: 2, color: colors.textSecondary }]} numberOfLines={1}>{destinationSub}</Text> : null}
-            </View>
+          <View style={[deliveryStyles.timelineLine, { backgroundColor: colors.border, height: 32 }]} />
+          <View style={[deliveryStyles.timelineIconCircle, { backgroundColor: Palette.fresh + '1A' }]}>
+            <MapPin color={D.green} size={14} />
+          </View>
+        </View>
+        <View style={{ flex: 1, marginLeft: 12, gap: 18 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.eyebrow, { color: colors.textTertiary, fontSize: 9.5 }]}>POINT DE COLLECTE</Text>
+            <Text style={[styles.sectionTitle, { fontSize: 15, color: colors.text, marginTop: 1 }]} numberOfLines={1}>{originLabel}</Text>
+            {originSub ? <Text style={[styles.muted, { fontSize: 12, marginTop: 2, color: colors.textSecondary }]} numberOfLines={1}>{originSub}</Text> : null}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.eyebrow, { color: colors.textTertiary, fontSize: 9.5 }]}>LIVRAISON CLIENT</Text>
+            <Text style={[styles.sectionTitle, { fontSize: 15, color: colors.text, marginTop: 1 }]} numberOfLines={1}>{destinationLabel}</Text>
+            {destinationSub ? <Text style={[styles.muted, { fontSize: 12, marginTop: 2, color: colors.textSecondary }]} numberOfLines={1}>{destinationSub}</Text> : null}
           </View>
         </View>
       </View>
@@ -151,32 +158,135 @@ export function RouteCard({
   );
 }
 
-// ─── Statut d'une course passée (terminée / en cours / échouée) : logique de couleur+icône
-// centralisée ici pour ne pas la retaper à chaque écran qui liste des missions.
+// ─── Statut d'une course passée (terminée / en cours / échouée)
 const MISSION_STATUS_ICON = {
   terminee: CheckCircle2,
   en_cours: Clock3,
   echouee: XCircle,
+  disponible: Package,
 } as const;
 
-export function StatusPill({ statut, size = 13 }: { statut: 'terminee' | 'en_cours' | 'echouee'; size?: number }) {
+export function StatusPill({ statut, size = 13 }: { statut: 'terminee' | 'en_cours' | 'echouee' | 'disponible'; size?: number }) {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const label = statut === 'terminee' ? t('deliveryUi.statusDelivered', 'Livrée')
     : statut === 'en_cours' ? t('deliveryUi.statusOngoing', 'En cours')
+    : statut === 'disponible' ? t('deliveryUi.statusAvailable', 'Disponible')
     : t('deliveryUi.statusCancelled', 'Annulée');
-  const color = statut === 'echouee' ? colors.error : statut === 'terminee' ? colors.fresh : colors.primary;
+  const color = statut === 'echouee' ? colors.error : statut === 'terminee' ? colors.fresh : statut === 'disponible' ? colors.fresh : colors.primary;
+  const bgColor = statut === 'echouee' ? colors.error + '18' : statut === 'terminee' ? colors.freshSoft : statut === 'disponible' ? colors.freshSoft : colors.primarySoft;
   const Icon = MISSION_STATUS_ICON[statut];
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-      <Icon color={color} size={size} />
-      <Text style={{ color, fontSize: 11.5, fontWeight: '900' }}>{label}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: bgColor, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
+      <Icon color={color} size={size} strokeWidth={2.5} />
+      <Text style={{ color, fontSize: 11, fontWeight: '800' }}>{label}</Text>
     </View>
   );
 }
 
-// Codes de commande / repères opérationnels affichés en monospace — lisibilité et registre
-// "précision" cohérents avec la direction de design validée.
+// ─── Composants Visuels Smart UI (Maquette Premium) ─────────────────────────
+
+export function MetricsBanner({ gains, livraisons, note }: { gains: string; livraisons: number | string; note: string }) {
+  return (
+    <View style={{ backgroundColor: '#1E64E8', borderRadius: 18, paddingVertical: 14, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+      <View style={{ flex: 1, alignItems: 'center' }}>
+        <Text style={{ color: '#E0EBFF', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>Gains du jour</Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 14.5, fontWeight: '900', marginTop: 3 }}>{gains}</Text>
+      </View>
+      <View style={{ width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+      <View style={{ flex: 1, alignItems: 'center' }}>
+        <Text style={{ color: '#E0EBFF', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>Livraisons</Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 14.5, fontWeight: '900', marginTop: 3 }}>{livraisons}</Text>
+      </View>
+      <View style={{ width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+      <View style={{ flex: 1, alignItems: 'center' }}>
+        <Text style={{ color: '#E0EBFF', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>Note moyenne</Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 14.5, fontWeight: '900', marginTop: 3 }}>⭐ {note}</Text>
+      </View>
+    </View>
+  );
+}
+
+export function DriverTopSmart({ driverName, avatarUrl, isOnline, onToggleOnline }: { driverName: string; avatarUrl?: string; isOnline?: boolean; onToggleOnline?: () => void }) {
+  const { colors } = useTheme();
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+  return (
+    <>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 14, paddingTop: 6 }}>
+        {/* Gauche : Bouton Hamburger (☰) */}
+        <View style={{ flex: 1, alignItems: 'flex-start' }}>
+          <Pressable
+            accessibilityLabel="Menu principal"
+            onPress={() => setDrawerOpen(true)}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Menu color={colors.text} size={20} />
+          </Pressable>
+        </View>
+
+        {/* Milieu : Boutons d'action (Mode Sombre/Clair, Langue, Recherche, Cloche) */}
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <ThemeToggle />
+          <LanguageToggle />
+          <Pressable onPress={() => router.push('/delivery/history' as any)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+            <Search color={colors.text} size={17} />
+          </Pressable>
+          <Pressable onPress={() => router.push('/delivery/support' as any)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+            <Bell color={colors.text} size={17} />
+          </Pressable>
+        </View>
+
+        {/* Droite : Photo du Livreur (cliquable pour ouvrir le tiroir) */}
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <Pressable onPress={() => setDrawerOpen(true)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primarySoft, overflow: 'hidden', borderWidth: 2, borderColor: colors.surface }}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+            ) : (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary }}>
+                <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 16 }}>{driverName.slice(0, 1).toUpperCase()}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
+      </View>
+
+      <DeliveryDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </>
+  );
+}
+
+export function MissionGridCard({ mission, onAccept }: { mission: any; onAccept?: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 18, borderWidth: 1, borderColor: colors.border, padding: 12, minHeight: 146, justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: '#EBF3FF', alignItems: 'center', justifyContent: 'center' }}>
+          <Package color="#1E64E8" size={18} />
+        </View>
+        <View style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: colors.freshSoft }}>
+          <Text style={{ fontSize: 9.5, fontWeight: '800', color: colors.fresh }}>Disponible</Text>
+        </View>
+      </View>
+
+      <View style={{ marginTop: 10 }}>
+        <Text style={[monoLabel, { fontSize: 12.5, color: colors.text }]} numberOfLines={1}>{mission.numero_commande || `#ZN${mission.id.slice(0, 6)}`}</Text>
+        <Text style={{ fontSize: 11.5, color: colors.textSecondary, marginTop: 2, fontWeight: '600' }} numberOfLines={1}>{mission.vendeur_nom || mission.vendeur_zone || 'Marché Zando'}</Text>
+      </View>
+
+      <View style={{ marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 9, color: colors.textTertiary, fontWeight: '800', textTransform: 'uppercase' }}>Gain</Text>
+          <Text style={{ fontSize: 13, fontWeight: '900', color: '#1E64E8' }} numberOfLines={1}>{(mission.montant_livraison ?? mission.gain ?? 0).toLocaleString('fr-FR')} FCFA</Text>
+        </View>
+        <Pressable onPress={onAccept} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#1E64E8', alignItems: 'center', justifyContent: 'center' }}>
+          <ArrowRight color="#FFF" size={15} strokeWidth={2.5} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export const monoLabel = {
   fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
   fontWeight: '700' as const,
@@ -185,28 +295,32 @@ export const monoLabel = {
 export const styles = StyleSheet.create({
   screen: { flex: 1 },
   darkScreen: { backgroundColor: Palette.canvasAlt },
-  content: { paddingHorizontal: 20, paddingBottom: 28 },
-  header: { height: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 24, fontWeight: '900', letterSpacing: -0.4 },
-  eyebrow: { fontSize: 10, letterSpacing: 1.2, fontWeight: '900', marginBottom: 2 },
-  sectionTitle: { fontSize: 22, fontWeight: '900' },
-  outline: { borderWidth: 1.5, borderRadius: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 10 },
+  content: {
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) + 8 : 14,
+    paddingBottom: 32,
+  },
+  header: { height: 68, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2 },
+  backBtn: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 22, fontWeight: '900', letterSpacing: -0.4 },
+  eyebrow: { fontSize: 10, letterSpacing: 1.1, fontWeight: '900', marginBottom: 2 },
+  sectionTitle: { fontSize: 20, fontWeight: '900' },
+  outline: { borderWidth: 1.5, borderRadius: 16, minHeight: 50, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginTop: 10 },
   outlineText: { fontSize: 15, fontWeight: '800' },
   nav: { height: 72, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: 4 },
-  navItem: { alignItems: 'center', gap: 3, minWidth: 65 },
+  navItem: { alignItems: 'center', gap: 3, minWidth: 62 },
   navLabel: { fontSize: 11, fontWeight: '700' },
   actionRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 18 },
   actionButton: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8 },
   actionText: { fontSize: 14, fontWeight: '700' },
   missionCard: { marginTop: 18 },
-  muted: { fontSize: 15 },
-  big: { fontSize: 28, fontWeight: '900' },
+  muted: { fontSize: 14 },
+  big: { fontSize: 26, fontWeight: '900' },
   divider: { height: 1, marginVertical: 14 },
-  badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  badgeText: { fontWeight: '800', fontSize: 12 },
-  bell: { padding: 8 },
-  menuButton: { width: 40, height: 40, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  badgeText: { fontWeight: '800', fontSize: 11.5 },
+  bell: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  menuButton: { width: 42, height: 42, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   onlineDot: { width: 8, height: 8, borderRadius: 4 },
   drawerRoot: { flex: 1, flexDirection: 'row' },
   drawerBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5, 20, 52, .48)' },
@@ -323,6 +437,7 @@ function DeliveryDrawer({ visible, onClose }: { visible: boolean; onClose: () =>
   );
 }
 
+// ─── En-tête du livreur (aéré et parfaitement équilibré)
 export function DriverTop({ onBell, showThemeToggle = false }: { onBell?: () => void; showThemeToggle?: boolean }) {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const { driver } = useDelivery();
@@ -334,33 +449,49 @@ export function DriverTop({ onBell, showThemeToggle = false }: { onBell?: () => 
   return (
     <>
       <View style={styles.header}>
-        <Pressable accessibilityLabel={t('deliveryUi.openMenu', 'Ouvrir le menu livreur')} onPress={() => setDrawerOpen(true)} style={[styles.menuButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Menu color={colors.primary} size={24} strokeWidth={2.4} />
+        <Pressable
+          accessibilityLabel={t('deliveryUi.openMenu', 'Ouvrir le menu livreur')}
+          onPress={() => setDrawerOpen(true)}
+          style={[styles.menuButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <Menu color={colors.primary} size={22} strokeWidth={2.4} />
         </Pressable>
+
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>{t('deliveryUi.dashboardEyebrow', 'TABLEAU DE BORD')}</Text>
-          <Text style={[styles.headerTitle, { fontSize: 20, color: colors.text }]} numberOfLines={1}>{t('deliveryUi.greeting', 'Bonjour')}, {driverName}</Text>
-        </View>
-        <View style={[styles.badge, { backgroundColor: isOnline ? colors.freshSoft : colors.backgroundAlt }]}>
-          <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.fresh : colors.textTertiary }]} />
-          <Text style={[styles.badgeText, { color: isOnline ? colors.fresh : colors.textTertiary }]}>{isOnline ? t('deliveryUi.online', 'En ligne') : t('deliveryUi.offline', 'Hors ligne')}</Text>
-        </View>
-        {showThemeToggle ? (
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            <LanguageToggle />
-            <ThemeToggle />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={[styles.onlineDot, { backgroundColor: isOnline ? colors.fresh : colors.textTertiary }]} />
+            <Text style={[styles.eyebrow, { color: colors.textSecondary, marginBottom: 0 }]}>
+              {isOnline ? t('deliveryUi.online', 'EN LIGNE') : t('deliveryUi.offline', 'HORS LIGNE')}
+            </Text>
           </View>
-        ) : null}
-        <Pressable onPress={onBell ?? (() => router.push('/delivery/notifications' as any))} style={styles.bell} hitSlop={8}>
-          <Bell color={colors.primary} size={24} />
-        </Pressable>
+          <Text style={[styles.headerTitle, { fontSize: 19, color: colors.text, marginTop: 1 }]} numberOfLines={1}>
+            {t('deliveryUi.greeting', 'Bonjour')}, {driverName}
+          </Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {showThemeToggle ? (
+            <>
+              <LanguageToggle />
+              <ThemeToggle />
+            </>
+          ) : null}
+          <Pressable
+            onPress={onBell ?? (() => router.push('/delivery/notifications' as any))}
+            style={[styles.bell, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
+            hitSlop={8}
+          >
+            <Bell color={colors.primary} size={20} strokeWidth={2.2} />
+          </Pressable>
+        </View>
       </View>
+
       <DeliveryDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </>
   );
 }
 
-// ─── Availability Toggle (En ligne / Hors ligne) ───
+// ─── Commutateur de disponibilité professionnel (En ligne / Hors ligne)
 export function AvailabilityToggle() {
   const { isAvailable, availabilityLoading, toggleAvailability } = useDelivery();
   const { colors } = useTheme();
@@ -372,50 +503,55 @@ export function AvailabilityToggle() {
       onPress={toggleAvailability}
       disabled={availabilityLoading}
       style={[
-        { flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 999, paddingLeft: 12, paddingRight: 5, paddingVertical: 5, borderWidth: 1.5 },
+        { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 999, paddingLeft: 14, paddingRight: 6, paddingVertical: 6, borderWidth: 1.5 },
         isAvailable
-          ? { backgroundColor: colors.freshSoft, borderColor: colors.fresh + '66' }
+          ? { backgroundColor: '#E6F9EE', borderColor: '#34D399' }
           : { backgroundColor: colors.backgroundAlt, borderColor: colors.border },
       ]}
     >
-      <View style={[styles.onlineDot, { width: 10, height: 10, borderRadius: 5, backgroundColor: isAvailable ? colors.fresh : colors.textTertiary }]} />
-      <Text style={{ color: isAvailable ? colors.fresh : colors.textTertiary, fontSize: 13, fontWeight: '900' }}>
+      <View style={[styles.onlineDot, { width: 9, height: 9, borderRadius: 5, backgroundColor: isAvailable ? colors.fresh : colors.textTertiary }]} />
+      <Text style={{ color: isAvailable ? '#047857' : colors.textTertiary, fontSize: 13, fontWeight: '900', letterSpacing: 0.2 }}>
         {isAvailable ? t('deliveryUi.online', 'En ligne') : t('deliveryUi.offline', 'Hors ligne')}
       </Text>
       <View
         style={{
-          width: 38, height: 26, borderRadius: 13,
+          width: 36, height: 24, borderRadius: 12,
           backgroundColor: isAvailable ? colors.fresh : colors.borderStrong,
-          alignItems: isAvailable ? 'flex-end' : 'flex-start', justifyContent: 'center', paddingHorizontal: 3,
+          alignItems: isAvailable ? 'flex-end' : 'flex-start', justifyContent: 'center', paddingHorizontal: 2.5,
         }}
       >
-        <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF' }} />
+        <View style={{ width: 19, height: 19, borderRadius: 9.5, backgroundColor: '#FFF' }} />
       </View>
     </Pressable>
   );
 }
 
 export const deliveryStyles = StyleSheet.create({
-  routeCard: { borderRadius: 24, borderWidth: 1, overflow: 'hidden' },
-  routeBanner: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  routeBannerIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,.18)', alignItems: 'center', justifyContent: 'center' },
-  routeBannerValue: { color: '#FFF', fontSize: 22, fontWeight: '900' },
-  routeBannerSub: { color: 'rgba(255,255,255,.85)', fontSize: 12, fontWeight: '700', marginTop: 2 },
-  filter: { flex: 1, minHeight: 45, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  routeCard: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+  routeBanner: { flexDirection: 'row', alignItems: 'center', padding: 14, paddingHorizontal: 16 },
+  routeBannerIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,.2)', alignItems: 'center', justifyContent: 'center' },
+  routeBannerValue: { color: '#FFF', fontSize: 20, fontWeight: '900' },
+  routeBannerSub: { color: 'rgba(255,255,255,.9)', fontSize: 11.5, fontWeight: '700', marginTop: 1 },
+  routeBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,.18)', alignItems: 'center', justifyContent: 'center' },
+  timelineIconCircle: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  timelineLine: { width: 2 },
+  filter: { flex: 1, minHeight: 44, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   filterActive: { borderColor: D.orange },
   filterText: { fontSize: 13, fontWeight: '800' },
   filterTextActive: { color: '#FFF' },
   listIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   timelineDotBlue: { width: 12, height: 12, borderRadius: 6, backgroundColor: Palette.navy },
   timelineDotGreen: { width: 12, height: 12, borderRadius: 6, backgroundColor: Palette.fresh },
-  timelineLine: { width: 2, height: 54 },
   buttonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   navGroup: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
   navIndicator: { position: 'absolute', bottom: -8, width: 6, height: 6, borderRadius: 3 },
-  centerFab: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', marginTop: -26, borderWidth: 5, shadowOpacity: .28, shadowRadius: 14, shadowOffset: { width: 0, height: 7 }, elevation: 8 },
-  trendPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 11, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 },
-  trendText: { fontSize: 10, fontWeight: '900' },
-  quickTitle: { fontSize: 13, fontWeight: '900', marginTop: 22 },
-  quickAction: { width: '18.5%', minHeight: 80, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, shadowOpacity: .045, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  quickLabel: { textAlign: 'center', fontSize: 10, lineHeight: 13, fontWeight: '800', marginTop: 7 },
+  centerFab: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: -24, borderWidth: 4, shadowOpacity: .28, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  trendPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  trendText: { fontSize: 10.5, fontWeight: '900' },
+  quickTitle: { fontSize: 13, fontWeight: '900', marginTop: 20, letterSpacing: 0.5 },
+  quickActionGrid: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  quickAction: { flex: 1, minHeight: 82, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 10 },
+  quickIconBg: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  quickLabel: { textAlign: 'center', fontSize: 10.5, lineHeight: 13, fontWeight: '800' },
 });
+

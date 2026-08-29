@@ -302,13 +302,13 @@ export default function SearchScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Types de boutique</Text>
             </View>
             <View style={styles.categoryGrid}>
-              {boutiqueTypes.slice(0, 6).map((type) => (
+              {boutiqueTypes.slice(0, 6).map((item) => (
                 <Pressable
-                  key={type}
-                  onPress={() => router.push(`/client/boutiques/${encodeURIComponent(type)}` as any)}
+                  key={item.type}
+                  onPress={() => router.push(`/client/boutiques/${encodeURIComponent(item.type)}` as any)}
                   style={[styles.categoryChip, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }]}
                 >
-                  <Text style={[styles.categoryChipText, { color: colors.primary, textTransform: 'capitalize' }]}>{type}</Text>
+                  <Text style={[styles.categoryChipText, { color: colors.primary, textTransform: 'capitalize' }]}>{item.type}</Text>
                 </Pressable>
               ))}
             </View>

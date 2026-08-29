@@ -1,22 +1,21 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 
 import { OtpVerificationLayout, authStyles } from '@/components/auth-ui';
 import { useDeliverySignup } from '@/contexts/delivery-signup-context';
-import { login, resendOtp, sendOtp, verifyOtp } from '@/services/api';
+import { login, resendOtp, verifyOtp } from '@/services/api';
 
 const RESEND_DELAY = 165;
 
 export default function DeliveryVerifyPhoneScreen() {
-  const { data } = useDeliverySignup();
+  const { data, update } = useDeliverySignup();
   const [resendTimer, setResendTimer] = useState(RESEND_DELAY);
   const [canResend, setCanResend] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const autoVerifiedRef = useRef(false);
+  const [otpKey, setOtpKey] = useState(0);
 
   const rawPhone = data.registrationPhone || data.driverPhone || '061234567';
   const cleanDigits = rawPhone.replace(/\D/g, '').replace(/^242/, '');
@@ -30,7 +29,7 @@ export default function DeliveryVerifyPhoneScreen() {
   // ── Handler principal de vérification OTP ──
   const handleComplete = useCallback(
     async (code: string) => {
-      if (!code || code.length < 6) return;
+      if (!code || code.length < 6 || verifying) return;
       setVerifying(true);
       try {
         if (phoneCredential && code) {
@@ -55,29 +54,20 @@ export default function DeliveryVerifyPhoneScreen() {
         setVerifying(false);
       }
     },
-    [phoneCredential, data.password],
+    [phoneCredential, data.password, verifying],
   );
 
-  // ── Auto-vérification : si otp_dev retourné par le backend, soumettre auto après 800ms ──
-  useEffect(() => {
-    if (data.registrationOtp && data.registrationOtp.length === 6 && !autoVerifiedRef.current) {
-      autoVerifiedRef.current = true;
-      const timer = setTimeout(() => {
-        handleComplete(data.registrationOtp);
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [data.registrationOtp, handleComplete]);
+  // Pas d'effet dédié "auto-vérification" ici : OtpFields (voir auth-ui.tsx) reçoit initialCode via
+  // OtpVerificationLayout ci-dessous et soumet déjà tout seul un code complet au montage — un second
+  // déclencheur ici faisait doublon et envoyait deux vérifications quasi simultanées pour le même
+  // code, la 2e échouant systématiquement contre "Code invalide" car le serveur avait déjà marqué le
+  // code "utilise" après la 1re (même symptôme, même cause que le doublon d'envoi ci-dessous).
 
-  // ── Envoi OTP par SMS si pas de otp_dev (backend prod) ──
-  useEffect(() => {
-    if (!otpSent && data.registrationPhone && !data.registrationOtp) {
-      setOtpSent(true);
-      sendOtp(phoneCredential, 'sms').catch(() => {
-        alert('Erreur', "Impossible d'envoyer le code de vérification. Vérifiez votre connexion.");
-      });
-    }
-  }, [data.registrationPhone, data.registrationOtp, otpSent, phoneCredential]);
+  // Pas de second envoi ici : AuthController::register() a déjà généré ET envoyé le vrai code SMS
+  // (voir genererOTP() côté backend) — un second appel /otp/send à ce stade expirait ce premier
+  // code avant même que l'utilisateur ait eu le temps de le saisir, d'où un "Code invalide"
+  // systématique. Seul un appel explicite (bouton "Renvoyer le code", handleResend ci-dessous) doit
+  // en générer un nouveau — même convention que les parcours local/vendeur.
 
   // ── Compte à rebours renvoi ──
   useEffect(() => {
@@ -93,20 +83,22 @@ export default function DeliveryVerifyPhoneScreen() {
     if (!canResend || !data.registrationPhone) return;
     setResendTimer(RESEND_DELAY);
     setCanResend(false);
-    autoVerifiedRef.current = false;
     try {
-      await resendOtp(phoneCredential, 'sms');
+      const code = await resendOtp(phoneCredential, 'sms');
+      update({ registrationOtp: code || '' });
+      setOtpKey((k) => k + 1);
       alert('Code renvoyé', 'Un nouveau code de vérification vous a été envoyé par SMS.');
     } catch {
       alert('Erreur', 'Impossible de renvoyer le code. Veuillez réessayer.');
     }
-  }, [canResend, data.registrationPhone, phoneCredential]);
+  }, [canResend, data.registrationPhone, phoneCredential, update]);
 
   return (
     <SafeAreaView style={authStyles.screen}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <OtpVerificationLayout
+          key={otpKey}
           accentLabel="numéro de téléphone"
           canResend={canResend}
           initialCode={data.registrationOtp || ''}

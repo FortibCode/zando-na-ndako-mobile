@@ -6,26 +6,34 @@ import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { ArrowLeft, Camera, ChevronRight, Layers, PackageSearch } from 'lucide-react-native';
+import { ArrowLeft, Camera, Check, ChevronDown, ChevronRight, Layers, PackageSearch } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 
 export default function EditProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getProduct, updateProduct } = useVendor();
+  const { getProduct, updateProduct, refreshCategories, vendorCategoryNames } = useVendor();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const product = getProduct(id || '');
 
   const [photo, setPhoto] = useState(product?.image);
   const [nom, setNom] = useState(product?.nom || '');
+  // Remplace l'ancien champ texte libre (jamais transmis à l'API — modifier la catégorie ici
+  // n'avait aucun effet, elle revenait silencieusement à son ancienne valeur) par le même vrai
+  // sélecteur que l'écran "Ajouter un produit", alimenté par les catégories réelles du backend.
   const [categorie, setCategorie] = useState(product?.categorie || '');
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [prix, setPrix] = useState(String(product?.prix || ''));
   const [stock, setStock] = useState(String(product?.stock || ''));
   const [description, setDescription] = useState(product?.description || '');
   const [disponible, setDisponible] = useState(product?.disponible ?? true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    refreshCategories();
+  }, [refreshCategories]);
 
   useEffect(() => {
     if (product) {
@@ -104,7 +112,24 @@ export default function EditProductScreen() {
 
         <Animated.View entering={FadeInUp.duration(400).delay(160).springify()}>
           <Text style={[styles.label, { color: colors.text }]}>{t('vendorAddProduct.category', 'Catégorie')}</Text>
-          <TextInput value={categorie} onChangeText={setCategorie} style={[styles.field, { borderColor: colors.border, backgroundColor: colors.surface, color: colors.text }]} placeholderTextColor={colors.textTertiary} />
+          <Pressable onPress={() => setCategoryOpen((o) => !o)} style={[styles.dropdown, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Text style={[styles.dropdownValue, { color: colors.text }]}>{categorie}</Text>
+            <ChevronDown color={colors.primary} size={18} style={{ transform: [{ rotate: categoryOpen ? '180deg' : '0deg' }] }} />
+          </Pressable>
+          {categoryOpen && (
+            <Animated.View entering={FadeInDown.duration(200)} style={[styles.dropdownPanel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              {vendorCategoryNames.map((c) => (
+                <Pressable
+                  key={c}
+                  onPress={() => { setCategorie(c); setCategoryOpen(false); }}
+                  style={[styles.dropdownOption, { borderBottomColor: colors.border }, c === categorie && { backgroundColor: colors.primarySoft }]}
+                >
+                  <Text style={[styles.dropdownOptionText, { color: colors.textSecondary }, c === categorie && { color: colors.primary }]}>{c}</Text>
+                  {c === categorie && <Check color={colors.primary} size={16} strokeWidth={3} />}
+                </Pressable>
+              ))}
+            </Animated.View>
+          )}
         </Animated.View>
 
         <Animated.View entering={FadeInUp.duration(400).delay(200).springify()}>
@@ -202,6 +227,16 @@ const styles = StyleSheet.create({
   },
   fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   fieldUnit: { fontSize: 13, fontWeight: '700' },
+
+  dropdown: {
+    height: 52, borderRadius: 14, borderWidth: 1.5,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14,
+  },
+  dropdownValue: { fontSize: 15, fontWeight: '700' },
+  dropdownPanel: { marginTop: 8, borderRadius: 14, borderWidth: 1, overflow: 'hidden', maxHeight: 260 },
+  dropdownOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1 },
+  dropdownOptionText: { fontSize: 14, fontWeight: '600' },
 
   descBox: { borderRadius: 14, borderWidth: 1.5, padding: 14, minHeight: 90 },
   descInput: { fontSize: 14.5, minHeight: 60, textAlignVertical: 'top' },

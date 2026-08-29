@@ -39,7 +39,8 @@
           "cameraPermission": "Zando na Ndako utilise l'appareil photo pour prendre une preuve de livraison."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

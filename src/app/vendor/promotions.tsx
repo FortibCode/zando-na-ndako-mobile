@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { ArrowLeft, Check, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Check, ChevronDown, Trash2 } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -17,8 +17,14 @@ export default function PromotionsScreen() {
   const [tab, setTab] = useState<'actives' | 'terminees'>('actives');
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [produit, setProduit] = useState(products[0]?.nom || '');
+  // Sélectionné par id (pas par nom) dans un menu déroulant sur TOUS les produits — avant, seuls
+  // les 5 premiers produits étaient proposés sous forme de puces, et le nom affiché était renvoyé
+  // tel quel puis recherché par correspondance exacte côté contexte, silencieusement muet en cas
+  // de doublon/renommage entre-temps (voir addPromotion dans vendor-context.tsx).
+  const [produitId, setProduitId] = useState<string | null>(products[0]?.id ?? null);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [pourcentage, setPourcentage] = useState('');
+  const selectedProduct = products.find((p) => p.id === produitId) ?? null;
   // Ids en cours de bascule/suppression — désactive le contrôle correspondant le temps de
   // l'appel réseau, plutôt que de laisser croire que l'action a déjà réussi côté serveur.
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
@@ -28,15 +34,15 @@ export default function PromotionsScreen() {
     [promotions, tab]
   );
 
-  const isValid = produit.trim().length > 0 && pourcentage.trim().length > 0;
+  const isValid = !!selectedProduct && pourcentage.trim().length > 0;
 
   const handleAdd = async () => {
-    if (!isValid || saving) return;
+    if (!isValid || !selectedProduct || saving) return;
     setSaving(true);
     try {
       await addPromotion({
-        titre: `-${pourcentage}% sur ${produit}`,
-        produit,
+        titre: `-${pourcentage}% sur ${selectedProduct.nom}`,
+        produitId: selectedProduct.id,
         pourcentage: Number(pourcentage) || 0,
       });
       setPourcentage('');
@@ -144,17 +150,28 @@ export default function PromotionsScreen() {
         {adding ? (
           <Animated.View entering={FadeInDown.duration(300).springify()} style={[styles.addForm, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.addFormTitle, { color: colors.text }]}>{t('vendorPromotions.newPromotion', 'Nouvelle promotion')}</Text>
-            <View style={styles.chipsRow}>
-              {products.slice(0, 5).map((p) => (
-                <Pressable
-                  key={p.id}
-                  onPress={() => setProduit(p.nom)}
-                  style={[styles.chip, { borderColor: colors.border }, produit === p.nom && { borderColor: colors.primary, backgroundColor: colors.primarySoft }]}
-                >
-                  <Text style={[styles.chipText, { color: colors.text }, produit === p.nom && { color: colors.primary }]}>{p.nom}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <Pressable onPress={() => setProductPickerOpen((o) => !o)} style={[styles.dropdown, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}>
+              <Text style={[styles.dropdownValue, { color: colors.text }]} numberOfLines={1}>
+                {selectedProduct?.nom || t('vendorPromotions.selectProduct', 'Choisir un produit')}
+              </Text>
+              <ChevronDown color={colors.primary} size={18} style={{ transform: [{ rotate: productPickerOpen ? '180deg' : '0deg' }] }} />
+            </Pressable>
+            {productPickerOpen && (
+              <Animated.View entering={FadeInDown.duration(200)} style={[styles.dropdownPanel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <ScrollView style={{ maxHeight: 260 }} nestedScrollEnabled showsVerticalScrollIndicator>
+                  {products.map((p) => (
+                    <Pressable
+                      key={p.id}
+                      onPress={() => { setProduitId(p.id); setProductPickerOpen(false); }}
+                      style={[styles.dropdownOption, { borderBottomColor: colors.border }, p.id === produitId && { backgroundColor: colors.primarySoft }]}
+                    >
+                      <Text style={[styles.dropdownOptionText, { color: colors.textSecondary }, p.id === produitId && { color: colors.primary }]} numberOfLines={1}>{p.nom}</Text>
+                      {p.id === produitId && <Check color={colors.primary} size={16} strokeWidth={3} />}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </Animated.View>
+            )}
             <TextInput
               value={pourcentage}
               onChangeText={(v) => setPourcentage(v.replace(/[^0-9]/g, ''))}
@@ -220,9 +237,15 @@ const styles = StyleSheet.create({
 
   addForm: { borderRadius: 18, padding: 16, gap: 12, borderWidth: 1 },
   addFormTitle: { fontSize: 15, fontWeight: '900' },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5 },
-  chipText: { fontSize: 12.5, fontWeight: '700' },
+  dropdown: {
+    height: 48, borderRadius: 12, borderWidth: 1.5,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14,
+  },
+  dropdownValue: { fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },
+  dropdownPanel: { borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  dropdownOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1 },
+  dropdownOptionText: { fontSize: 13.5, fontWeight: '600', flex: 1, marginRight: 8 },
   addInput: {
     height: 48, borderRadius: 12, borderWidth: 1.5,
     paddingHorizontal: 14, fontSize: 14,

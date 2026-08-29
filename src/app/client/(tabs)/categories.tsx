@@ -1,33 +1,36 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { ArrowLeft, Search, ChevronRight, Store, ShoppingBasket } from 'lucide-react-native';
-import { useClient } from '@/contexts/client-context';
+import { useClient, type BoutiqueTypeItem } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 
 const COLORS = ['#EAF4FF', '#FFF0EA', '#FFF5D9', '#EAF8EF', '#FFF0F4', '#F0ECFF', '#EAF9FA', '#FFF5E8'];
 
-// Carte "type de boutique" (parcours boutique d'abord) : pas de photo par type (categorie_principale
-// est un champ texte libre, aucune source d'image honnête n'existe côté backend pour ça) — une icône
-// générique + le nom réel du type suffit, plutôt que de coder en dur des photos qui ne correspondraient
-// à rien de réel.
-function BoutiqueTypeCard({ type, index }: { type: string; index: number }) {
+// Carte "type de boutique" (parcours boutique d'abord) : le vrai logo envoyé par l'admin
+// (/admin/types-boutique) quand il existe, sinon un emoji dérivé du libellé — jamais une icône
+// générique unique pour tous les types (voir BoutiqueTypeItem dans client-context.tsx).
+function BoutiqueTypeCard({ item, index }: { item: BoutiqueTypeItem; index: number }) {
   const { colors } = useTheme();
   const { t } = useLanguage();
   return (
     <Animated.View entering={ZoomIn.duration(380).delay(index * 45).springify()} style={styles.cardShell}>
-      <Pressable onPress={() => router.push(`/client/boutiques/${encodeURIComponent(type)}` as any)} style={[styles.card, { backgroundColor: COLORS[index % COLORS.length], borderColor: colors.border }]}>
+      <Pressable onPress={() => router.push(`/client/boutiques/${encodeURIComponent(item.type)}` as any)} style={[styles.card, { backgroundColor: COLORS[index % COLORS.length], borderColor: colors.border }]}>
         <View style={styles.imageFrame}>
-          <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
-            <Store color={colors.primary} size={30} />
-          </View>
+          {item.logoUrl ? (
+            <Image source={{ uri: item.logoUrl }} style={styles.logoImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
+              <Text style={styles.emoji}>{item.emoji}</Text>
+            </View>
+          )}
         </View>
         <View style={styles.cardBottom}>
           <View style={styles.cardCopy}>
-            <Text numberOfLines={1} style={[styles.name, { color: colors.text, textTransform: 'capitalize' }]}>{type}</Text>
+            <Text numberOfLines={1} style={[styles.name, { color: colors.text, textTransform: 'capitalize' }]}>{item.type}</Text>
             <Text style={[styles.count, { color: colors.textSecondary }]}>{t('categories.seeBoutiques', 'Voir les boutiques')}</Text>
           </View>
           <View style={[styles.arrowCircle, { backgroundColor: colors.surface }]}><ChevronRight color={colors.primary} size={18} strokeWidth={2.5} /></View>
@@ -69,8 +72,8 @@ export default function CategoriesScreen() {
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('categories.emptyBoutiques', 'Aucune boutique disponible pour le moment.')}</Text>
           </View>
         ) : (
-          <View style={styles.grid}>{boutiqueTypes.map((type, index) => (
-            <BoutiqueTypeCard key={type} type={type} index={index} />
+          <View style={styles.grid}>{boutiqueTypes.map((item, index) => (
+            <BoutiqueTypeCard key={item.type} item={item} index={index} />
           ))}</View>
         )}
       </ScrollView>
@@ -102,7 +105,9 @@ const styles = StyleSheet.create({
   cardShell: { width: '48.3%' },
   card: { borderRadius: Radii.lg, padding: Spacing.sm, borderWidth: 1, ...Shadows.soft },
   imageFrame: { height: 132, borderRadius: Radii.md, overflow: 'hidden', backgroundColor: Palette.canvasAlt, alignItems: 'center', justifyContent: 'center' },
+  logoImage: { width: '100%', height: '100%' },
   iconWrap: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  emoji: { fontSize: 30 },
   cardBottom: { minHeight: 60, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingTop: Spacing.sm, paddingBottom: 2 },
   cardCopy: { flex: 1, paddingRight: 4 },
   name: { fontSize: 15, fontWeight: '900' },

@@ -16,6 +16,7 @@ import { PremiumPressable } from '@/components/premium-ui';
 import { Heart, Star, Plus } from 'lucide-react-native';
 import { Palette } from '@/design/tokens';
 import { clearAuthToken } from '@/services/api';
+import { confirmLogout } from '@/contexts/alert-context';
 
 export const BLUE = Palette.navy;
 export const RED = Palette.coral;
@@ -136,7 +137,7 @@ export function ClientMenu() {
             {/* Logout */}
             <Pressable
               accessibilityRole="button"
-              onPress={() => { setOpen(false); clearAuthToken(); router.replace('/auth'); }}
+              onPress={() => { setOpen(false); confirmLogout(() => { clearAuthToken(); router.replace('/auth'); }); }}
               style={[styles.drawerLogout, { borderTopColor: colors.border }]}
             >
               <ClientIcon color={colors.error} name="logout" size={20} />

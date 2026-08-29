@@ -164,48 +164,48 @@ export default function DeliveryNavigation() {
         ) : null}
 
         <Animated.View entering={FadeInUp.duration(350).delay(80).springify()}>
-          <Card style={{ marginTop: 14 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+          <Card style={{ marginTop: 14, borderRadius: 20, padding: 18 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 }}>
               {[
                 [distance, t('deliveryToClient.distance', 'Distance')],
                 [duree ? `${duree} min` : '—', t('deliveryToClient.estimatedTime', 'Temps estimé')],
                 [arrivee || '—', t('deliveryToClient.arriveAt', 'Arriver à')],
               ].map((x) => (
                 <View key={x[1]} style={{ alignItems: 'center' }}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{x[0]}</Text>
-                  <Text style={[styles.muted, { marginTop: 6, fontSize: 13, color: colors.textSecondary }]}>{x[1]}</Text>
+                  <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.text }]}>{x[0]}</Text>
+                  <Text style={[styles.muted, { marginTop: 4, fontSize: 11.5, color: colors.textSecondary }]}>{x[1]}</Text>
                 </View>
               ))}
             </View>
 
             <PrimaryButton onPress={openGoogleMaps}>
-              <LocateFixed color="#FFF" size={18} /> {t('deliveryToClient.launchGoogleMaps', 'Lancer Google Maps')}
+              <LocateFixed color="#FFF" size={18} strokeWidth={2.2} /> {t('deliveryToClient.launchGoogleMaps', 'Lancer Google Maps')}
             </PrimaryButton>
 
             <OutlineButton onPress={handleConfirmDepart}>
-              <Navigation2 color={colors.primary} size={18} /> {departing ? t('deliveryToClient.confirming', 'Confirmation…') : t('deliveryToClient.confirmDeparture', 'Confirmer le départ')}
+              <Navigation2 color={colors.primary} size={18} strokeWidth={2.2} /> {departing ? t('deliveryToClient.confirming', 'Confirmation…') : t('deliveryToClient.confirmDeparture', 'Confirmer le départ')}
             </OutlineButton>
 
             {proofPhoto ? (
               <Pressable
                 onPress={handleTakeProofPhoto}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, padding: 10, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.backgroundAlt }}
               >
-                <Image source={{ uri: proofPhoto }} style={{ width: 52, height: 52, borderRadius: 12 }} />
+                <Image source={{ uri: proofPhoto }} style={{ width: 50, height: 50, borderRadius: 12 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.text }]}>{t('deliveryToClient.proofOfDelivery', 'Preuve de livraison')}</Text>
-                  <Text style={[styles.muted, { fontSize: 12, color: colors.textSecondary }]}>{t('deliveryToClient.photoReady', 'Photo prête · touchez pour reprendre')}</Text>
+                  <Text style={[styles.muted, { fontSize: 11.5, marginTop: 2, color: colors.fresh, fontWeight: '800' }]}>{t('deliveryToClient.photoReady', 'Photo prête · touchez pour reprendre')}</Text>
                 </View>
               </Pressable>
             ) : (
               <OutlineButton onPress={handleTakeProofPhoto}>
-                <Camera color={colors.primary} size={18} /> {t('deliveryToClient.takeProofPhoto', 'Prendre la photo de preuve')}
+                <Camera color={colors.primary} size={18} strokeWidth={2.2} /> {t('deliveryToClient.takeProofPhoto', 'Prendre la photo de preuve')}
               </OutlineButton>
             )}
 
-            <View style={{ opacity: proofPhoto ? 1 : 0.45 }}>
+            <View style={{ opacity: proofPhoto ? 1 : 0.45, marginTop: proofPhoto ? 10 : 0 }}>
               <OutlineButton onPress={handleConfirmLivraison}>
-                <CheckCircle2 color={colors.fresh} size={18} /> {delivering ? t('deliveryToClient.deliveringLabel', 'Livraison…') : t('deliveryToClient.confirmDelivery', 'Confirmer la livraison')}
+                <CheckCircle2 color={colors.fresh} size={18} strokeWidth={2.3} /> {delivering ? t('deliveryToClient.deliveringLabel', 'Livraison…') : t('deliveryToClient.confirmDelivery', 'Confirmer la livraison')}
               </OutlineButton>
             </View>
           </Card>

@@ -411,8 +411,12 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
     try {
       const res = await api.post(DELIVERY_ENDPOINTS.DISPONIBILITE);
       dispatch({ type: 'SET_AVAILABILITY', payload: res.data.statut === 'disponible' });
-    } catch {
+    } catch (err: any) {
+      // L'échec restait auparavant totalement silencieux (le bouton "Passer en ligne" du tableau de
+      // bord semblait "ne rien faire") : on relance l'erreur pour que l'écran appelant puisse
+      // l'afficher, même convention que confirmCollecte/confirmDepart ci-dessus.
       dispatch({ type: 'SET_AVAILABILITY_LOADING', payload: false });
+      throw new Error(err?.response?.data?.message || err.message || 'Impossible de mettre à jour votre disponibilité.');
     }
   }, []);
 

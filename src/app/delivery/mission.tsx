@@ -135,37 +135,37 @@ export default function Mission() {
         <Text style={[styles.muted, { marginTop: 5, color: colors.textSecondary }]}>#{details.numero}  •  {t('deliveryMission.receivedNow', 'Reçue maintenant')}</Text>
       </Animated.View>
 
-      <Card index={1}>
+      <Card index={1} style={{ borderRadius: 20, padding: 18 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('deliveryMission.rideDetails', 'Détails de la course')}</Text>
+          <Text style={[styles.sectionTitle, { fontSize: 18, color: colors.text }]}>{t('deliveryMission.rideDetails', 'Détails de la course')}</Text>
           <View style={[styles.badge, { backgroundColor: colors.freshSoft }]}>
-            <Clock3 color={D.green} size={14} />
+            <Clock3 color={D.green} size={14} strokeWidth={2.3} />
             <Text style={[styles.badgeText, { color: D.green }]}>{details.duree != null ? `${details.duree} min` : '—'}</Text>
           </View>
         </View>
 
-        <View style={{ marginTop: 25, flexDirection: 'row' }}>
-          <View style={{ alignItems: 'center', width: 32 }}>
-            <View style={deliveryStyles.timelineDotBlue} />
-            <View style={[deliveryStyles.timelineLine, { backgroundColor: colors.border }]} />
-            <View style={deliveryStyles.timelineDotGreen} />
+        <View style={{ marginTop: 20, flexDirection: 'row' }}>
+          <View style={{ alignItems: 'center', width: 28, paddingTop: 3 }}>
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: D.blue }} />
+            <View style={[deliveryStyles.timelineLine, { backgroundColor: colors.border, height: 50 }]} />
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: D.green }} />
           </View>
-          <View style={{ flex: 1, gap: 26 }}>
+          <View style={{ flex: 1, marginLeft: 10, gap: 20 }}>
             <View>
-              <Text style={[styles.muted, { color: colors.textSecondary }]}>{t('deliveryMission.collectAt', 'COLLECTE CHEZ')}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                <Store color={D.blue} size={19} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>{details.collecte.nom}</Text>
+              <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>{t('deliveryMission.collectAt', 'COLLECTE CHEZ')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <Store color={D.blue} size={18} />
+                <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.text }]}>{details.collecte.nom}</Text>
               </View>
-              <Text style={[styles.muted, { marginTop: 5, marginLeft: 27, fontSize: 14, color: colors.textSecondary }]}>{details.collecte.adresse}</Text>
+              {details.collecte.adresse ? <Text style={[styles.muted, { marginTop: 3, fontSize: 13, color: colors.textSecondary }]}>{details.collecte.adresse}</Text> : null}
             </View>
             <View>
-              <Text style={[styles.muted, { color: colors.textSecondary }]}>{t('deliveryMission.deliverTo', 'LIVRAISON À')}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                <MapPin color={D.green} size={19} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>{details.livraison.adresse}</Text>
+              <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>{t('deliveryMission.deliverTo', 'LIVRAISON À')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <MapPin color={D.green} size={18} />
+                <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.text }]}>{details.livraison.adresse}</Text>
               </View>
-              <Text style={[styles.muted, { marginTop: 5, marginLeft: 27, fontSize: 14, color: colors.textSecondary }]}>{details.livraison.client}</Text>
+              <Text style={[styles.muted, { marginTop: 3, fontSize: 13, color: colors.textSecondary }]}>{details.livraison.client}</Text>
             </View>
           </View>
         </View>
@@ -179,39 +179,39 @@ export default function Mission() {
             [`${details.gain.toLocaleString('fr-FR')} FCFA`, t('deliveryMission.youEarn', 'Vous gagnez'), WalletCards, true],
           ].map(([value, label, Icon, highlight]: any) => (
             <View key={label} style={{ alignItems: 'center', flex: 1 }}>
-              <Icon color={highlight ? D.green : D.blue} size={19} />
-              <Text style={[styles.sectionTitle, { fontSize: 18, marginTop: 8, color: highlight ? D.green : colors.text }]}>
+              <Icon color={highlight ? D.green : D.blue} size={19} strokeWidth={2.3} />
+              <Text style={[styles.sectionTitle, { fontSize: 16, marginTop: 6, color: highlight ? D.green : colors.text }]}>
                 {value}
               </Text>
-              <Text style={[styles.muted, { fontSize: 12, marginTop: 3, color: colors.textSecondary }]}>{label}</Text>
+              <Text style={[styles.muted, { fontSize: 11.5, marginTop: 2, color: colors.textSecondary }]}>{label}</Text>
             </View>
           ))}
         </View>
       </Card>
 
-{/* Seller & Client contact info */}
-      <Card index={2} style={{ marginTop: 16 }}>
-        <Text style={[styles.sectionTitle, { fontSize: 17, color: colors.text }]}>{t('deliveryMission.contactPoints', 'Points de contact')}</Text>
-        <View style={{ marginTop: 14, gap: 16 }}>
+      {/* Seller & Client contact info */}
+      <Card index={2} style={{ marginTop: 14, borderRadius: 20, padding: 16 }}>
+        <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.text }]}>{t('deliveryMission.contactPoints', 'Points de contact')}</Text>
+        <View style={{ marginTop: 12, gap: 14 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Store color={D.blue} size={20} />
+            <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+              <Store color={D.blue} size={19} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.muted, { fontSize: 12, color: colors.textSecondary }]}>{t('deliveryMission.seller', 'VENDEUR')}</Text>
-              <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.text }]}>{details.collecte.nom}</Text>
+              <Text style={[styles.eyebrow, { color: colors.textSecondary, marginBottom: 1 }]}>{t('deliveryMission.seller', 'VENDEUR')}</Text>
+              <Text style={[styles.sectionTitle, { fontSize: 15, color: colors.text }]}>{details.collecte.nom}</Text>
             </View>
             <Pressable onPress={() => mission?.vendeur_telephone && Linking.openURL(`tel:${mission.vendeur_telephone}`)} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.freshSoft, alignItems: 'center', justifyContent: 'center' }}>
               <Phone color={D.green} size={18} />
             </Pressable>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
-              <UserRound color={D.blue} size={20} />
+            <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+              <UserRound color={D.blue} size={19} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.muted, { fontSize: 12, color: colors.textSecondary }]}>{t('deliveryMission.client', 'CLIENT')}</Text>
-              <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.text }]}>{details.livraison.client}</Text>
+              <Text style={[styles.eyebrow, { color: colors.textSecondary, marginBottom: 1 }]}>{t('deliveryMission.client', 'CLIENT')}</Text>
+              <Text style={[styles.sectionTitle, { fontSize: 15, color: colors.text }]}>{details.livraison.client}</Text>
             </View>
             <Pressable onPress={() => mission?.client_telephone && Linking.openURL(`tel:${mission.client_telephone}`)} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.freshSoft, alignItems: 'center', justifyContent: 'center' }}>
               <Phone color={D.green} size={18} />
@@ -222,7 +222,7 @@ export default function Mission() {
 
       {/* Instructions */}
       {mission?.instructions_particulieres ? (
-        <Card style={{ marginTop: 14 }}>
+        <Card style={{ marginTop: 14, borderRadius: 20, padding: 16 }}>
           <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.text }]}>{t('deliveryMission.specialInstructions', 'Instructions particulières')}</Text>
           <Text style={[styles.muted, { marginTop: 8, fontSize: 14, lineHeight: 21, color: colors.textSecondary }]}>{mission.instructions_particulieres}</Text>
         </Card>

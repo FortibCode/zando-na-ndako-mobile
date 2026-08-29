@@ -3,15 +3,19 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   FadeInDown, FadeInUp, SlideInDown,
 } from 'react-native-reanimated';
-import { ArrowLeft, Filter, ArrowUpDown, Check, X, Search, Star, MapPin, Clock, AlertTriangle } from 'lucide-react-native';
+import { ArrowLeft, Filter, ArrowUpDown, Check, X, Search, Star, MapPin, Clock, AlertTriangle, WifiOff } from 'lucide-react-native';
 import { useClient, mapApiProduitToProduct, type Product } from '@/contexts/client-context';
 import { fetchVendeurDetail, fetchProduitsBoutique, resolveMediaUrl, type ApiVendeur } from '@/services/api';
 import { ProductCard } from '@/components/client-ui';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+
+const BOUTIQUE_DETAIL_CACHE_PREFIX = '@zando_client_boutique_detail_cache:';
+const BOUTIQUE_PRODUCTS_CACHE_PREFIX = '@zando_client_boutique_products_cache:';
 
 type SortMode = 'relevance' | 'price_asc' | 'price_desc' | 'rating';
 type PriceBand = 'all' | 'under1000' | '1000to3000' | 'over3000';
@@ -177,6 +181,7 @@ export default function BoutiqueDetailScreen() {
   const [loadingVendeur, setLoadingVendeur] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [offline, setOffline] = useState(false);
 
   const [category, setCategory] = useState('all');
   const [priceBand, setPriceBand] = useState<PriceBand>('all');
@@ -187,13 +192,39 @@ export default function BoutiqueDetailScreen() {
 
   useEffect(() => {
     if (!id) return;
+    const detailCacheKey = BOUTIQUE_DETAIL_CACHE_PREFIX + id;
+    const productsCacheKey = BOUTIQUE_PRODUCTS_CACHE_PREFIX + id;
+
     setLoadingVendeur(true);
-    fetchVendeurDetail(id).then(setVendeur).catch(() => setVendeur(null)).finally(() => setLoadingVendeur(false));
+    fetchVendeurDetail(id)
+      .then((v) => {
+        setVendeur(v);
+        setOffline(false);
+        AsyncStorage.setItem(detailCacheKey, JSON.stringify(v)).catch(() => {});
+      })
+      .catch(async () => {
+        try {
+          const raw = await AsyncStorage.getItem(detailCacheKey);
+          if (raw) { setVendeur(JSON.parse(raw)); setOffline(true); }
+          else setVendeur(null);
+        } catch { setVendeur(null); }
+      })
+      .finally(() => setLoadingVendeur(false));
 
     setLoadingProducts(true);
     fetchProduitsBoutique(id)
-      .then((list) => setProducts(list.map(mapApiProduitToProduct)))
-      .catch(() => setProducts([]))
+      .then((list) => {
+        const mapped = list.map(mapApiProduitToProduct);
+        setProducts(mapped);
+        AsyncStorage.setItem(productsCacheKey, JSON.stringify(mapped)).catch(() => {});
+      })
+      .catch(async () => {
+        try {
+          const raw = await AsyncStorage.getItem(productsCacheKey);
+          if (raw) { setProducts(JSON.parse(raw)); setOffline(true); }
+          else setProducts([]);
+        } catch { setProducts([]); }
+      })
       .finally(() => setLoadingProducts(false));
   }, [id]);
 
@@ -250,6 +281,15 @@ export default function BoutiqueDetailScreen() {
           <Filter color={colors.primary} size={20} />
         </Pressable>
       </Animated.View>
+
+      {offline && (
+        <Animated.View entering={FadeInDown.duration(300)} style={[styles.offlineBanner, { backgroundColor: colors.warning + '1A', borderColor: colors.warning + '40' }]}>
+          <WifiOff color={colors.warning} size={15} />
+          <Text style={[styles.offlineBannerText, { color: colors.warning }]}>
+            {t('home.offlineBanner', 'Hors ligne — affichage des dernières données enregistrées')}
+          </Text>
+        </Animated.View>
+      )}
 
       {loadingVendeur ? (
         <View style={styles.centerLoader}><ActivityIndicator color={colors.primary} /></View>
@@ -366,6 +406,12 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 19, fontWeight: '900' },
   content: { padding: 16, paddingBottom: 30 },
   centerLoader: { paddingVertical: 60, alignItems: 'center' },
+  offlineBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14,
+    marginHorizontal: 16, marginTop: 14,
+  },
+  offlineBannerText: { fontSize: 12.5, fontWeight: '700', flex: 1 },
 
   card: { borderRadius: 20, borderWidth: 1, padding: 16 },
   cardTop: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },

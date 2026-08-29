@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import {
   Search, Bell, ShoppingCart, MapPin, ChevronDown,
-  Tag, Globe2, ChevronRight, Scooter,
+  Tag, Globe2, ChevronRight, ChevronLeft, Scooter, WifiOff,
 } from 'lucide-react-native';
 import { useClient } from '@/contexts/client-context';
 import { ClientMenu, ProductCard, SectionTitle, BLUE } from '@/components/client-ui';
@@ -21,13 +21,22 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 import { ThemeToggle, LanguageToggle } from '@/design/components';
-import { fetchVendeurs, resolveMediaUrl, FALLBACK_DELIVERY_FEE, type ApiVendeur } from '@/services/api';
+import { clearAuthToken, resolveMediaUrl, FALLBACK_DELIVERY_FEE } from '@/services/api';
+import { alert, confirmLogout } from '@/contexts/alert-context';
 import { Store, Star } from 'lucide-react-native';
 
 const CATEGORY_COLORS = ['#EAF4FF', '#FFEDE8', '#FFF6E8', '#E8F9EE', '#FFF0E8', '#F3EEFF'];
+const HOME_SECTION_PAGE_SIZE = 5;
+
+// Découpe une page (5 éléments) en colonnes de 2 empilées, pour un carrousel horizontal sur 2
+// rangées plutôt qu'une seule ligne — avec une seule ligne, une bonne partie de la page n'est
+// jamais visible à l'écran et changer de page ne se voit presque pas.
+function chunkPairs<T>(items: T[]): T[][] {
+  return Array.from({ length: Math.ceil(items.length / 2) }, (_, i) => items.slice(i * 2, i * 2 + 2));
+}
 
 export default function ClientHomeScreen() {
-  const { products, promotedProduct, boutiqueTypes, addToCart, cartCount, favorites, isFavorite, userFirstName, isDiaspora, refreshUser, zones } = useClient();
+  const { products, promotedProduct, boutiqueTypes, boutiques, addToCart, cartCount, favorites, isFavorite, userFirstName, isDiaspora, refreshUser, zones, selectedAddress, currentUser, catalogOffline } = useClient();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const { animatedStyle: promoStyle, onPressIn, onPressOut } = useScalePress(0.98);
@@ -39,12 +48,16 @@ export default function ClientHomeScreen() {
     () => products.filter((p) => isFavorite(p.id)).slice(0, 4),
     [products, favorites]
   );
-  const [boutiques, setBoutiques] = useState<ApiVendeur[]>([]);
+  const [productsPage, setProductsPage] = useState(1);
+  const totalProductsPages = Math.max(1, Math.ceil(products.length / HOME_SECTION_PAGE_SIZE));
+  const safeProductsPage = Math.min(productsPage, totalProductsPages);
+  const pagedProductColumns = chunkPairs(
+    products.slice((safeProductsPage - 1) * HOME_SECTION_PAGE_SIZE, safeProductsPage * HOME_SECTION_PAGE_SIZE)
+  );
 
   // Rafraîchit le profil connecté (détecte correctement le client diaspora)
   useEffect(() => {
     refreshUser();
-    fetchVendeurs().then(setBoutiques).catch(() => setBoutiques([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -60,15 +73,22 @@ export default function ClientHomeScreen() {
       >
         {/* ── Top Bar ─────────────────────────────────── */}
 <Animated.View entering={FadeInDown.duration(350).springify()} style={styles.top}>
-          <View style={styles.locationRow}>
-            <ClientMenu />
-            <Pressable style={styles.location}>
-              <MapPin color={colors.primary} size={18} />
-              <Text style={[styles.city, { color: colors.text }]}>{t('homeExtra.city', 'Brazzaville')}</Text>
-              <ChevronDown color={colors.textSecondary} size={15} />
-            </Pressable>
+          <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[styles.locationRow, { flexShrink: 1, minWidth: 0 }]}>
+              <ClientMenu />
+              <Pressable style={styles.location} onPress={() => router.push('/client/checkout/address' as any)}>
+                <MapPin color={colors.primary} size={18} />
+                <Text numberOfLines={1} style={[styles.city, { color: colors.text }]}>{selectedAddress?.ville || t('homeExtra.city', 'Brazzaville')}</Text>
+                <ChevronDown color={colors.textSecondary} size={15} />
+              </Pressable>
+            </View>
           </View>
-          <View style={styles.actions}>
+
+          {/* Groupes du milieu et de droite en largeur naturelle (pas flex:1) : avec 4 éléments ici,
+              un partage strict en tiers égaux avec la colonne adresse (qui doit accueillir des noms
+              de ville de longueur variable) écrasait le texte de la ville sur un espace bien trop
+              étroit. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
             <LanguageToggle />
             <ThemeToggle />
             <Pressable
@@ -83,19 +103,50 @@ export default function ClientHomeScreen() {
             >
               <ShoppingCart color={colors.primary} size={22} />
               {cartCount > 0 && (
-                <View style={styles.badge}>
+                <View style={[styles.badge, { borderColor: colors.background }]}>
                   <Text style={styles.badgeText}>{cartCount > 9 ? '9+' : cartCount}</Text>
                 </View>
               )}
             </Pressable>
           </View>
+
+          <View style={{ marginLeft: Spacing.sm }}>
+            <Pressable
+              accessibilityLabel="Mon compte"
+              onPress={() => alert(
+                'Mon compte',
+                undefined,
+                [
+                  { text: 'Voir mon profil', onPress: () => router.push('/client/(tabs)/profile' as any) },
+                  { text: 'Se déconnecter', style: 'destructive', onPress: () => confirmLogout(() => { clearAuthToken(); router.replace('/auth' as any); }) },
+                  { text: 'Annuler', style: 'cancel' },
+                ],
+              )}
+              style={[styles.avatarBtn, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}
+            >
+              {resolveMediaUrl(currentUser?.photo_profil) ? (
+                <Image source={{ uri: resolveMediaUrl(currentUser?.photo_profil)! }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              ) : (
+                <Text style={{ color: colors.primary, fontWeight: '900', fontSize: 16 }}>{(userFirstName || 'C').slice(0, 1).toUpperCase()}</Text>
+              )}
+            </Pressable>
+          </View>
         </Animated.View>
+
+        {catalogOffline && (
+          <Animated.View entering={FadeInDown.duration(300)} style={[styles.offlineBanner, { backgroundColor: colors.warning + '1A', borderColor: colors.warning + '40' }]}>
+            <WifiOff color={colors.warning} size={15} />
+            <Text style={[styles.offlineBannerText, { color: colors.warning }]}>
+              {t('home.offlineBanner', 'Hors ligne — affichage des dernières données enregistrées')}
+            </Text>
+          </Animated.View>
+        )}
 
         {/* ── Greeting ─────────────────────────────────── */}
 <Animated.View entering={FadeInDown.duration(380).delay(60).springify()} style={styles.greeting}>
           <View>
             <Text style={[styles.greetEyebrow, { color: colors.text }]}>
-              {t('home.greeting', 'Bonjour')} {userFirstName} <Text style={styles.greetDot}>·</Text>{' '}
+              {t('home.greeting', 'Bonjour')} {userFirstName} <Text style={[styles.greetDot, { color: colors.textTertiary }]}>·</Text>{' '}
               <Text style={styles.greetStatus}>{t('home.open', 'Ouvert')}</Text>
             </Text>
             <Text style={[styles.greetTitle, { color: colors.text }]}>{t('home.tagline', 'Le marché frais, livré chez vous')}</Text>
@@ -170,20 +221,24 @@ export default function ClientHomeScreen() {
           entering={FadeInUp.duration(400).delay(220).springify()}
           style={styles.categoryRow}
         >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4 }}>
-            {boutiqueTypes.slice(0, 6).map((type, index) => (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingRight: 20 }}>
+            {boutiqueTypes.slice(0, 6).map((item, index) => (
               <Animated.View
-                key={type}
+                key={item.type}
                 entering={ZoomIn.duration(350).delay(250 + index * 70).springify()}
               >
                 <Pressable
-                  onPress={() => router.push(`/client/boutiques/${encodeURIComponent(type)}` as any)}
+                  onPress={() => router.push(`/client/boutiques/${encodeURIComponent(item.type)}` as any)}
                   style={styles.category}
                 >
                   <View style={[styles.categoryIcon, { backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }]}>
-                    <Store color={colors.primary} size={26} />
+                    {item.logoUrl ? (
+                      <Image source={{ uri: item.logoUrl }} style={styles.categoryLogo} contentFit="cover" />
+                    ) : (
+                      <Text style={styles.categoryEmoji}>{item.emoji}</Text>
+                    )}
                   </View>
-                  <Text numberOfLines={2} style={[styles.categoryText, { color: colors.text, textTransform: 'capitalize' }]}>{type}</Text>
+                  <Text numberOfLines={2} style={[styles.categoryText, { color: colors.text, textTransform: 'capitalize' }]}>{item.type}</Text>
                 </Pressable>
               </Animated.View>
             ))}
@@ -221,6 +276,51 @@ export default function ClientHomeScreen() {
           ))}
         </ScrollView>
 
+        {/* ── Produits ────────────────────────────────── */}
+        {products.length > 0 && (
+          <>
+            <Animated.View entering={FadeInLeft.duration(400).delay(340).springify()}>
+              <SectionTitle
+                title={t('home.sections.products', 'Nos produits')}
+                onSeeAll={() => router.push('/client/search' as any)}
+              />
+            </Animated.View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20, gap: 12 }}>
+              {pagedProductColumns.map((column, i) => (
+                <View key={i} style={{ gap: 12 }}>
+                  {column.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      compact
+                      onAdd={() => addToCart(product.id)}
+                    />
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+            {totalProductsPages > 1 && (
+              <View style={styles.productsPager}>
+                <Pressable
+                  onPress={() => setProductsPage((p) => Math.max(1, p - 1))}
+                  disabled={safeProductsPage <= 1}
+                  style={[styles.pagerBtn, { backgroundColor: colors.surface, borderColor: colors.border }, safeProductsPage <= 1 && { opacity: 0.4 }]}
+                >
+                  <ChevronLeft color={colors.primary} size={16} />
+                </Pressable>
+                <Text style={[styles.pagerText, { color: colors.textSecondary }]}>{safeProductsPage} / {totalProductsPages}</Text>
+                <Pressable
+                  onPress={() => setProductsPage((p) => Math.min(totalProductsPages, p + 1))}
+                  disabled={safeProductsPage >= totalProductsPages}
+                  style={[styles.pagerBtn, { backgroundColor: colors.surface, borderColor: colors.border }, safeProductsPage >= totalProductsPages && { opacity: 0.4 }]}
+                >
+                  <ChevronRight color={colors.primary} size={16} />
+                </Pressable>
+              </View>
+            )}
+          </>
+        )}
+
         {/* ── Favoris ─────────────────────────────────── */}
         {favProducts.length > 0 && (
           <>
@@ -245,7 +345,7 @@ export default function ClientHomeScreen() {
 
 {/* ── Livraison rapide promo ──────────────────── */}
         <Animated.View entering={FadeInUp.duration(400).delay(400).springify()} style={[styles.deliverBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.deliverIcon}>
+          <View style={[styles.deliverIcon, { backgroundColor: colors.goldSoft }]}>
             <Scooter color={Palette.gold} size={24} />
           </View>
           <View style={styles.deliverCopy}>
@@ -292,8 +392,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', paddingTop: Spacing.sm, paddingBottom: Spacing.md,
   },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  location: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  city: { color: Palette.navy, fontSize: 18, fontWeight: '800' },
+  location: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
+  city: { color: Palette.navy, fontSize: 18, fontWeight: '800', flexShrink: 1 },
   actions: { flexDirection: 'row', gap: Spacing.sm },
   actionBtn: {
     width: 40, height: 40, borderRadius: Radii.sm,
@@ -307,6 +407,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Palette.canvas,
   },
   badgeText: { color: '#FFF', fontSize: 9.5, fontWeight: '900' },
+  offlineBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: Radii.md, paddingVertical: 10, paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  offlineBannerText: { fontSize: 12.5, fontWeight: '700', flex: 1 },
+  avatarBtn: {
+    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+  },
 
   // Greeting
   greeting: {
@@ -368,16 +478,18 @@ const styles = StyleSheet.create({
   promoImage: { width: '100%', height: '100%' },
 
   // Categories row
-  categoryRow: { paddingTop: 2, paddingBottom: 4 },
-  category: { alignItems: 'center', width: 80 },
+  categoryRow: { paddingTop: 4, paddingBottom: 6 },
+  category: { alignItems: 'center', width: 96 },
   categoryIcon: {
-    width: 68, height: 68, borderRadius: Radii.lg,
+    width: 84, height: 84, borderRadius: Radii.xl,
     alignItems: 'center', justifyContent: 'center',
     ...Shadows.soft,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   categoryImage: { width: 56, height: 50, borderRadius: Radii.sm },
-  categoryText: { color: Palette.navy, fontSize: 11.5, fontWeight: '700', textAlign: 'center' },
+  categoryLogo: { width: '100%', height: '100%', borderRadius: Radii.xl },
+  categoryEmoji: { fontSize: 34 },
+  categoryText: { color: Palette.navy, fontSize: 12.5, fontWeight: '800', textAlign: 'center' },
 
   boutiqueCard: { width: 140, borderRadius: Radii.md, borderWidth: 1, padding: Spacing.md, ...Shadows.soft },
   boutiqueAvatar: { width: 44, height: 44, borderRadius: Radii.sm, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 8 },
@@ -385,6 +497,10 @@ const styles = StyleSheet.create({
   boutiqueName: { fontSize: 13, fontWeight: '800' },
   boutiqueMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   boutiqueMetaText: { fontSize: 11.5, fontWeight: '600' },
+
+  productsPager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, marginTop: 10 },
+  pagerBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  pagerText: { fontSize: 12.5, fontWeight: '700' },
 
   // Delivery banner
   deliverBanner: {
