@@ -26,10 +26,10 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || `http://${LOCAL_API_HOST
 const SUPABASE_STORAGE_URL = 'https://ixqgpgcxadtomgriiczh.supabase.co/storage/v1/object/public/media';
 
 // Construit l'URL publique d'un fichier stocké dans Supabase Storage (persistant, S3-compatible).
-// Les images survivent aux redéploiements Render contrairement au disque local du conteneur Docker.
+// Supporte également les URIs locales (file://, content://, data:, ph://) sélectionnées par l'appareil photo/galerie.
 export function resolveMediaUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
-  if (/^https?:\/\//.test(path)) return path;
+  if (/^(https?|file|content|ph|data):/i.test(path)) return path;
   return `${SUPABASE_STORAGE_URL}/${path.replace(/^\/+/, '').replace(/^storage\//, '')}`;
 }
 
@@ -46,10 +46,10 @@ const STORAGE_KEYS = {
   USER: '@zando_user',
 } as const;
 
-// Create Axios instance
+// Create Axios instance (Timeout porté à 30s pour supporter le démarrage à froid Render)
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
