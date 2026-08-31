@@ -108,12 +108,12 @@ export default function PhoneOtpScreen() {
         showsVerticalScrollIndicator={false}
       >
         <OtpVerificationLayout
-          accentLabel="numero de telephone"
+          accentLabel="numéro de téléphone"
           canResend={canResend}
           initialCode={devCode}
           description={
             <>
-              Nous avons envoye un code de verification par SMS au{' '}
+              Nous avons envoyé un code de vérification par SMS au{' '}
               <Text style={styles.bold}>{phoneNumber}.</Text>
               {'\n'}Entrez le code ci-dessous pour continuer.
             </>

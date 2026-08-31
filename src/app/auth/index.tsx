@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import {
-  Dimensions,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -18,7 +18,6 @@ import { AUTH_ICONS } from '@/constants/icons';
 import { Palette, Radii, Shadows, Spacing } from '@/design/tokens';
 
 const logo = require('@/assets/images/zando-logo.jpeg');
-const { width } = Dimensions.get('window');
 
 function MethodButton({
   icon,
@@ -50,17 +49,15 @@ export default function AuthOptionsScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar style="dark" />
-      <View style={styles.greyShape} />
-      <View style={styles.yellowShape} />
-      <View style={styles.redShape} />
-      <View style={styles.blueShape} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Image contentFit="contain" source={logo} style={styles.logo} />
-        <Text style={styles.welcome}>Bienvenue</Text>
-        <Text style={styles.welcomeAccent}>Zando na Ndako</Text>
-        <Text style={styles.subtitle}>
+        <Animated.View entering={ZoomIn.duration(500).springify()} style={styles.logoWrap}>
+          <Image contentFit="contain" source={logo} style={styles.logo} />
+        </Animated.View>
+        <Animated.Text entering={FadeInDown.duration(400).delay(150).springify()} style={styles.welcome}>Bienvenue</Animated.Text>
+        <Animated.Text entering={FadeInDown.duration(400).delay(200).springify()} style={styles.welcomeAccent}>Zando na Ndako</Animated.Text>
+        <Animated.Text entering={FadeInDown.duration(400).delay(250).springify()} style={styles.subtitle}>
           Votre marché, livré chez vous en toute simplicité.
-        </Text>
+        </Animated.Text>
 
         <View style={styles.tabs}>
           <Pressable style={[styles.tab, styles.activeTab]}>
@@ -128,15 +125,28 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.xxl,
-    paddingTop: 22,
+    paddingTop: 28,
     paddingBottom: 44,
     alignItems: 'center',
-    zIndex: 1,
+  },
+  logoWrap: {
+    width: 140,
+    height: 140,
+    borderRadius: 32,
+    backgroundColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: Palette.navy,
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    overflow: 'hidden',
   },
   logo: {
-    width: 190,
-    height: 168,
-    marginBottom: 4,
+    width: 130,
+    height: 130,
   },
   welcome: {
     color: Palette.navy,
@@ -280,45 +290,5 @@ const styles = StyleSheet.create({
     color: Palette.navy,
     fontWeight: '800',
     textDecorationLine: 'underline',
-  },
-  greyShape: {
-    position: 'absolute',
-    top: -30,
-    left: -60,
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: '#C8CDD6',
-    opacity: 0.55,
-  },
-  yellowShape: {
-    position: 'absolute',
-    top: 95,
-    right: -75,
-    width: 145,
-    height: 145,
-    borderRadius: 73,
-    backgroundColor: Palette.gold,
-    opacity: 0.78,
-  },
-  redShape: {
-    position: 'absolute',
-    left: -78,
-    bottom: 140,
-    width: 120,
-    height: 120,
-    borderRadius: 68,
-    backgroundColor: Palette.coral,
-    opacity: 0.82,
-  },
-  blueShape: {
-    position: 'absolute',
-    right: -115,
-    bottom: -80,
-    width: width * 1.2,
-    height: 128,
-    borderRadius: 120,
-    backgroundColor: Palette.navy,
-    transform: [{ rotate: '-8deg' }],
   },
 });

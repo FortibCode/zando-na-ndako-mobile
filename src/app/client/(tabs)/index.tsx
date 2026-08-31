@@ -254,25 +254,26 @@ export default function ClientHomeScreen() {
         </Animated.View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20, gap: 12 }}>
-          {boutiques.map((v) => (
-            <Pressable
-              key={v.id}
-              onPress={() => router.push(`/client/boutique/${v.id}` as any)}
-              style={[styles.boutiqueCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            >
-              <View style={[styles.boutiqueAvatar, { backgroundColor: colors.primarySoft }]}>
-                {v.photo_boutique ? (
-                  <Image accessibilityLabel={v.nom_commerce} contentFit="cover" source={{ uri: resolveMediaUrl(v.photo_boutique) }} style={styles.boutiqueAvatarImage} />
-                ) : (
-                  <Store color={colors.primary} size={22} />
-                )}
-              </View>
-              <Text numberOfLines={1} style={[styles.boutiqueName, { color: colors.text }]}>{v.nom_commerce}</Text>
-              <View style={styles.boutiqueMeta}>
-                <Star color={colors.gold} size={12} fill={v.note_moyenne > 0 ? colors.gold : 'transparent'} />
-                <Text style={[styles.boutiqueMetaText, { color: colors.textSecondary }]}>{v.note_moyenne > 0 ? v.note_moyenne.toFixed(1) : '—'}</Text>
-              </View>
-            </Pressable>
+          {boutiques.map((v, index) => (
+            <Animated.View key={v.id} entering={FadeInUp.duration(350).delay(320 + index * 60).springify()}>
+              <Pressable
+                onPress={() => router.push(`/client/boutique/${v.id}` as any)}
+                style={[styles.boutiqueCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              >
+                <View style={[styles.boutiqueAvatar, { backgroundColor: colors.primarySoft }]}>
+                  {v.photo_boutique ? (
+                    <Image accessibilityLabel={v.nom_commerce} contentFit="cover" source={{ uri: resolveMediaUrl(v.photo_boutique) }} style={styles.boutiqueAvatarImage} />
+                  ) : (
+                    <Store color={colors.primary} size={22} />
+                  )}
+                </View>
+                <Text numberOfLines={1} style={[styles.boutiqueName, { color: colors.text }]}>{v.nom_commerce}</Text>
+                <View style={styles.boutiqueMeta}>
+                  <Star color={colors.gold} size={12} fill={v.note_moyenne > 0 ? colors.gold : 'transparent'} />
+                  <Text style={[styles.boutiqueMetaText, { color: colors.textSecondary }]}>{v.note_moyenne > 0 ? v.note_moyenne.toFixed(1) : '—'}</Text>
+                </View>
+              </Pressable>
+            </Animated.View>
           ))}
         </ScrollView>
 
@@ -430,12 +431,12 @@ const styles = StyleSheet.create({
 
   // Search
   search: {
-    height: 52, borderRadius: Radii.md,
+    height: 54, borderRadius: Radii.md,
     backgroundColor: Palette.surface, flexDirection: 'row',
     alignItems: 'center', paddingHorizontal: Spacing.lg, gap: Spacing.sm,
     borderWidth: 1, borderColor: Palette.border,
     ...Shadows.soft,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   searchPlaceholder: { color: Palette.faint, fontSize: 14, fontWeight: '500' },
 

@@ -83,12 +83,14 @@ export function ClientMenu() {
           <Animated.View entering={SlideInLeft.duration(280).springify()} style={[styles.drawer, { backgroundColor: colors.surface }]}>
             {/* Brand Header */}
             <View style={[styles.drawerBrand, { backgroundColor: colors.primary }]}>
-              <Image
-                accessibilityLabel="Logo Zando na Ndako"
-                contentFit="contain"
-                source={require('../../assets/images/zando-logo.jpeg')}
-                style={styles.drawerLogo}
-              />
+              <View style={styles.drawerLogoWrap}>
+                <Image
+                  accessibilityLabel="Logo Zando na Ndako"
+                  contentFit="contain"
+                  source={require('../../assets/images/zando-logo.jpeg')}
+                  style={styles.drawerLogo}
+                />
+              </View>
               <Pressable
                 accessibilityLabel="Fermer le menu"
                 onPress={() => setOpen(false)}
@@ -314,12 +316,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 22, elevation: 14,
   },
   drawerBrand: {
-    height: 80, borderRadius: 18,
+    height: 90, borderRadius: 18,
     paddingHorizontal: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     overflow: 'hidden', marginBottom: 14,
   },
-  drawerLogo: { width: 170, height: 60, borderRadius: 8, backgroundColor: '#FFF' },
+  drawerLogoWrap: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  drawerLogo: { width: 180, height: 72, borderRadius: 8, backgroundColor: '#FFF' },
   closeButton: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.2)',

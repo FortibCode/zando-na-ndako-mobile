@@ -22,7 +22,7 @@ function TabIcon({ icon: Icon, color, size, focused, activeBg }: {
   return (
     <Animated.View style={[styles.tabIconWrap, animatedStyle]}>
       {focused && <View style={[styles.activeDot, { backgroundColor: color as string }]} />}
-      <Icon color={color as any} size={size} strokeWidth={focused ? 2.5 : 2} fill={focused ? color : ('transparent' as any)} />
+      <Icon color={color as any} size={size} strokeWidth={focused ? 2.5 : 1.8} fill={focused ? color : ('transparent' as any)} />
     </Animated.View>
   );
 }
@@ -162,9 +162,9 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     position: 'absolute',
-    top: -4,
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    top: -5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 });

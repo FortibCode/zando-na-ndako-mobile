@@ -95,22 +95,26 @@ export default function VendorHomeScreen() {
 
         {/* Stats grid */}
         <View style={styles.grid}>
-          <Animated.View entering={FadeInUp.duration(400).delay(140).springify()} style={[styles.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('vendorHome.pendingOrders', 'Commandes\nen attente')}</Text>
-            <Text style={[styles.gridValue, { color: colors.text }]}>{enAttente}</Text>
-          </Animated.View>
-          <Animated.View entering={FadeInUp.duration(400).delay(180).springify()} style={[styles.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('vendorHome.preparing', 'En préparation')}</Text>
-            <Text style={[styles.gridValue, { color: colors.text }]}>{enPreparation || '-'}</Text>
-          </Animated.View>
-          <Animated.View entering={FadeInUp.duration(400).delay(220).springify()} style={[styles.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('vendorHome.availableProducts', 'Produits\ndisponibles')}</Text>
-            <Text style={[styles.gridValue, { color: colors.text }]}>{produitsDisponibles}</Text>
-          </Animated.View>
-          <Animated.View entering={FadeInUp.duration(400).delay(260).springify()} style={[styles.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('vendorHome.outOfStock', 'Rupture de stock')}</Text>
-            <Text style={[styles.gridValue, { color: colors.text }]}>{ruptureStock || '-'}</Text>
-          </Animated.View>
+          <View style={styles.gridRow}>
+            <Animated.View entering={FadeInUp.duration(400).delay(140).springify()} style={[styles.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('vendorHome.pendingOrders', 'Commandes\nen attente')}</Text>
+              <Text style={[styles.gridValue, { color: colors.text }]}>{enAttente}</Text>
+            </Animated.View>
+            <Animated.View entering={FadeInUp.duration(400).delay(180).springify()} style={[styles.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('vendorHome.preparing', 'En préparation')}</Text>
+              <Text style={[styles.gridValue, { color: colors.text }]}>{enPreparation || '-'}</Text>
+            </Animated.View>
+          </View>
+          <View style={styles.gridRow}>
+            <Animated.View entering={FadeInUp.duration(400).delay(220).springify()} style={[styles.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('vendorHome.availableProducts', 'Produits\ndisponibles')}</Text>
+              <Text style={[styles.gridValue, { color: colors.text }]}>{produitsDisponibles}</Text>
+            </Animated.View>
+            <Animated.View entering={FadeInUp.duration(400).delay(260).springify()} style={[styles.gridCell, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('vendorHome.outOfStock', 'Rupture de stock')}</Text>
+              <Text style={[styles.gridValue, { color: colors.text }]}>{ruptureStock || '-'}</Text>
+            </Animated.View>
+          </View>
         </View>
 
         {/* Note boutique */}
@@ -177,9 +181,10 @@ const styles = StyleSheet.create({
   revenueValue: { color: Palette.white, fontSize: 28, fontWeight: '900', marginTop: 8 },
   revenueIcon: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  grid: { flexDirection: 'column', gap: 12 },
+  gridRow: { flexDirection: 'row', gap: 12 },
   gridCell: {
-    width: '47%', borderRadius: Radii.lg, padding: 18,
+    flex: 1, borderRadius: Radii.lg, padding: 18,
     borderWidth: 1,
     shadowColor: Palette.navyDeep, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
