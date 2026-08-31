@@ -1056,10 +1056,17 @@ export async function appendFilePart(
     const blob = await (await fetch(file.uri)).blob();
     form.append(field, blob, file.fileName || fallbackName);
   } else {
+    let mimeType = file.type;
+    if (!mimeType || mimeType === 'image') {
+      const ext = (file.fileName || file.uri).split('.').pop()?.toLowerCase();
+      if (ext === 'png') mimeType = 'image/png';
+      else if (ext === 'webp') mimeType = 'image/webp';
+      else mimeType = 'image/jpeg';
+    }
     form.append(field, {
       uri: file.uri,
       name: file.fileName || fallbackName,
-      type: file.type || 'image/jpeg',
+      type: mimeType,
     } as any);
   }
 }
@@ -1194,9 +1201,7 @@ export async function uploaderDocumentsVendeur(
     if (!file?.uri) continue;
     await appendFilePart(form, key, file, `${key}_${Date.now()}.jpg`);
   }
-  const response = await api.post<ApiResponse<Partial<Record<VendeurDocumentKey, string | null>>>>('/vendeur/documents', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.post<ApiResponse<Partial<Record<VendeurDocumentKey, string | null>>>>('/vendeur/documents', form);
   if (!response.data.success) throw new ApiError(response.data.message || "Erreur lors de l'envoi des documents.");
   return response.data.data || {};
 }
