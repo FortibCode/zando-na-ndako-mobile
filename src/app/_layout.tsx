@@ -1,5 +1,6 @@
 import { router, Stack } from 'expo-router';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LocalSignupProvider } from '@/contexts/local-signup-context';
 import { VendorSignupProvider } from '@/contexts/vendor-signup-context';
 import { DeliverySignupProvider } from '@/contexts/delivery-signup-context';
@@ -42,26 +43,28 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <AlertProvider>
-        <LanguageProvider>
-          <LocalSignupProvider>
-            <VendorSignupProvider>
-              <DeliverySignupProvider>
-                <DeliveryProvider>
-                  <ClientProvider>
-                    <DiasporaProvider>
-                      <VendorProvider>
-                        <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 220 }} />
-                      </VendorProvider>
-                    </DiasporaProvider>
-                  </ClientProvider>
-                </DeliveryProvider>
-              </DeliverySignupProvider>
-            </VendorSignupProvider>
-          </LocalSignupProvider>
-        </LanguageProvider>
-      </AlertProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AlertProvider>
+          <LanguageProvider>
+            <LocalSignupProvider>
+              <VendorSignupProvider>
+                <DeliverySignupProvider>
+                  <DeliveryProvider>
+                    <ClientProvider>
+                      <DiasporaProvider>
+                        <VendorProvider>
+                          <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 220 }} />
+                        </VendorProvider>
+                      </DiasporaProvider>
+                    </ClientProvider>
+                  </DeliveryProvider>
+                </DeliverySignupProvider>
+              </VendorSignupProvider>
+            </LocalSignupProvider>
+          </LanguageProvider>
+        </AlertProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
