@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { alert } from '@/contexts/alert-context';
 
 import { AuthBrand, BackButton, InputField, OtpFields, PrimaryButton, authStyles } from '@/components/auth-ui';
@@ -56,7 +57,6 @@ export default function ResetPasswordScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView
           contentContainerStyle={authStyles.content}
-          keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >

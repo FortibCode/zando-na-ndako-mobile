@@ -5,12 +5,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check } from 'lucide-react-native';
 
 import { AuthBrand, BackButton, GoogleButton, InputField, PrimaryButton, authStyles } from '@/components/auth-ui';
@@ -70,7 +70,6 @@ export default function EmailLoginScreen() {
       >
         <ScrollView
           contentContainerStyle={authStyles.content}
-          keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >

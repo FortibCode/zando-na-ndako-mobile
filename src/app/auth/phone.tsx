@@ -5,13 +5,13 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthBrand, BackButton, GoogleButton, PrimaryButton, authStyles } from '@/components/auth-ui';
 import { BrandColors } from '@/constants/brand';
@@ -30,7 +30,6 @@ export default function PhoneLoginScreen() {
       >
         <ScrollView
           contentContainerStyle={authStyles.contentCentered}
-          keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >

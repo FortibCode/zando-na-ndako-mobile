@@ -4,11 +4,11 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthBrand, BackButton, InputField, PrimaryButton, authStyles } from '@/components/auth-ui';
 import { ApiError, forgotPassword } from '@/services/api';
@@ -42,7 +42,6 @@ export default function ForgotPasswordScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView
           contentContainerStyle={authStyles.content}
-          keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
