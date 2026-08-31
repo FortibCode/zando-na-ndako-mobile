@@ -17,7 +17,11 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.zandonandako.mobile"
     },
     "web": {
       "output": "static",
@@ -40,11 +44,25 @@
         }
       ],
       "expo-notifications",
-      "expo-web-browser"
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.zandonandako.mobile",
+          "enableGooglePay": true
+        }
+      ],
+      "expo-image"
+
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "27d09d8b-c29a-4bcc-93b7-8a92409b2c8a"
+      }
     }
   }
 }

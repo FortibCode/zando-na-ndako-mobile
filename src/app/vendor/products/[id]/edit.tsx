@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
-import { launchImageLibrary } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Camera, Check, ChevronDown, ChevronRight, Layers, PackageSearch } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+
 
 export default function EditProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -60,13 +61,16 @@ export default function EditProductScreen() {
     );
   }
 
-  const handlePickPhoto = () => {
-    launchImageLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 800, maxHeight: 800, selectionLimit: 1 }, (result) => {
-      if (result.didCancel || result.errorCode) return;
-      const asset = result.assets?.[0];
-      if (asset?.uri) setPhoto(asset.uri);
+  const handlePickPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
     });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setPhoto(result.assets[0].uri);
+    }
   };
+
 
   const handleUpdate = async () => {
     if (saving) return;

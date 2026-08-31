@@ -31,6 +31,8 @@ import { useLanguage } from '@/contexts/language-context';
 import type { DeliveryAddress } from '@/services/api';
 import AddressFormModal from '@/components/address/address-form-modal';
 import { EmptyState } from '@/components/lottie-animations';
+import * as Location from 'expo-location';
+
 
 function labelIcon(label: string) {
   switch (label) {
@@ -116,33 +118,39 @@ export default function AddressScreen() {
     [makeDefaultAddress, setSelectedAddress, t]
   );
 
-  const handleUseCurrentLocation = useCallback(() => {
+  const handleUseCurrentLocation = useCallback(async () => {
     setGeolocating(true);
-    // Utilise le service de géolocalisation RN
-    const Geolocation = require('@react-native-community/geolocation').default;
-    Geolocation.getCurrentPosition(
-      (position: any) => {
-        setGeolocating(false);
-        const { latitude, longitude } = position.coords;
-        setPendingCoords({ latitude, longitude });
-        setEditingAddress(null);
-        setModalVisible(true);
-        alert(
-          t('address.positionDetected', 'Position détectée'),
-          `(${latitude.toFixed(4)}, ${longitude.toFixed(4)}) — ${t('address.positionCaptured', 'Votre position a été capturée. Vous pouvez maintenant compléter votre adresse manuellement.')}`
-        );
-      },
-      (error: any) => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
         setGeolocating(false);
         alert(
           t('address.positionUnavailable', 'Position indisponible'),
           t('address.positionUnavailableDesc', 'Impossible de récupérer votre position. Renseignez votre adresse manuellement.'),
           [{ text: 'OK', onPress: () => setModalVisible(true) }]
         );
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  }, []);
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({});
+      setGeolocating(false);
+      const { latitude, longitude } = position.coords;
+      setPendingCoords({ latitude, longitude });
+      setEditingAddress(null);
+      setModalVisible(true);
+      alert(
+        t('address.positionDetected', 'Position détectée'),
+        `(${latitude.toFixed(4)}, ${longitude.toFixed(4)}) — ${t('address.positionCaptured', 'Votre position a été capturée. Vous pouvez maintenant compléter votre adresse manuellement.')}`
+      );
+    } catch {
+      setGeolocating(false);
+      alert(
+        t('address.positionUnavailable', 'Position indisponible'),
+        t('address.positionUnavailableDesc', 'Impossible de récupérer votre position. Renseignez votre adresse manuellement.'),
+        [{ text: 'OK', onPress: () => setModalVisible(true) }]
+      );
+    }
+  }, [t]);
+
 
   const handleSelect = (address: DeliveryAddress) => {
     setSelectedAddress(address);
