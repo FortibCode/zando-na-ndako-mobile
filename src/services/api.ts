@@ -23,13 +23,14 @@ function resolveDevApiHost(): string | null {
 // Base URL - configurable via env, sinon déduite de l'hôte Metro (LAN), sinon fallback historique.
 const LOCAL_API_HOST = resolveDevApiHost() || (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || `http://${LOCAL_API_HOST}:8001/api`;
-const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+const SUPABASE_STORAGE_URL = 'https://ixqgpgcxadtomgriiczh.supabase.co/storage/v1/object/public/media';
 
-// Construit l'URL publique d'un fichier stocké côté backend (ex: photo_produit).
+// Construit l'URL publique d'un fichier stocké dans Supabase Storage (persistant, S3-compatible).
+// Les images survivent aux redéploiements Render contrairement au disque local du conteneur Docker.
 export function resolveMediaUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
   if (/^https?:\/\//.test(path)) return path;
-  return `${STORAGE_BASE_URL}/storage/${path.replace(/^\/?storage\//, '')}`;
+  return `${SUPABASE_STORAGE_URL}/${path.replace(/^\/+/, '').replace(/^storage\//, '')}`;
 }
 
 // Estimation affichée tant que la vraie zone de livraison (avec son frais_livraison_base réel)
