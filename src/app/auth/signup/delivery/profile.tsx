@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BackButton, PrimaryButton, authStyles } from '@/components/auth-ui';
 import { BrandColors } from '@/constants/brand';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type UploadDoc = {
   key: string;

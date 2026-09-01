@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, BounceIn } from 'react-native-reanimated';
 import { CheckCircle2 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function OrderReadyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

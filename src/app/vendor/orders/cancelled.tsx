@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, ClipboardList } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { EmptyState } from '@/components/lottie-animations';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CancelledOrdersScreen() {
   const { orders, hasMoreOrders, loadMoreOrders } = useVendor();

@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
@@ -11,6 +11,7 @@ import {
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { ouvrirLitige, fetchLitigeMotifs, type LitigeMotif, type ApiLitigeMotif } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Icône + libellé traduit pour les motifs connus au moment où cet écran a été écrit — un motif
 // ajouté depuis l'admin après coup (voir /admin/litige-motifs) n'a ni icône ni traduction dédiées

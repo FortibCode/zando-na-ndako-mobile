@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, TextInput, ActivityIndicator } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, TextInput, ActivityIndicator } from 'react-native';
 import Animated, {
   FadeInDown, FadeInLeft, FadeInUp, ZoomIn,
   useAnimatedStyle, useSharedValue, withSpring,
@@ -13,6 +13,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 import { fetchClientCommandes, type ApiCommande } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export type UiOrder = {
   id: string;

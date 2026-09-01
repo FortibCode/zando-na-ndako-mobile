@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeInDown, FadeInUp, ZoomIn, FadeIn,
   useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming, Easing,
@@ -10,6 +10,7 @@ import { ArrowLeft, Globe2, ShieldCheck, Truck, Radar, MapPin, Info, User } from
 import { useDiaspora } from '@/contexts/diaspora-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function OrbitDot({ delay = 0, color }: { delay?: number; color: string }) {
   const scale = useSharedValue(0.6);

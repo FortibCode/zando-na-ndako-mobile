@@ -3,13 +3,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import { Check } from 'lucide-react-native';
 
 import { BackButton, PrimaryButton, authStyles } from '@/components/auth-ui';
 import { BrandColors } from '@/constants/brand';
 import { uploadUserPhoto, uploaderDocumentsVendeur } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type DocKey = 'shop' | 'id' | 'rccm' | 'avatar';
 

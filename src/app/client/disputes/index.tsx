@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, ShieldAlert, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { EmptyState } from '@/components/lottie-animations';
 import { fetchClientLitiges, type ApiLitige, type LitigeStatut } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const STATUT_COLOR: Record<LitigeStatut, string> = {
   ouvert: '#C00000', attente_vendeur: '#F1A105', attente_client: '#F1A105',

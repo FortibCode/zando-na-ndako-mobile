@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, IdCard, Briefcase, FileBadge, Store, Plus } from 'lucide-react-native';
 import { useVendor, type VendorDocument } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const DOC_ICONS: Record<string, any> = {
   "Carte d'identité": IdCard,

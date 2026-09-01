@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 
 import { OtpVerificationLayout, authStyles } from '@/components/auth-ui';
 import { sendOtp, verifyOtp, resendOtp } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const RESEND_DELAY = 165;
 

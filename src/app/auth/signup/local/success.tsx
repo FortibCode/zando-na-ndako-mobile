@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { PrimaryButton, authStyles } from '@/components/auth-ui';
 import { useLocalSignup } from '@/contexts/local-signup-context';
 import { BrandColors } from '@/constants/brand';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function SuccessCheck({ label }: { label: string }) {
   return (

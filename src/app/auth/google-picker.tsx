@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import { alert } from '@/contexts/alert-context';
 import { loginWithGoogle, ApiError, type LoginUser } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Requis par expo-auth-session pour que la fenêtre du navigateur se referme correctement après
 // l'authentification (voir docs.expo.dev/guides/authentication).

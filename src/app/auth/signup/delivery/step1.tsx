@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BackButton, InputField, PrimaryButton, StepProgress, authStyles } from '@/components/auth-ui';
 import { DatePickerModal } from '@/components/signup/signup-picker-modal';
 import { PAYS_OPTIONS, SignupPickerField } from '@/components/signup/signup-form-field';
 import { useDeliverySignup } from '@/contexts/delivery-signup-context';
 import { BrandColors } from '@/constants/brand';
 import { AUTH_ICONS } from '@/constants/icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DeliverySignupStep1Screen() {
   const { data, update } = useDeliverySignup();

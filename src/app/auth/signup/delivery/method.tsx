@@ -2,9 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BackButton, GoogleLogo } from '@/components/auth-ui';
 import { useDeliverySignup, type DeliverySignupMethod } from '@/contexts/delivery-signup-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const OPTIONS = [{ id: 'phone' as const, title: 'Numéro de téléphone', subtitle: 'Recommandé' }, { id: 'email' as const, title: 'Adresse e-mail' }, { id: 'google' as const, title: 'Continuer avec Google' }];
 export default function DeliverySignupMethodScreen() {

@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BrandColors } from '@/constants/brand';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const NEXT_STEPS = [
   { icon: 'globe-outline', label: 'Commandez pour vos proches au Congo' },

@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeInDown, FadeInUp, BounceIn,
 } from 'react-native-reanimated';
@@ -9,6 +9,7 @@ import { useClient } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { SuccessState } from '@/components/lottie-animations';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ConfirmedScreen() {
   const { numero, montant, id } = useLocalSearchParams<{ numero?: string; montant?: string; id?: string }>();

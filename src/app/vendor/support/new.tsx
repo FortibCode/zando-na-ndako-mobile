@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Send } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { envoyerMessageVendeur } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NewSupportScreen() {
   const { colors, isDark } = useTheme();

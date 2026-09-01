@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -9,6 +9,7 @@ import { ArrowLeft, Send, Paperclip, ShieldAlert, Wallet, FileText } from 'lucid
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   fetchClientLitigeDetail, envoyerMessageLitige, uploaderPreuveLitige, resolveMediaUrl,
   type ApiLitige, type ApiLitigeMessage, type ApiLitigePieceJointe, type LitigeStatut,

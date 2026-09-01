@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function OpeningHoursScreen() {
   const { horaires, updateHoraire, saveHoraires } = useVendor();

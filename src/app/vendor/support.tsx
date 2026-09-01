@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Headset, MessageSquareText, ChevronRight, CircleAlert, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
@@ -9,6 +9,7 @@ import { useVendor } from '@/contexts/vendor-context';
 import { useLanguage } from '@/contexts/language-context';
 import { EmptyState } from '@/components/lottie-animations';
 import { fetchVendeurMessages, marquerMessageVendeurLu, type ApiVendeurMessage } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Conversation = {
   id: string;

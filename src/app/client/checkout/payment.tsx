@@ -25,7 +25,7 @@ import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   FadeIn, FadeInDown, FadeInUp, ZoomIn,
 } from 'react-native-reanimated';
@@ -38,7 +38,7 @@ import {
 import { BLUE, RED, GREEN } from '@/components/client-ui';
 import { useClient } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
-import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ApiError,
   confirmerPaiementLivraison,

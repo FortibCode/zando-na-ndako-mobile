@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,6 +10,7 @@ import { ArrowLeft, Camera, ChevronDown, Check, AlertTriangle } from 'lucide-rea
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Alignée avec admin_web/src/lib/produitConstants.ts (UNITES_MESURE_SUGGESTIONS) — les 3 valeurs
 // d'origine ne couvraient pas les unités réellement utilisées par de vrais produits (voir

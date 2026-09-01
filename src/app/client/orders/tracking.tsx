@@ -1,13 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useCallback } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View, Pressable, Linking } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable, Linking } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { ArrowLeft, Phone, MessageCircle, Bike, Home, MapPin, CheckCircle, Package, RefreshCw, User } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { fetchClientCommandeSuivi, type ApiCommandeSuivi } from '@/services/api';
 import { LiveRouteMap } from '@/components/delivery/live-route-map';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TrackingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

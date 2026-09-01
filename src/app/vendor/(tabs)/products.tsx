@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Search, Plus } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { EmptyState } from '@/components/lottie-animations';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function VendorProductsScreen() {
   const { products } = useVendor();

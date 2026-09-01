@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ClipboardList, Search, ArrowDownUp } from 'lucide-react-native';
 import { useVendor, type VendorOrder, type VendorOrderStatus } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { EmptyState } from '@/components/lottie-animations';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function isEnCours(statut: VendorOrderStatus) {
   return statut === 'en_attente' || statut === 'preparation' || statut === 'prete' || statut === 'en_livraison';

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { Platform, Pressable, SafeAreaView, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import Animated, {
@@ -16,6 +16,7 @@ import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 import { EmptyState } from '@/components/lottie-animations';
 import { ApiError, sharePanier, viderPanier, ajouterAuPanier, FALLBACK_DELIVERY_FEE } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function CartItem({ product, quantity, index }: { product: Product; quantity: number; index: number }) {
   const { changeQuantity } = useClient();

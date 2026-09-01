@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, BounceIn } from 'react-native-reanimated';
 import { ArrowRight, Home, MapPin } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useDiaspora, formatEur, formatUsd, formatFcfa } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
 import { SuccessState } from '@/components/lottie-animations';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DiasporaConfirmedScreen() {
   const { lastOrder, selectedBeneficiary } = useDiaspora();

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, RefreshCw, Star } from 'lucide-react-native';
 import { Image } from 'expo-image';
@@ -9,6 +9,7 @@ import { useDelivery } from '@/contexts/delivery-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { resolveMediaUrl } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function Stars({ value, color }: { value: number; color: string }) {
   return (

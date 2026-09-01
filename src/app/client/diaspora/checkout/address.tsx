@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, UserCircle2, MapPin, Phone, Truck } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useDiaspora, buildDeliveryAddress } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DiasporaAddressScreen() {
   const { selectedBeneficiary, deliveryInstructions, setDeliveryInstructions } = useDiaspora();

@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
@@ -10,6 +10,7 @@ import { useVendor, type VendorOrderStatus } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { ApiError, fetchNotationsCommande, noterCommande, type ApiNotation } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ─── Notation du client par le vendeur : une seule fois par commande livrée, jamais de cible
 // à préciser (le backend sait que le vendeur ne peut noter que le client de la commande).

@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import { ArrowLeft, Upload, ShoppingBag, MapPin, Star, Truck } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import {
   useDiaspora, formatPreferred, formatFcfa, type ShipmentStatus,
 } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function statusLabel(status: ShipmentStatus, t: (key: string, fallback?: string) => string): string {
   if (status === 'livree') return t('diaspora.shipments.statusDelivered', 'Livrée');

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -13,6 +13,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useClient } from '@/contexts/client-context';
 import { resolveMediaUrl } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Le backend attend une date ISO (YYYY-MM-DD) ; l'utilisateur saisit/voit un format JJ/MM/AAAA.
 function isoToFr(iso?: string | null): string {

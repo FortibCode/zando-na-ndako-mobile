@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { ArrowLeft, Search, ChevronRight, Store, ShoppingBasket } from 'lucide-react-native';
 import { useClient, type BoutiqueTypeItem } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COLORS = ['#EAF4FF', '#FFF0EA', '#FFF5D9', '#EAF8EF', '#FFF0F4', '#F0ECFF', '#EAF9FA', '#FFF5E8'];
 

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   FadeInDown, FadeInUp, FadeInLeft,
@@ -19,6 +19,7 @@ import { Spacing, Radii, Shadows } from '@/design/tokens';
 import type { ThemeColors } from '@/design/theme';
 import { clearAuthToken, fetchClientCommandes, resolveMediaUrl } from '@/services/api';
 import { confirmLogout } from '@/contexts/alert-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const MENU = [
   { icon: User, label: 'Mes informations', route: '/client/my-info', color: BLUE },

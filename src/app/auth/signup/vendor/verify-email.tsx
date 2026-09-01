@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import { OtpVerificationLayout, authStyles } from '@/components/auth-ui';
 import { useVendorSignup } from '@/contexts/vendor-signup-context';
 import { registerVendor, verifyOtp, login, resendOtp } from '@/services/api';
 import { registerForPushNotificationsAsync } from '@/services/push-notifications';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const RESEND_DELAY = 165;
 

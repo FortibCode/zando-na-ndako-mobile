@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Bell, Wallet, Star, Plus, ClipboardList } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
@@ -12,6 +12,7 @@ import { ThemeToggle, LanguageToggle } from '@/design/components';
 import { VendorMenu } from '@/components/vendor-ui';
 import { clearAuthToken } from '@/services/api';
 import { alert, confirmLogout } from '@/contexts/alert-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function VendorHomeScreen() {
   const { boutique, vendorFirstName, orders, products, unreadNotificationsCount, stats, documents } = useVendor();

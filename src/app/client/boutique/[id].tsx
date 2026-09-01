@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
@@ -13,6 +13,7 @@ import { fetchVendeurDetail, fetchProduitsBoutique, resolveMediaUrl, type ApiVen
 import { ProductCard } from '@/components/client-ui';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BOUTIQUE_DETAIL_CACHE_PREFIX = '@zando_client_boutique_detail_cache:';
 const BOUTIQUE_PRODUCTS_CACHE_PREFIX = '@zando_client_boutique_products_cache:';

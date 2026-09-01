@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ArrowLeft, Crosshair, User, Phone, Mail, MapPin, Store } from 'lucide-react-native';
@@ -13,6 +13,7 @@ import { useVendor, deriveStoreEmoji } from '@/contexts/vendor-context';
 import { useClient } from '@/contexts/client-context';
 import { useLanguage } from '@/contexts/language-context';
 import api, { fetchVendeurTypesDisponibles, type ApiResponse } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function VendorProfileInfoScreen() {
   const { colors, isDark } = useTheme();

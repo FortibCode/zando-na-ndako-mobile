@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 
 import { AuthBrand, BackButton, SecurityNote } from '@/components/auth-ui';
@@ -11,6 +11,7 @@ import { SignupOtpFields } from '@/components/signup/signup-otp-fields';
 import { useLocalSignup } from '@/contexts/local-signup-context';
 import { login, registerDiasporaClient, resendOtp, verifyOtp } from '@/services/api';
 import { registerForPushNotificationsAsync } from '@/services/push-notifications';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const RESEND_DELAY = 165;
 

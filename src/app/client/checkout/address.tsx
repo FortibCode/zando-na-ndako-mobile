@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, {
   FadeInDown,
@@ -32,6 +32,7 @@ import type { DeliveryAddress } from '@/services/api';
 import AddressFormModal from '@/components/address/address-form-modal';
 import { EmptyState } from '@/components/lottie-animations';
 import * as Location from 'expo-location';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 function labelIcon(label: string) {

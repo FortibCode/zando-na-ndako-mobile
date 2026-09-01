@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -9,6 +9,7 @@ import { ArrowLeft, Search, Star, MapPin, Store, WifiOff, X } from 'lucide-react
 import { fetchVendeurs, resolveMediaUrl, type ApiVendeur } from '@/services/api';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BOUTIQUES_BY_TYPE_CACHE_PREFIX = '@zando_client_boutiques_by_type_cache:';
 

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, {
   FadeInDown, FadeInUp, FadeInLeft, ZoomIn,
@@ -15,6 +15,7 @@ import { useLanguage } from '@/contexts/language-context';
 import BeneficiaryFormModal from '@/components/beneficiary-form-modal';
 import { EmptyState } from '@/components/lottie-animations';
 import type { ThemeColors } from '@/design/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const AVATAR_COLORS = ['#FDE68A', '#BFDBFE', '#FBCFE8', '#C7F9E5', '#FED7AA'];
 

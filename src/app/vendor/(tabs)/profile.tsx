@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
@@ -13,6 +13,7 @@ import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { clearAuthToken } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function MenuRow({ icon: Icon, label, onPress, index, colors }: { icon: any; label: string; onPress?: () => void; index: number; colors: any }) {
   return (

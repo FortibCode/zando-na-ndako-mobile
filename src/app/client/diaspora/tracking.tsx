@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeInDown, FadeInUp, ZoomIn,
   useAnimatedStyle, useSharedValue, withTiming, withRepeat, withSequence, Easing,
@@ -13,6 +13,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { useDiaspora } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
 import { fetchDiasporaSuivi, type ApiDiasporaSuivi } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const STEP_ICONS: Record<string, any> = {
   confirmee: CheckCircle,

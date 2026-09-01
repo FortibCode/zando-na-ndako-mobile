@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import { ArrowLeft, ChevronRight, Plus, Check } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProductVariantsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

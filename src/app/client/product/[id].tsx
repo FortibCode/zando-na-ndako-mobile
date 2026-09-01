@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   FadeIn, FadeInDown, FadeInUp, ZoomIn, SlideInDown,
@@ -15,6 +15,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 import { fetchProduitDetail } from '@/services/api';
 import { useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

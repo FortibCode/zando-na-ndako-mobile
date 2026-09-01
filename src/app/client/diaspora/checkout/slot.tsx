@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import { ArrowLeft, Clock, Truck, User, Check } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
@@ -9,6 +9,7 @@ import { useDiaspora } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useClient, computeSlotDates } from '@/contexts/client-context';
 import { FALLBACK_DELIVERY_FEE } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SLOTS = ['08h - 10h', '10h - 12h', '12h - 14h', '14h - 16h', '16h - 18h', '18h - 20h'];
 

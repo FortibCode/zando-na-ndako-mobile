@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeInDown, FadeInUp,
   useAnimatedStyle, useSharedValue, withSpring,
@@ -13,6 +13,7 @@ import { useDiaspora, formatPreferred, type Shipment, type ShipmentStatus } from
 import { useLanguage } from '@/contexts/language-context';
 import { EmptyState } from '@/components/lottie-animations';
 import type { ThemeColors } from '@/design/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function statusLabel(status: ShipmentStatus, t: (key: string, fallback?: string) => string): string {
   if (status === 'livree') return t('diaspora.shipments.statusDelivered', 'Livrée');

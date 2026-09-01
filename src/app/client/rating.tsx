@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, {
   FadeInDown, FadeInUp, ZoomIn,
@@ -10,6 +10,7 @@ import Animated, {
 import { ArrowLeft, CheckCircle2, Star, Send } from 'lucide-react-native';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ApiError, fetchClientCommandeDetail, fetchNotationsCommande, noterCommande,
   type ApiCommande, type ApiNotation,

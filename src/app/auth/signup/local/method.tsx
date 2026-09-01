@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { GoogleLogo } from '@/components/auth-ui';
 import { useLocalSignup, type SignupMethod } from '@/contexts/local-signup-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type MethodOption = {
   id: SignupMethod;

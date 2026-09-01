@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
@@ -12,6 +12,7 @@ import { useDiaspora } from '@/contexts/diaspora-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { clearAuthToken } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COUNTRIES = ['France', 'Belgique', 'États-Unis', 'Canada', 'Royaume-Uni', 'Autre'];
 

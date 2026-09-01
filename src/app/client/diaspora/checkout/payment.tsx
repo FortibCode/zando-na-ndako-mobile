@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alert } from '@/contexts/alert-context';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { ArrowLeft, Lock, ShieldCheck, Wallet, CreditCard, Smartphone } from 'lucide-react-native';
@@ -12,6 +12,7 @@ import { useClient } from '@/contexts/client-context';
 import { useDiaspora, formatEur, formatUsd, formatFcfa, buildDeliveryAddress } from '@/contexts/diaspora-context';
 import { useLanguage } from '@/contexts/language-context';
 import { ApiError, initierPayPal, confirmerPayPal, initierStripe, confirmerStripe, FALLBACK_DELIVERY_FEE } from '@/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type PaymentMethodId = 'paypal' | 'stripe' | 'card';
 

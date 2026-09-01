@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { BackButton } from '@/components/auth-ui';
 import { SignupPickerField, LANGUE_OPTIONS } from '@/components/signup/signup-form-field';
 import { useLocalSignup } from '@/contexts/local-signup-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 /** Complétion du profil après vérification OTP. */
 export default function LocalSignupProfileScreen() {
