@@ -38,6 +38,7 @@ import {
 import { BLUE, RED, GREEN } from '@/components/client-ui';
 import { useClient } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
+import { useLanguage } from '@/contexts/language-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ApiError,
