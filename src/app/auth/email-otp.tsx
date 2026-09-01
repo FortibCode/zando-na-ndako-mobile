@@ -57,21 +57,6 @@ export default function EmailOtpScreen() {
     try {
       const result = await verifyOtp(emailAddress, code);
 
-      // Mode dev sans backend et sans user local : sélecteur de rôle
-      if ((result as any).__devMode) {
-        setVerifying(false);
-        alert(
-          'Mode développement',
-          'Backend non disponible. Choisissez l\'interface à tester :',
-          [
-            { text: 'Client', onPress: () => router.replace('/client/(tabs)' as any) },
-            { text: 'Livreur', onPress: () => router.replace('/delivery/(tabs)' as any) },
-            { text: 'Vendeur', onPress: () => router.replace('/vendor' as any) },
-          ],
-        );
-        return;
-      }
-
       const role = result.user?.type_utilisateur;
       if (role === 'livreur') {
         router.replace('/delivery/(tabs)' as any);

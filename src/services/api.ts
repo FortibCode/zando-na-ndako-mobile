@@ -537,20 +537,14 @@ export async function verifyOtp(credential: string, code: string): Promise<OtpVe
       }
     }
     return { token: data?.token, user: data?.user };
-  } catch (error) {
-    // Mode développement : si l'API est inaccessible (réseau/backend non démarré),
-    // on utilise l'utilisateur stocké localement pour conserver le bon rôle.
-    const httpStatus = (error as any)?.status;
-    const isNetworkOrServerError = !httpStatus || httpStatus >= 500;
-    if (isNetworkOrServerError) {
+  } catch (error: any) {
+    const httpStatus = error.response?.status;
+    if (!httpStatus || httpStatus >= 500) {
       const localUser = await getUser();
       if (localUser) {
         return { user: localUser };
       }
-      // Aucun user local : retourner un objet spécial pour signaler le mode dev sans user
-      return { __devMode: true } as any;
     }
-    // Erreur réelle (401, 422, mauvais code OTP...) : on propage
     throw error;
   }
 }
@@ -1295,9 +1289,7 @@ export async function ajouterProduitVendeur(input: VendeurProduitInput): Promise
   if (input.photo?.uri) {
     await appendFilePart(form, 'photo', input.photo, `produit_${Date.now()}.jpg`);
   }
-  const response = await api.post<ApiResponse<ApiProduit>>('/vendeur/produits', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.post<ApiResponse<ApiProduit>>('/vendeur/produits', form);
   if (!response.data.data) throw new ApiError(response.data.message || 'Erreur lors de la création du produit.');
   return response.data.data;
 }
