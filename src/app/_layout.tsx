@@ -1,4 +1,5 @@
 import { router, Stack } from 'expo-router';
+import Head from 'expo-router/head';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -61,6 +62,9 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <Head>
+        <title>Zando na Ndako</title>
+      </Head>
       <ThemeProvider>
         <AlertProvider>
           <LanguageProvider>
