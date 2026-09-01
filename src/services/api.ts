@@ -46,10 +46,12 @@ const STORAGE_KEYS = {
   USER: '@zando_user',
 } as const;
 
-// Create Axios instance (Timeout porté à 30s pour supporter le démarrage à froid Render)
+// Create Axios instance (Timeout porté à 60s : le démarrage à froid Render peut à lui seul prendre
+// 30-50s, et un envoi de photo ajoute le temps de transfert par-dessus — 30s ne suffisait pas
+// toujours, d'où des échecs "The photo failed to upload" alors que l'envoi aurait fini par réussir)
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
