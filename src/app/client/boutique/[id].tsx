@@ -199,7 +199,7 @@ export default function BoutiqueDetailScreen() {
       `« ${product.name} » est dans votre panier. Souhaitez-vous commander maintenant ?`,
       [
         { text: '🛍️ Continuer dans la boutique', style: 'cancel' },
-        { text: '🔴 Commander maintenant', onPress: () => router.push('/client/checkout' as any) },
+        { text: '🔴 Commander maintenant', onPress: () => router.push('/client/checkout/address' as any) },
       ]
     );
   };
@@ -413,7 +413,7 @@ export default function BoutiqueDetailScreen() {
             </View>
           </View>
           <Pressable
-            onPress={() => router.push('/client/checkout' as any)}
+            onPress={() => router.push('/client/checkout/address' as any)}
             style={[styles.floatingCheckoutBtn, { backgroundColor: colors.primary }]}
           >
             <Text style={styles.floatingCheckoutBtnText}>Valider la commande</Text>

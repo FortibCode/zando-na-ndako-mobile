@@ -403,7 +403,7 @@ export default function SearchScreen() {
       `Article de « ${nomCommerce} » ajouté. Souhaitez-vous finaliser votre commande immédiatement ?`,
       [
         { text: '🛍️ Continuer la recherche', style: 'cancel' },
-        { text: '🔴 Commander maintenant', onPress: () => router.push('/client/checkout' as any) },
+        { text: '🔴 Commander maintenant', onPress: () => router.push('/client/checkout/address' as any) },
       ]
     );
   }, [addToCart]);
@@ -726,7 +726,7 @@ export default function SearchScreen() {
             </View>
           </View>
           <Pressable
-            onPress={() => router.push('/client/checkout' as any)}
+            onPress={() => router.push('/client/checkout/address' as any)}
             style={[styles.floatingCheckoutBtn, { backgroundColor: colors.primary }]}
           >
             <Text style={styles.floatingCheckoutBtnText}>Commander maintenant</Text>
