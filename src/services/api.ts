@@ -561,6 +561,21 @@ export async function resendOtp(credential: string, canal: 'sms' | 'email'): Pro
 }
 
 // ─── Catalogue (produits & catégories) ───
+export interface ApiVendeurOffre {
+  produit_id: string;
+  vendeur_id: string;
+  nom_commerce: string;
+  photo_boutique: string | null;
+  note_moyenne: number;
+  ville: string | null;
+  prix_unitaire: number;
+  prix_effectif: number;
+  est_en_promotion: boolean;
+  quantite_stock: number;
+  unite_mesure: string;
+  photo_produit: string | null;
+}
+
 export interface ApiProduit {
   id: string;
   categorie_id: string;
@@ -576,6 +591,10 @@ export interface ApiProduit {
   categorie?: { id: string; nom_categorie: string } | null;
   vendeur?: { id: string; nom_commerce: string; note_moyenne?: number | null } | null;
   promotions?: { id: string; titre: string; type_reduction: string; valeur_reduction: string | number }[];
+  prix_min?: number;
+  prix_max?: number;
+  nombre_boutiques?: number;
+  offres_vendeurs?: ApiVendeurOffre[];
 }
 
 export interface ApiCategorie {
