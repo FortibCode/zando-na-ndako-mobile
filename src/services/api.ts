@@ -322,7 +322,9 @@ export type DeliveryAddress = {
   nom_complet?: string | null;
   telephone?: string | null;
   ville: string;
+  arrondissement?: string | null;
   quartier?: string | null;
+  quartier_custom?: string | null;
   adresse: string;
   coordonnees_gps?: { lat?: number; lng?: number } | null;
   instructions?: string | null;
@@ -336,7 +338,9 @@ export type DeliveryAddressInput = {
   nom_complet?: string;
   telephone?: string;
   ville?: string;
+  arrondissement?: string;
   quartier?: string;
+  quartier_custom?: string;
   adresse: string;
   coordonnees_gps?: { lat?: number; lng?: number };
   instructions?: string;
@@ -649,6 +653,8 @@ export interface ApiVendeur {
   categorie_principale: string;
   note_moyenne: number;
   ville: string | null;
+  arrondissement?: string | null;
+  quartier?: string | null;
   photo_boutique: string | null;
   horaires_ouverture?: string | null;
   message_boutique?: string | null;
@@ -677,7 +683,7 @@ export async function fetchVendeurTypesLogos(): Promise<ApiTypeBoutiqueLogo[]> {
   return response.data.data || [];
 }
 
-export async function fetchVendeurs(params?: { type?: string; search?: string }): Promise<ApiVendeur[]> {
+export async function fetchVendeurs(params?: { type?: string; search?: string; arrondissement?: string }): Promise<ApiVendeur[]> {
   const response = await api.get<ApiResponse<{ data: ApiVendeur[] }> & { data: any }>('/vendeurs', { params });
   const payload = response.data.data;
   return Array.isArray(payload) ? payload : payload?.data || [];

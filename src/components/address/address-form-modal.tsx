@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -26,15 +26,16 @@ import {
   MapPin,
   Phone,
   User,
-  Star,
   Check,
   ChevronDown,
   Navigation,
   AlertTriangle,
+  Edit3,
 } from 'lucide-react-native';
 import type { DeliveryAddress, DeliveryAddressInput } from '@/services/api';
 import { useClient } from '@/contexts/client-context';
 import { useTheme } from '@/contexts/theme-context';
+import { CONGO_LOCATIONS } from '@/constants/locations';
 
 const LABEL_OPTIONS = [
   { id: 'Maison', icon: Home },
@@ -49,81 +50,97 @@ type Props = {
   initialCoords?: { latitude: number; longitude: number } | null;
 };
 
-const EMPTY_FORM: DeliveryAddressInput = {
+const EMPTY_FORM: DeliveryAddressInput & { isCustomQuartier?: boolean } = {
   label: 'Maison',
   nom_complet: '',
   telephone: '',
   ville: 'Brazzaville',
-  quartier: '',
+  arrondissement: 'Arrondissement 2 - Bacongo',
+  quartier: 'Marché Total',
+  quartier_custom: '',
   adresse: '',
   instructions: '',
   est_defaut: false,
+  isCustomQuartier: false,
 };
 
 export default function AddressFormModal({ visible, onClose, address, initialCoords }: Props) {
-  const { addAddress, editAddress, zones } = useClient();
+  const { addAddress, editAddress } = useClient();
   const { colors, isDark } = useTheme();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [arrondissementOpen, setArrondissementOpen] = useState(false);
   const [quartierOpen, setQuartierOpen] = useState(false);
 
-  // Initialiser le formulaire à partir de l'adresse (édition) ou vide (création)
-  const [form, setForm] = useState<DeliveryAddressInput>(EMPTY_FORM);
+  // Form State
+  const [form, setForm] = useState<typeof EMPTY_FORM>(EMPTY_FORM);
 
-  // Remplace l'ancien champ texte libre : "quartier" doit correspondre EXACTEMENT à une valeur de
-  // zones_livraison.quartiers_couverts pour que resolveZoneForQuartier() (client-context.tsx)
-  // trouve la bonne zone — un simple "Moungali" au lieu de "Moungalie" faisait échouer la
-  // résolution (livraison refusée) ou, côté web, retombait silencieusement sur une zone/un tarif
-  // au hasard. Dérivé des vraies zones actives plutôt qu'une liste codée en dur.
-  const quartierOptions = zones
-    .flatMap((z) => (z.quartiers_couverts || []).map((quartier) => ({ quartier, ville: z.ville })))
-    .sort((a, b) => a.quartier.localeCompare(b.quartier));
+  const currentCity = form.ville || 'Brazzaville';
+  const arrondissementsList = useMemo(() => {
+    return Object.keys(CONGO_LOCATIONS[currentCity] || CONGO_LOCATIONS['Brazzaville']);
+  }, [currentCity]);
+
+  const currentArrondissement = form.arrondissement || arrondissementsList[0] || '';
+  const quartiersList = useMemo(() => {
+    const list = (CONGO_LOCATIONS[currentCity]?.[currentArrondissement] || []);
+    return [...list, 'AUTRE_CUSTOM'];
+  }, [currentCity, currentArrondissement]);
 
   const isEditing = Boolean(address);
 
-  const updateField = useCallback(
-    (key: keyof DeliveryAddressInput, value: string | boolean) => {
-      setForm((prev) => ({ ...prev, [key]: value }));
-    },
-    []
-  );
-
   const handleOpen = useCallback(() => {
     setError(null);
+    setArrondissementOpen(false);
     setQuartierOpen(false);
     if (address) {
+      const city = address.ville || 'Brazzaville';
+      const arrList = Object.keys(CONGO_LOCATIONS[city] || CONGO_LOCATIONS['Brazzaville']);
+      const defaultArr = address.arrondissement || arrList[0];
+      const hasCustom = !!address.quartier_custom || address.quartier === 'Autre';
+
       setForm({
         label: address.label || 'Maison',
         nom_complet: address.nom_complet || '',
         telephone: address.telephone || '',
-        ville: address.ville || 'Brazzaville',
-        quartier: address.quartier || '',
+        ville: city,
+        arrondissement: defaultArr,
+        quartier: hasCustom ? 'AUTRE_CUSTOM' : (address.quartier || ''),
+        quartier_custom: (address.quartier_custom ?? '') || (hasCustom ? (address.quartier ?? '') : ''),
         adresse: address.adresse || '',
         instructions: address.instructions || '',
         est_defaut: address.est_defaut,
+        isCustomQuartier: hasCustom,
       });
     } else {
       setForm(EMPTY_FORM);
     }
   }, [address]);
 
-  const isFormValid = form.adresse.trim().length >= 5;
+  const isFormValid = form.adresse.trim().length >= 5 &&
+    (form.quartier !== 'AUTRE_CUSTOM' || (form.quartier_custom && form.quartier_custom.trim().length >= 2));
 
   const handleSave = async () => {
     if (!isFormValid) {
-      setError("Veuillez renseigner une adresse complète (minimum 5 caractères).");
+      setError("Veuillez renseigner une adresse complète (rue, avenue) et préciser votre quartier.");
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
+      const isCustom = form.quartier === 'AUTRE_CUSTOM' || form.isCustomQuartier;
+      const finalQuartier = isCustom ? 'Autre' : form.quartier;
+      const finalQuartierCustom = isCustom ? form.quartier_custom?.trim() : undefined;
+
       const payload: DeliveryAddressInput = {
         label: form.label,
         nom_complet: form.nom_complet?.trim() || undefined,
         telephone: form.telephone?.trim() || undefined,
         ville: form.ville?.trim() || 'Brazzaville',
-        quartier: form.quartier?.trim() || undefined,
+        arrondissement: form.arrondissement?.trim() || undefined,
+        quartier: finalQuartier,
+        quartier_custom: finalQuartierCustom,
         adresse: form.adresse.trim(),
         instructions: form.instructions?.trim() || undefined,
         est_defaut: form.est_defaut,
@@ -182,10 +199,10 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
               </Pressable>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>
-                  {isEditing ? 'Modifier l\'adresse' : 'Nouvelle adresse'}
+                  {isEditing ? 'Modifier l\'adresse' : 'Nouvelle adresse de livraison'}
                 </Text>
                 <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-                  Renseignez les informations de livraison
+                  Précisez votre arrondissement pour une livraison rapide
                 </Text>
               </View>
             </View>
@@ -205,7 +222,7 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
                     return (
                       <Pressable
                         key={option.id}
-                        onPress={() => updateField('label', option.id)}
+                        onPress={() => setForm((p) => ({ ...p, label: option.id }))}
                         style={[styles.labelChip, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }, selected && { borderColor: colors.primary, backgroundColor: colors.primarySoft }]}
                       >
                         <View style={[styles.labelChipIcon, { backgroundColor: colors.primarySoft }, selected && { backgroundColor: colors.primary }]}>
@@ -227,7 +244,7 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
                   <User color={colors.textTertiary} size={18} />
                   <TextInput
                     value={form.nom_complet}
-                    onChangeText={(t) => updateField('nom_complet', t)}
+                    onChangeText={(t) => setForm((p) => ({ ...p, nom_complet: t }))}
                     placeholder="Nom complet (ex: Marie Kabila)"
                     placeholderTextColor={colors.textTertiary}
                     autoCapitalize="words"
@@ -238,7 +255,7 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
                   <Phone color={colors.textTertiary} size={18} />
                   <TextInput
                     value={form.telephone}
-                    onChangeText={(t) => updateField('telephone', t)}
+                    onChangeText={(t) => setForm((p) => ({ ...p, telephone: t }))}
                     placeholder="Téléphone (ex: 06 123 45 67)"
                     placeholderTextColor={colors.textTertiary}
                     keyboardType="phone-pad"
@@ -247,61 +264,158 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
                 </View>
               </View>
 
-              {/* Localisation */}
+              {/* Localisation (Ville, Arrondissement & Quartier avec 'Autre') */}
               <View style={styles.block}>
-                <Text style={[styles.label, { color: colors.text }]}>Localisation</Text>
-                <View style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                  <MapPin color={colors.textTertiary} size={18} />
-                  <TextInput
-                    value={form.ville}
-                    onChangeText={(t) => updateField('ville', t)}
-                    placeholder="Ville"
-                    placeholderTextColor={colors.textTertiary}
-                    autoCapitalize="words"
-                    style={[styles.field, { color: colors.text }]}
-                  />
+                <Text style={[styles.label, { color: colors.text }]}>Secteur de Livraison (Ville & Arrondissement)</Text>
+
+                {/* Choix de la Ville */}
+                <View style={styles.cityRow}>
+                  {['Brazzaville', 'Pointe-Noire'].map((c) => {
+                    const selected = form.ville === c;
+                    return (
+                      <Pressable
+                        key={c}
+                        onPress={() => {
+                          const firstArr = Object.keys(CONGO_LOCATIONS[c])[0];
+                          const firstQ = CONGO_LOCATIONS[c][firstArr][0];
+                          setForm((p) => ({
+                            ...p,
+                            ville: c,
+                            arrondissement: firstArr,
+                            quartier: firstQ,
+                            isCustomQuartier: false,
+                          }));
+                        }}
+                        style={[
+                          styles.cityChip,
+                          { borderColor: colors.border, backgroundColor: colors.backgroundAlt },
+                          selected && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+                        ]}
+                      >
+                        <Text style={[styles.cityChipText, { color: selected ? colors.primary : colors.textSecondary }]}>
+                          {c}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
+
+                {/* Sélecteur Arrondissement */}
                 <Pressable
-                  onPress={() => setQuartierOpen((o) => !o)}
-                  style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  onPress={() => {
+                    setArrondissementOpen((o) => !o);
+                    setQuartierOpen(false);
+                  }}
+                  style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 10 }]}
                 >
-                  <Navigation color={colors.textTertiary} size={18} />
-                  <Text style={[styles.field, { color: form.quartier ? colors.text : colors.textTertiary }]} numberOfLines={1}>
-                    {form.quartier || 'Quartier'}
+                  <MapPin color={colors.primary} size={18} />
+                  <Text style={[styles.field, { color: form.arrondissement ? colors.text : colors.textTertiary }]} numberOfLines={1}>
+                    {form.arrondissement || 'Sélectionner l\'arrondissement'}
                   </Text>
-                  <ChevronDown color={colors.textTertiary} size={18} style={{ transform: [{ rotate: quartierOpen ? '180deg' : '0deg' }] }} />
+                  <ChevronDown color={colors.textTertiary} size={18} style={{ transform: [{ rotate: arrondissementOpen ? '180deg' : '0deg' }] }} />
                 </Pressable>
-                {quartierOpen && (
+
+                {arrondissementOpen && (
                   <Animated.View entering={FadeInDown.duration(200)} style={[styles.dropdownPanel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                    <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled showsVerticalScrollIndicator>
-                      {quartierOptions.length === 0 ? (
-                        <Text style={[styles.dropdownEmpty, { color: colors.textTertiary }]}>Aucune zone de livraison disponible pour l'instant.</Text>
-                      ) : (
-                        quartierOptions.map(({ quartier, ville }) => (
-                          <Pressable
-                            key={quartier}
-                            onPress={() => {
-                              setForm((prev) => ({ ...prev, quartier, ville }));
-                              setQuartierOpen(false);
-                            }}
-                            style={[styles.dropdownOption, { borderBottomColor: colors.border }, quartier === form.quartier && { backgroundColor: colors.primarySoft }]}
-                          >
-                            <Text style={[styles.dropdownOptionText, { color: colors.textSecondary }, quartier === form.quartier && { color: colors.primary, fontWeight: '800' }]}>
-                              {quartier}
-                            </Text>
-                            {quartier === form.quartier && <Check color={colors.primary} size={16} strokeWidth={3} />}
-                          </Pressable>
-                        ))
-                      )}
+                    <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled showsVerticalScrollIndicator>
+                      {arrondissementsList.map((arr) => (
+                        <Pressable
+                          key={arr}
+                          onPress={() => {
+                            const firstQ = CONGO_LOCATIONS[currentCity]?.[arr]?.[0] || '';
+                            setForm((p) => ({
+                              ...p,
+                              arrondissement: arr,
+                              quartier: firstQ,
+                              isCustomQuartier: false,
+                            }));
+                            setArrondissementOpen(false);
+                          }}
+                          style={[styles.dropdownOption, { borderBottomColor: colors.border }, arr === form.arrondissement && { backgroundColor: colors.primarySoft }]}
+                        >
+                          <Text style={[styles.dropdownOptionText, { color: colors.textSecondary }, arr === form.arrondissement && { color: colors.primary, fontWeight: '800' }]}>
+                            {arr}
+                          </Text>
+                          {arr === form.arrondissement && <Check color={colors.primary} size={16} strokeWidth={3} />}
+                        </Pressable>
+                      ))}
                     </ScrollView>
                   </Animated.View>
                 )}
-                <View style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+
+                {/* Sélecteur Quartier */}
+                <Pressable
+                  onPress={() => {
+                    setQuartierOpen((o) => !o);
+                    setArrondissementOpen(false);
+                  }}
+                  style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 10 }]}
+                >
+                  <Navigation color={colors.textTertiary} size={18} />
+                  <Text style={[styles.field, { color: form.quartier ? colors.text : colors.textTertiary }]} numberOfLines={1}>
+                    {form.quartier === 'AUTRE_CUSTOM' ? '➕ Autre quartier (saisie manuelle)' : form.quartier || 'Sélectionner le quartier'}
+                  </Text>
+                  <ChevronDown color={colors.textTertiary} size={18} style={{ transform: [{ rotate: quartierOpen ? '180deg' : '0deg' }] }} />
+                </Pressable>
+
+                {quartierOpen && (
+                  <Animated.View entering={FadeInDown.duration(200)} style={[styles.dropdownPanel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled showsVerticalScrollIndicator>
+                      {quartiersList.map((q) => {
+                        const isOther = q === 'AUTRE_CUSTOM';
+                        const label = isOther ? '➕ Autre quartier (saisie manuelle)' : q;
+                        const isSelected = form.quartier === q;
+
+                        return (
+                          <Pressable
+                            key={q}
+                            onPress={() => {
+                              setForm((p) => ({
+                                ...p,
+                                quartier: q,
+                                isCustomQuartier: isOther,
+                              }));
+                              setQuartierOpen(false);
+                            }}
+                            style={[
+                              styles.dropdownOption,
+                              { borderBottomColor: colors.border },
+                              isSelected && { backgroundColor: colors.primarySoft },
+                            ]}
+                          >
+                            <Text style={[styles.dropdownOptionText, { color: isOther ? colors.primary : colors.textSecondary }, isSelected && { color: colors.primary, fontWeight: '800' }]}>
+                              {label}
+                            </Text>
+                            {isSelected && <Check color={colors.primary} size={16} strokeWidth={3} />}
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </Animated.View>
+                )}
+
+                {/* Champ texte libre si "Autre" est sélectionné */}
+                {(form.quartier === 'AUTRE_CUSTOM' || form.isCustomQuartier) && (
+                  <Animated.View entering={FadeInDown.duration(200)} style={[styles.fieldWrap, { borderColor: colors.primary, backgroundColor: colors.primarySoft + '10', marginTop: 10 }]}>
+                    <Edit3 color={colors.primary} size={18} />
+                    <TextInput
+                      value={form.quartier_custom}
+                      onChangeText={(t) => setForm((p) => ({ ...p, quartier_custom: t }))}
+                      placeholder="Tapez le nom de votre quartier ou repère exact…"
+                      placeholderTextColor={colors.textTertiary}
+                      autoCapitalize="words"
+                      style={[styles.field, { color: colors.text, fontWeight: '700' }]}
+                    />
+                  </Animated.View>
+                )}
+
+                {/* Adresse exacte (Avenue, Rue, N°) */}
+                <View style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 10 }]}>
                   <MapPin color={colors.textTertiary} size={18} />
                   <TextInput
                     value={form.adresse}
-                    onChangeText={(t) => updateField('adresse', t)}
-                    placeholder="Adresse complète (n°, rue, avenue…)"
+                    onChangeText={(t) => setForm((p) => ({ ...p, adresse: t }))}
+                    placeholder="Adresse précise (N°, Rue, Avenue, Point de repère…)"
                     placeholderTextColor={colors.textTertiary}
                     multiline
                     style={[styles.field, styles.addressField, { color: colors.text }]}
@@ -315,8 +429,8 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
                 <View style={[styles.fieldWrap, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                   <TextInput
                     value={form.instructions}
-                    onChangeText={(t) => updateField('instructions', t)}
-                    placeholder="Ex: Laissez devant la porte, appelez à l'arrivée…"
+                    onChangeText={(t) => setForm((p) => ({ ...p, instructions: t }))}
+                    placeholder="Ex: Maison à portail rouge, appeler 5 min avant d'arriver…"
                     placeholderTextColor={colors.textTertiary}
                     multiline
                     style={[styles.field, styles.addressField, { color: colors.text }]}
@@ -326,7 +440,7 @@ export default function AddressFormModal({ visible, onClose, address, initialCoo
 
               {/* Défaut */}
               <Pressable
-                onPress={() => updateField('est_defaut', !form.est_defaut)}
+                onPress={() => setForm((p) => ({ ...p, est_defaut: !p.est_defaut }))}
                 style={[styles.defaultRow, { backgroundColor: colors.backgroundAlt, borderColor: colors.border }]}
               >
                 <View style={[styles.defaultCheck, { borderColor: colors.borderStrong, backgroundColor: colors.surface }, form.est_defaut && { backgroundColor: colors.success, borderColor: colors.success }]}>
@@ -403,13 +517,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 19, fontWeight: '900' },
-  headerSub: { fontSize: 12.5, marginTop: 2 },
+  headerTitle: { fontSize: 18, fontWeight: '900' },
+  headerSub: { fontSize: 12, marginTop: 2 },
   content: { padding: 20, paddingBottom: 24, gap: 8 },
   block: { marginBottom: 6 },
   label: { fontSize: 13.5, fontWeight: '800', marginBottom: 10 },
 
-  // Label chips
+  cityRow: { flexDirection: 'row', gap: 10 },
+  cityChip: { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  cityChipText: { fontSize: 13, fontWeight: '800' },
+
   labelRow: { flexDirection: 'row', gap: 10 },
   labelChip: {
     flex: 1,
@@ -430,7 +547,6 @@ const styles = StyleSheet.create({
   },
   labelChipText: { fontSize: 13, fontWeight: '700' },
 
-  // Fields
   fieldWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -439,16 +555,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderRadius: 14,
     paddingHorizontal: 14,
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  field: { flex: 1, fontSize: 15, fontWeight: '500', paddingVertical: 12 },
-  addressField: { minHeight: 70, textAlignVertical: 'top' },
-  dropdownPanel: { borderRadius: 14, borderWidth: 1.2, overflow: 'hidden', marginBottom: 12, marginTop: -4 },
+  field: { flex: 1, fontSize: 14, fontWeight: '500', paddingVertical: 12 },
+  addressField: { minHeight: 64, textAlignVertical: 'top' },
+  dropdownPanel: { borderRadius: 14, borderWidth: 1.2, overflow: 'hidden', marginBottom: 8, marginTop: 2 },
   dropdownOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1 },
-  dropdownOptionText: { fontSize: 14, fontWeight: '600' },
-  dropdownEmpty: { fontSize: 13, fontWeight: '600', padding: 14, textAlign: 'center' },
+  dropdownOptionText: { fontSize: 13.5, fontWeight: '600' },
 
-  // Default
   defaultRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -468,7 +582,6 @@ const styles = StyleSheet.create({
   defaultTitle: { fontSize: 14, fontWeight: '800' },
   defaultSub: { fontSize: 12, marginTop: 2 },
 
-  // Error
   errorBox: {
     borderRadius: 14,
     padding: 12,
@@ -477,7 +590,6 @@ const styles = StyleSheet.create({
   errorBoxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   errorText: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
 
-  // Footer
   footer: {
     padding: 18,
     paddingBottom: 28,
