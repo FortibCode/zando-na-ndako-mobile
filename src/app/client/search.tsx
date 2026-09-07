@@ -16,6 +16,7 @@ import { Image } from 'expo-image';
 import Animated, {
   FadeIn,
   FadeInDown,
+  SlideInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -35,6 +36,7 @@ import {
   ShoppingCart,
   MapPin,
   Star,
+  ArrowRight,
 } from 'lucide-react-native';
 import { useClient, type Product } from '@/contexts/client-context';
 import { useDiaspora, formatEur, formatUsd } from '@/contexts/diaspora-context';
@@ -158,31 +160,67 @@ function GroupedProductCard({
   );
 }
 
-// ─── Carte résultat "boutique" ───
-function BoutiqueResultCard({ vendeur, index, onPress }: { vendeur: ApiVendeur; index: number; onPress: () => void }) {
+// ─── Carte résultat "boutique" (Affichée en 1er pour le parcours Boutique d'abord) ───
+function BoutiqueResultCard({ vendeur, index, query, onPress }: { vendeur: ApiVendeur; index: number; query?: string; onPress: () => void }) {
   const { colors } = useTheme();
+  const locationText = [vendeur.arrondissement, vendeur.ville].filter(Boolean).join(', ') || 'Congo';
+
   return (
     <Animated.View entering={FadeInDown.duration(300).delay(index * 50).springify()}>
-      <Pressable onPress={onPress} style={[styles.boutiqueResultCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.boutiqueResultCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
         <View style={[styles.boutiqueResultAvatar, { backgroundColor: colors.primarySoft }]}>
           {vendeur.photo_boutique ? (
             <Image source={{ uri: resolveMediaUrl(vendeur.photo_boutique) }} style={styles.boutiqueResultAvatarImage} contentFit="cover" />
           ) : (
-            <Store color={colors.primary} size={20} />
+            <Store color={colors.primary} size={22} />
           )}
         </View>
+
         <View style={{ flex: 1 }}>
-          <Text numberOfLines={1} style={[styles.resultName, { color: colors.text }]}>{vendeur.nom_commerce}</Text>
-          <Text numberOfLines={1} style={[styles.resultCategory, { color: colors.textTertiary, textTransform: 'capitalize' }]}>
-            {vendeur.categorie_principale}{vendeur.ville ? ` · ${vendeur.ville}` : ''}
-          </Text>
-        </View>
-        {vendeur.note_moyenne > 0 && (
-          <View style={styles.ratingChip}>
-            <Star size={12} color="#EAB308" fill="#EAB308" />
-            <Text style={styles.ratingText}>{Number(vendeur.note_moyenne).toFixed(1)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text numberOfLines={1} style={[styles.resultName, { color: colors.text, flex: 1 }]}>
+              {vendeur.nom_commerce}
+            </Text>
+            {vendeur.note_moyenne > 0 && (
+              <View style={styles.ratingChip}>
+                <Star size={11} color="#EAB308" fill="#EAB308" />
+                <Text style={styles.ratingText}>{Number(vendeur.note_moyenne).toFixed(1)}</Text>
+              </View>
+            )}
           </View>
-        )}
+
+          <View style={styles.boutiqueMetaRow}>
+            <MapPin size={12} color={colors.primary} />
+            <Text numberOfLines={1} style={[styles.resultCategory, { color: colors.textSecondary, fontWeight: '600' }]}>
+              {locationText}
+            </Text>
+            {!!vendeur.categorie_principale && (
+              <Text numberOfLines={1} style={[styles.resultCategory, { color: colors.textTertiary, textTransform: 'capitalize' }]}>
+                · {vendeur.categorie_principale}
+              </Text>
+            )}
+          </View>
+
+          {/* Badge "Disponibilité" pour le produit recherché */}
+          {query && query.trim().length > 0 && (
+            <View style={[styles.boutiqueProductOfferBadge, { backgroundColor: colors.success + '15' }]}>
+              <CheckCircle2 size={11} color={colors.success} />
+              <Text style={[styles.boutiqueProductOfferText, { color: colors.success }]} numberOfLines={1}>
+                Articles "{query}" disponibles ici
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={[styles.visitArrowBtn, { backgroundColor: colors.primarySoft }]}>
+          <ChevronRight size={18} color={colors.primary} />
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -190,7 +228,7 @@ function BoutiqueResultCard({ vendeur, index, onPress }: { vendeur: ApiVendeur; 
 
 export default function SearchScreen() {
   const { q: initialQuery } = useLocalSearchParams<{ q?: string }>();
-  const { products, recentProducts, boutiqueTypes, addToCart } = useClient();
+  const { products, recentProducts, boutiqueTypes, addToCart, cartCount, subtotal } = useClient();
   const { diasporaModeActive } = useDiaspora();
   const { colors, isDark } = useTheme();
   const inputRef = useRef<TextInput>(null);
@@ -316,6 +354,31 @@ export default function SearchScreen() {
   // Liste finale affichée (produits serveur si disponibles, sinon produits locaux instantanés)
   const displayProducts = groupedProducts.length > 0 ? groupedProducts : localGroupedProducts;
 
+  // Déduction dynamique des boutiques vendant l'article recherché (Boutique d'abord)
+  const effectiveBoutiqueResults = useMemo(() => {
+    const map = new Map<string, ApiVendeur>();
+    boutiqueResults.forEach((v) => map.set(v.id, v));
+
+    displayProducts.forEach((prod) => {
+      (prod.offres_vendeurs || []).forEach((offre) => {
+        if (offre.vendeur_id && !map.has(offre.vendeur_id)) {
+          map.set(offre.vendeur_id, {
+            id: offre.vendeur_id,
+            nom_commerce: offre.nom_commerce,
+            photo_boutique: offre.photo_boutique || null,
+            note_moyenne: offre.note_moyenne || 0,
+            ville: offre.ville || null,
+            arrondissement: null,
+            statut_boutique: 'ouverte',
+            categorie_principale: '',
+          } as ApiVendeur);
+        }
+      });
+    });
+
+    return Array.from(map.values());
+  }, [boutiqueResults, displayProducts]);
+
   const handleSearch = useCallback((term: string) => {
     const trimmed = term.trim();
     if (!trimmed) return;
@@ -334,8 +397,15 @@ export default function SearchScreen() {
 
   const handleAddToCartFromOffer = useCallback((produitId: string, nomCommerce: string) => {
     addToCart(produitId);
-    alert('Ajouté au panier', `Produit ajouté depuis « ${nomCommerce} ».`);
     setSelectedProductForCompare(null);
+    alert(
+      '🛒 Produit ajouté au panier !',
+      `Article de « ${nomCommerce} » ajouté. Souhaitez-vous finaliser votre commande immédiatement ?`,
+      [
+        { text: '🛍️ Continuer la recherche', style: 'cancel' },
+        { text: '🔴 Commander maintenant', onPress: () => router.push('/client/checkout' as any) },
+      ]
+    );
   }, [addToCart]);
 
   const showInitialState = !showResults || query.trim().length < 2;
@@ -460,13 +530,24 @@ export default function SearchScreen() {
       ) : (
         /* Résultats de recherche */
         <ScrollView contentContainerStyle={styles.resultsContent} showsVerticalScrollIndicator={false}>
-          {/* Boutiques correspondantes */}
-          {boutiqueResults.length > 0 && (
+          {/* Section 1 : Boutiques proposant cet article (BOUTIQUE D'ABORD) */}
+          {effectiveBoutiqueResults.length > 0 && (
             <Animated.View entering={FadeIn.duration(250)} style={styles.suggestSection}>
-              <Text style={[styles.suggestTitle, { color: colors.text }]}>Boutiques vendant cet article</Text>
-              <View style={{ gap: 8 }}>
-                {boutiqueResults.map((v, index) => (
-                  <BoutiqueResultCard key={v.id} vendeur={v} index={index} onPress={() => router.push(`/client/boutique/${v.id}` as any)} />
+              <View style={styles.suggestHeaderRow}>
+                <Store size={18} color={colors.primary} />
+                <Text style={[styles.suggestTitle, { color: colors.text }]}>
+                  Boutiques vendant cet article ({effectiveBoutiqueResults.length})
+                </Text>
+              </View>
+              <View style={{ gap: 10 }}>
+                {effectiveBoutiqueResults.map((v, index) => (
+                  <BoutiqueResultCard
+                    key={v.id}
+                    vendeur={v}
+                    index={index}
+                    query={query}
+                    onPress={() => router.push(`/client/boutique/${v.id}` as any)}
+                  />
                 ))}
               </View>
             </Animated.View>
@@ -476,8 +557,8 @@ export default function SearchScreen() {
           <View style={styles.resultMeta}>
             <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
               {displayProducts.length > 0
-                ? `${displayProducts.length} produit${displayProducts.length > 1 ? 's' : ''} trouvé${displayProducts.length > 1 ? 's' : ''} pour "${query}"`
-                : boutiqueResults.length === 0 && !isSearching
+                ? `${displayProducts.length} référence${displayProducts.length > 1 ? 's' : ''} trouvée${displayProducts.length > 1 ? 's' : ''} pour "${query}"`
+                : effectiveBoutiqueResults.length === 0 && !isSearching
                 ? 'Aucun résultat'
                 : ''}
             </Text>
@@ -626,6 +707,33 @@ export default function SearchScreen() {
           </View>
         </View>
       </Modal>
+      {/* ─── Barre Flottante de Panier Persistant (Parcours Commande Directe) ─── */}
+      {cartCount > 0 && (
+        <Animated.View
+          entering={SlideInDown.duration(300)}
+          style={[styles.floatingCartBar, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <View style={styles.floatingCartLeft}>
+            <View style={[styles.floatingCartBadge, { backgroundColor: colors.primary }]}>
+              <ShoppingCart size={16} color="#FFFFFF" />
+              <Text style={styles.floatingCartBadgeText}>{cartCount}</Text>
+            </View>
+            <View>
+              <Text style={[styles.floatingCartLabel, { color: colors.textSecondary }]}>Panier actuel</Text>
+              <Text style={[styles.floatingCartTotal, { color: colors.primary }]}>
+                {subtotal.toLocaleString('fr-FR')} FCFA
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => router.push('/client/checkout' as any)}
+            style={[styles.floatingCheckoutBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={styles.floatingCheckoutBtnText}>Commander maintenant</Text>
+            <ArrowRight size={16} color="#FFFFFF" />
+          </Pressable>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -832,4 +940,61 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   buyBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+
+  // Styles Boutique D'abord & Métadonnées
+  suggestHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  boutiqueMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  boutiqueProductOfferBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  boutiqueProductOfferText: { fontSize: 11, fontWeight: '700' },
+  visitArrowBtn: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+
+  // Floating Cart Bar (Commande Directe)
+  floatingCartBar: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  floatingCartLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  floatingCartBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  floatingCartBadgeText: { color: '#FFF', fontSize: 13, fontWeight: '900' },
+  floatingCartLabel: { fontSize: 11, fontWeight: '600' },
+  floatingCartTotal: { fontSize: 15, fontWeight: '900' },
+  floatingCheckoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  floatingCheckoutBtnText: { color: '#FFF', fontSize: 13, fontWeight: '900' },
 });

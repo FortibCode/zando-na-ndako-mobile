@@ -7,13 +7,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   FadeInDown, FadeInUp, SlideInDown,
 } from 'react-native-reanimated';
-import { ArrowLeft, Filter, ArrowUpDown, Check, X, Search, Star, MapPin, Clock, AlertTriangle, WifiOff } from 'lucide-react-native';
+import { ArrowLeft, Filter, ArrowUpDown, Check, X, Search, Star, MapPin, Clock, AlertTriangle, WifiOff, ShoppingCart, ArrowRight } from 'lucide-react-native';
 import { useClient, mapApiProduitToProduct, type Product } from '@/contexts/client-context';
 import { fetchVendeurDetail, fetchProduitsBoutique, resolveMediaUrl, type ApiVendeur } from '@/services/api';
 import { ProductCard } from '@/components/client-ui';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { alert } from '@/contexts/alert-context';
 
 const BOUTIQUE_DETAIL_CACHE_PREFIX = '@zando_client_boutique_detail_cache:';
 const BOUTIQUE_PRODUCTS_CACHE_PREFIX = '@zando_client_boutique_products_cache:';
@@ -174,7 +175,7 @@ function FilterModal({
 
 export default function BoutiqueDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { addToCart } = useClient();
+  const { addToCart, cartCount, subtotal } = useClient();
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
 
@@ -190,6 +191,18 @@ export default function BoutiqueDetailScreen() {
   const [fraicheur, setFraicheur] = useState<FraicheurMode>('all');
   const [sort, setSort] = useState<SortMode>('relevance');
   const [modalVisible, setModalVisible] = useState(false);
+
+  const handleAddToCart = (product: Product) => {
+    addToCart(product.id);
+    alert(
+      '🛒 Produit ajouté au panier !',
+      `« ${product.name} » est dans votre panier. Souhaitez-vous commander maintenant ?`,
+      [
+        { text: '🛍️ Continuer dans la boutique', style: 'cancel' },
+        { text: '🔴 Commander maintenant', onPress: () => router.push('/client/checkout' as any) },
+      ]
+    );
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -317,11 +330,13 @@ export default function BoutiqueDetailScreen() {
                   <Text style={[styles.metaText, { color: colors.textSecondary }]}>
                     {vendeur.note_moyenne > 0 ? vendeur.note_moyenne.toFixed(1) : t('boutique.noRating', 'Pas encore noté')}
                   </Text>
-                  {vendeur.ville && (
+                  {(vendeur.arrondissement || vendeur.ville) && (
                     <>
                       <Text style={[styles.metaDot, { color: colors.textTertiary }]}>·</Text>
                       <MapPin color={colors.textTertiary} size={13} />
-                      <Text style={[styles.metaText, { color: colors.textSecondary }]}>{vendeur.ville}</Text>
+                      <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                        {[vendeur.arrondissement, vendeur.ville].filter(Boolean).join(', ')}
+                      </Text>
                     </>
                   )}
                 </View>
@@ -371,12 +386,40 @@ export default function BoutiqueDetailScreen() {
             <View style={styles.grid}>
               {list.map((product) => (
                 <View key={product.id} style={styles.cardWrap}>
-                  <ProductCard product={product} onAdd={() => addToCart(product.id)} />
+                  <ProductCard product={product} onAdd={() => handleAddToCart(product)} />
                 </View>
               ))}
             </View>
           )}
         </ScrollView>
+      )}
+
+      {/* ─── Barre Flottante de Panier Persistant (Parcours Commande Directe) ─── */}
+      {cartCount > 0 && (
+        <Animated.View
+          entering={SlideInDown.duration(300)}
+          style={[styles.floatingCartBar, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <View style={styles.floatingCartLeft}>
+            <View style={[styles.floatingCartBadge, { backgroundColor: colors.primary }]}>
+              <ShoppingCart size={16} color="#FFFFFF" />
+              <Text style={styles.floatingCartBadgeText}>{cartCount}</Text>
+            </View>
+            <View>
+              <Text style={[styles.floatingCartLabel, { color: colors.textSecondary }]}>Panier en cours</Text>
+              <Text style={[styles.floatingCartTotal, { color: colors.primary }]}>
+                {subtotal.toLocaleString('fr-FR')} FCFA
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => router.push('/client/checkout' as any)}
+            style={[styles.floatingCheckoutBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={styles.floatingCheckoutBtnText}>Valider la commande</Text>
+            <ArrowRight size={16} color="#FFFFFF" />
+          </Pressable>
+        </Animated.View>
       )}
 
       <FilterModal
@@ -454,4 +497,45 @@ const styles = StyleSheet.create({
   modalFooter: { padding: 20, borderTopWidth: 1 },
   applyBtn: { height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   applyBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
+
+  // Floating Cart Bar (Commande Directe)
+  floatingCartBar: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  floatingCartLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  floatingCartBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  floatingCartBadgeText: { color: '#FFF', fontSize: 13, fontWeight: '900' },
+  floatingCartLabel: { fontSize: 11, fontWeight: '600' },
+  floatingCartTotal: { fontSize: 15, fontWeight: '900' },
+  floatingCheckoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  floatingCheckoutBtnText: { color: '#FFF', fontSize: 13, fontWeight: '900' },
 });
