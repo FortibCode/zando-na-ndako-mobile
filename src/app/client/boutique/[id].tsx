@@ -354,13 +354,20 @@ export default function BoutiqueDetailScreen() {
           </Animated.View>
 
           {(isClosed || isPaused) && (
-            <Animated.View entering={FadeInUp.duration(350).delay(60).springify()} style={[styles.banner, { backgroundColor: colors.error + '14', borderColor: colors.error + '40' }]}>
-              <AlertTriangle color={colors.error} size={18} />
-              <Text style={[styles.bannerText, { color: colors.error }]}>
-                {isClosed
-                  ? t('boutique.closedBanner', 'Cette boutique est fermée pour le moment.')
-                  : t('boutique.pausedBanner', 'Cette boutique ne prend pas de nouvelles commandes pour le moment.')}
-              </Text>
+            <Animated.View entering={FadeInUp.duration(350).delay(60).springify()} style={[styles.banner, { backgroundColor: colors.warning + '14', borderColor: colors.warning + '40' }]}>
+              <AlertTriangle color={colors.warning} size={18} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.bannerText, { color: colors.warning, fontWeight: '800' }]}>
+                  {isClosed
+                    ? t('boutique.closedBanner', 'Cette boutique est fermée pour le moment.')
+                    : t('boutique.pausedBanner', 'Cette boutique ne prend pas de nouvelles commandes pour le moment.')}
+                </Text>
+                {!!vendeur.message_boutique && (
+                  <Text style={[styles.bannerText, { color: colors.text, fontSize: 12, marginTop: 2 }]}>
+                    « {vendeur.message_boutique} »
+                  </Text>
+                )}
+              </View>
             </Animated.View>
           )}
 
