@@ -44,7 +44,11 @@ export default function Problem() {
   }, [t]);
 
   const handleSubmit = useCallback(async () => {
-    if (!selected || status === 'loading') return;
+    if (!selected) {
+      alert(t('deliveryProblem.selectReasonTitle', 'Motif requis'), t('deliveryProblem.selectReasonDesc', 'Veuillez sélectionner le motif du problème ci-dessus avant de valider.'));
+      return;
+    }
+    if (status === 'loading') return;
     if (!currentMission) {
       alert('Erreur', t('deliveryProblem.noMissionAlertDesc', 'Aucune mission en cours sélectionnée.'));
       return;

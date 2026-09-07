@@ -13,6 +13,7 @@ export type LocalSignupData = {
   addressCity: string;
   postalCode: string;
   country: string;
+  dialCode: string;
   phone: string;
   email: string;
   password: string;
@@ -32,6 +33,7 @@ const INITIAL_DATA: LocalSignupData = {
   addressCity: '',
   postalCode: '',
   country: 'Congo-Brazzaville',
+  dialCode: '+242',
   phone: '',
   email: '',
   password: '',

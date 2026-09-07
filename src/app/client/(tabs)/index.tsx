@@ -21,7 +21,8 @@ import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
 import { Palette, Spacing, Radii, Shadows } from '@/design/tokens';
 import { ThemeToggle, LanguageToggle } from '@/design/components';
-import { clearAuthToken, resolveMediaUrl, FALLBACK_DELIVERY_FEE } from '@/services/api';
+import { clearAuthToken, resolveMediaUrl, FALLBACK_DELIVERY_FEE, fetchBannieres, type ApiBannierePublicitaire } from '@/services/api';
+import { PubliciteCarousel } from '@/components/home/publicite-carousel';
 import { alert, confirmLogout } from '@/contexts/alert-context';
 import { Store, Star } from 'lucide-react-native';
 
@@ -55,9 +56,12 @@ export default function ClientHomeScreen() {
     products.slice((safeProductsPage - 1) * HOME_SECTION_PAGE_SIZE, safeProductsPage * HOME_SECTION_PAGE_SIZE)
   );
 
-  // Rafraîchit le profil connecté (détecte correctement le client diaspora)
+  const [bannieres, setBannieres] = useState<ApiBannierePublicitaire[]>([]);
+
+  // Rafraîchit le profil connecté et charge les bannières publicitaires actives
   useEffect(() => {
     refreshUser();
+    fetchBannieres().then(setBannieres).catch(() => setBannieres([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -168,6 +172,9 @@ export default function ClientHomeScreen() {
             <Text style={[styles.searchPlaceholder, { color: colors.textTertiary }]}>{t('home.searchPlaceholder', 'Rechercher un produit, un marché…')}</Text>
           </Pressable>
         </Animated.View>
+
+        {/* ── Carrousel Publicités & Sponsorings Boutiques ── */}
+        <PubliciteCarousel bannieres={bannieres} />
 
         {/* ── Promo Banner ─────────────────────────────── */}
         <View style={styles.promoHeading}>

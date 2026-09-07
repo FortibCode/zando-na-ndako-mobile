@@ -14,7 +14,9 @@ import {
 } from 'react-native';
 
 import { BackButton, InputField, PrimaryButton, authStyles } from '@/components/auth-ui';
+import { PhoneInput } from '@/components/phone-input';
 import { SignupStepper } from '@/components/signup/signup-stepper';
+import { DEFAULT_COUNTRY, validatePhoneNumber } from '@/constants/countries';
 import { useLocalSignup } from '@/contexts/local-signup-context';
 import { BrandColors } from '@/constants/brand';
 import { AUTH_ICONS } from '@/constants/icons';
@@ -27,10 +29,11 @@ export default function LocalSignupStep2Screen() {
   const [phone, setPhone] = useState(data.phone);
   const [email, setEmail] = useState(data.email);
 
-  const isValid = Boolean(address.trim() && addressCity.trim() && phone.replace(/\D/g, '').length >= 7);
+  const phoneValidation = validatePhoneNumber(phone, DEFAULT_COUNTRY);
+  const isValid = Boolean(address.trim() && addressCity.trim() && phoneValidation.isValid);
 
   const handleContinue = () => {
-    update({ address, addressCity, phone, email });
+    update({ address, addressCity, phone, email, dialCode: '+242' });
     router.push('/auth/signup/local/step3');
   };
 
@@ -65,25 +68,13 @@ export default function LocalSignupStep2Screen() {
             onChangeText={setAddressCity}
           />
 
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>
-              Numéro de téléphone mobile <Text style={styles.requiredStar}>*</Text>
-            </Text>
-            <View style={styles.phoneInput}>
-              <Text style={styles.flag}>🇨🇬</Text>
-              <Ionicons color={BrandColors.blue} name="chevron-down" size={14} />
-              <View style={styles.separator} />
-              <Text style={styles.prefix}>+242</Text>
-              <TextInput
-                keyboardType="phone-pad"
-                onChangeText={(value) => setPhone(value.replace(/[^0-9 ]/g, ''))}
-                placeholder="ex: 06 123 45 67"
-                placeholderTextColor="#94A3B8"
-                style={styles.phoneField}
-                value={phone}
-              />
-            </View>
-          </View>
+          <PhoneInput
+            country={DEFAULT_COUNTRY}
+            required
+            value={phone}
+            onChangeText={setPhone}
+            error={phone.length > 0 && !phoneValidation.isValid ? phoneValidation.error : undefined}
+          />
 
           <InputField
             autoCapitalize="none"

@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 
 import { BackButton, InputField, PrimaryButton, authStyles } from '@/components/auth-ui';
+import { PhoneInput } from '@/components/phone-input';
 import { SignupPickerField, type PickerOption } from '@/components/signup/signup-form-field';
 import { SignupStepper } from '@/components/signup/signup-stepper';
+import { DEFAULT_COUNTRY, validatePhoneNumber } from '@/constants/countries';
 import { useVendorSignup } from '@/contexts/vendor-signup-context';
 import { BrandColors } from '@/constants/brand';
 import { AUTH_ICONS } from '@/constants/icons';
@@ -34,9 +36,8 @@ export default function VendorSignupStep2Screen() {
   const [categories, setCategories] = useState<PickerOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  // Liste des types de boutique chargée depuis le backend (App\Models\Vendeur::TYPES_BOUTIQUE) —
-  // remplace une liste codée en dur ici indépendamment de 3 autres copies (web, profil vendeur,
-  // seeder), qui avaient fini par diverger dans les données réelles.
+  const phoneValidation = validatePhoneNumber(phone, DEFAULT_COUNTRY);
+
   useEffect(() => {
     fetchVendeurTypesDisponibles()
       .then((types) => setCategories(types.map((t) => ({ id: t, label: t }))))
@@ -44,10 +45,6 @@ export default function VendorSignupStep2Screen() {
       .finally(() => setCategoriesLoading(false));
   }, []);
 
-  // Les zones venaient d'une liste codée en dur incluant des villes (Pointe-Noire, Dolisie,
-  // Nkayi) qui n'existent pas dans zones_livraison — le choix de l'utilisateur n'était jamais
-  // envoyé au backend de toute façon (aucun champ zone_id transmis). On charge maintenant les
-  // vraies zones et on transmet leur identifiant réel.
   useEffect(() => {
     fetchZones()
       .then((apiZones) => {
@@ -62,7 +59,7 @@ export default function VendorSignupStep2Screen() {
     storeCategory.trim() &&
     zoneId.trim() &&
     address.trim() &&
-    phone.replace(/\D/g, '').length >= 7 &&
+    phoneValidation.isValid &&
     email.includes('@'),
   );
 
@@ -127,14 +124,13 @@ export default function VendorSignupStep2Screen() {
             onChangeText={setAddress}
           />
 
-          <InputField
-            icon={AUTH_ICONS.phone}
-            keyboardType="phone-pad"
+          <PhoneInput
+            country={DEFAULT_COUNTRY}
             label="Téléphone professionnel"
-            placeholder="ex: 06 123 45 67"
             required
             value={phone}
-            onChangeText={(val) => setPhone(val.replace(/[^0-9 ]/g, ''))}
+            onChangeText={setPhone}
+            error={phone.length > 0 && !phoneValidation.isValid ? phoneValidation.error : undefined}
           />
 
           <InputField

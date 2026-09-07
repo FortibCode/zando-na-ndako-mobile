@@ -14,12 +14,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthBrand, BackButton, GoogleButton, PrimaryButton, authStyles } from '@/components/auth-ui';
+import { PhoneInput } from '@/components/phone-input';
 import { BrandColors } from '@/constants/brand';
+import { DEFAULT_COUNTRY, validatePhoneNumber } from '@/constants/countries';
 
 /** Saisie du numéro : première étape de la connexion par téléphone. */
 export default function PhoneLoginScreen() {
   const [phone, setPhone] = useState('');
-  const isValid = phone.replace(/\D/g, '').length >= 7;
+  
+  const validation = validatePhoneNumber(phone, DEFAULT_COUNTRY);
+  const isValid = validation.isValid;
 
   return (
     <SafeAreaView style={authStyles.screenMuted}>
@@ -38,33 +42,26 @@ export default function PhoneLoginScreen() {
           <View style={authStyles.card}>
             <Text style={authStyles.screenTitle}>Connexion par téléphone</Text>
             <Text style={authStyles.screenDescription}>
-              Entrez votre numéro mobile pour recevoir un code de vérification sécurisé (OTP).
+              Entrez votre numéro mobile congolais pour recevoir un code de vérification sécurisé (OTP).
             </Text>
 
-            <Text style={authStyles.fieldLabel}>Numéro de téléphone mobile</Text>
-            <View style={styles.phoneInput}>
-              <Text style={styles.flag}>🇨🇬</Text>
-              <Ionicons color={BrandColors.blue} name="chevron-down" size={14} />
-              <View style={styles.separator} />
-              <Text style={styles.prefix}>+242</Text>
-              <TextInput
-                autoFocus
-                editable
-                keyboardType="phone-pad"
-                onChangeText={(value) => setPhone(value.replace(/[^0-9 ]/g, ''))}
-                placeholder="ex: 06 123 45 67"
-                placeholderTextColor="#94A3B8"
-                style={styles.phoneField}
-                textContentType="telephoneNumber"
-                value={phone}
-              />
-            </View>
+            <PhoneInput
+              country={DEFAULT_COUNTRY}
+              value={phone}
+              onChangeText={setPhone}
+              error={phone.length > 0 && !isValid ? validation.error : undefined}
+            />
 
             <PrimaryButton
               disabled={!isValid}
               icon="arrow-forward"
-              onPress={() => router.push(`/auth/phone-otp?phone=${encodeURIComponent(`+242${phone.replace(/\D/g, '')}`)}`)}
-
+              onPress={() =>
+                router.push(
+                  `/auth/phone-otp?phone=${encodeURIComponent(
+                    `+242${phone.replace(/\D/g, '')}`
+                  )}` as any
+                )
+              }
               title="Recevoir le code OTP"
             />
 
@@ -91,30 +88,4 @@ export default function PhoneLoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  phoneInput: {
-    minHeight: 52,
-    borderRadius: 14,
-    borderWidth: 1.2,
-    borderColor: BrandColors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    backgroundColor: BrandColors.inputBg,
-  },
-  flag: { fontSize: 18, marginRight: 4 },
-  separator: {
-    width: 1,
-    height: 22,
-    backgroundColor: '#CBD5E1',
-    marginHorizontal: 10,
-  },
-  prefix: { color: BrandColors.blue, fontSize: 15, fontWeight: '800' },
-  phoneField: {
-    flex: 1,
-    marginLeft: 10,
-    color: BrandColors.textDark,
-    fontSize: 15,
-    fontWeight: '500',
-    paddingVertical: 12,
-  },
 });

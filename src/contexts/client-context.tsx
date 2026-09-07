@@ -64,6 +64,9 @@ export type Product = {
   name: string;
   price: number;
   unit: string;
+  uniteMesure: string;
+  pasQuantite: number;
+  quantiteMinimale: number;
   category: string;
   rating: number;
   reviews: number;
@@ -77,11 +80,17 @@ export type Product = {
 };
 
 export function mapApiProduitToProduct(p: ApiProduit): Product {
+  const uniteMesure = p.unite_mesure || 'kg';
+  const pasQuantite = Number(p.pas_quantite) || (uniteMesure === 'kg' ? 0.5 : 1);
+  const quantiteMinimale = Number(p.quantite_minimale) || (uniteMesure === 'kg' ? 0.5 : 1);
   return {
     id: p.id,
     name: p.nom_produit,
     price: typeof p.prix_unitaire === 'string' ? parseFloat(p.prix_unitaire) : p.prix_unitaire,
-    unit: `FCFA/${p.unite_mesure}`,
+    unit: `FCFA/${uniteMesure}`,
+    uniteMesure,
+    pasQuantite,
+    quantiteMinimale,
     category: p.categorie?.nom_categorie || '',
     rating: 0,
     reviews: 0,
@@ -164,8 +173,9 @@ type ClientContextValue = {
   placeOrder: (input: PlaceOrderInput) => Promise<CommandeResult>;
 
   cart: Record<string, number>;
-  addToCart: (id: string) => void;
+  addToCart: (id: string, quantityToAdd?: number) => void;
   changeQuantity: (id: string, amount: number) => void;
+  setQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   cartCount: number;
   subtotal: number;
@@ -235,8 +245,9 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   // du second vendeur de la commande, sans qu'il soit jamais notifié ni payé. Même garde-fou que
   // PanierController::ajouter() côté serveur, appliqué ici localement pour prévenir plutôt que
   // guérir (le panier mobile est local jusqu'à la validation de commande).
-  const addToCart = (id: string) => {
+  const addToCart = (id: string, quantityToAdd?: number) => {
     const product = products.find((p) => p.id === id);
+    const step = quantityToAdd || product?.pasQuantite || (product?.uniteMesure === 'kg' ? 0.5 : 1);
     const cartProductIds = Object.keys(cart).filter((pid) => cart[pid] > 0);
     const existingVendorId = cartProductIds.length > 0
       ? products.find((p) => p.id === cartProductIds[0])?.vendorId
@@ -252,22 +263,35 @@ export function ClientProvider({ children }: { children: ReactNode }) {
           {
             text: 'Vider et ajouter',
             style: 'destructive',
-            onPress: () => setCart({ [id]: 1 }),
+            onPress: () => setCart({ [id]: step }),
           },
         ]
       );
       return;
     }
 
-    setCart((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+    setCart((prev) => {
+      const current = prev[id] || 0;
+      const next = Math.round((current + step) * 1000) / 1000;
+      return { ...prev, [id]: next };
+    });
   };
 
   const changeQuantity = (id: string, amount: number) =>
     setCart((prev) => {
-      const next = (prev[id] || 0) + amount;
+      const current = prev[id] || 0;
+      const next = Math.round((current + amount) * 1000) / 1000;
       const copy = { ...prev };
       if (next <= 0) delete copy[id];
       else copy[id] = next;
+      return copy;
+    });
+
+  const setQuantity = (id: string, quantity: number) =>
+    setCart((prev) => {
+      const copy = { ...prev };
+      if (quantity <= 0) delete copy[id];
+      else copy[id] = Math.round(quantity * 1000) / 1000;
       return copy;
     });
 
@@ -447,13 +471,42 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     } catch { /* pas de promotion active : le bandeau reste masqué */ }
   }, []);
 
+  // Hydratation immédiate du cache local au montage pour un affichage instantané (0 ms de latence)
   useEffect(() => {
-    refreshProducts();
-    refreshCategories();
-    refreshZones();
-    refreshBoutiqueTypes();
-    refreshBoutiques();
-    refreshHighlights();
+    (async () => {
+      try {
+        const [rawProds, rawCats, rawCatIcons, rawTypes, rawBoutiques] = await Promise.all([
+          AsyncStorage.getItem(PRODUCTS_CACHE_KEY),
+          AsyncStorage.getItem(CATEGORIES_CACHE_KEY),
+          AsyncStorage.getItem(CATEGORY_ICONS_CACHE_KEY),
+          AsyncStorage.getItem(BOUTIQUE_TYPES_CACHE_KEY),
+          AsyncStorage.getItem(BOUTIQUES_CACHE_KEY),
+        ]);
+        if (rawProds) setProducts(JSON.parse(rawProds));
+        if (rawCats) setCategories(JSON.parse(rawCats));
+        if (rawCatIcons) setCategoryIcons(JSON.parse(rawCatIcons));
+        if (rawTypes) setBoutiqueTypes(JSON.parse(rawTypes));
+        if (rawBoutiques) setBoutiques(JSON.parse(rawBoutiques));
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  useEffect(() => {
+    // Chargement parallèle optimisé des ressources prioritaires
+    Promise.allSettled([
+      refreshProducts(),
+      refreshCategories(),
+      refreshZones(),
+      refreshBoutiqueTypes(),
+      refreshBoutiques(),
+    ]);
+
+    // Chargement différé non-bloquant des faits saillants de la page d'accueil
+    const timer = setTimeout(() => {
+      refreshHighlights();
+    }, 150);
+
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -772,6 +825,7 @@ const userFirstName = useMemo(() => {
       cart,
       addToCart,
       changeQuantity,
+      setQuantity,
       clearCart,
       cartCount,
       subtotal,

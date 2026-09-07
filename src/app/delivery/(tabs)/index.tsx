@@ -13,7 +13,7 @@ import { DeliveryErrorState } from '@/components/delivery/error-boundary';
 import { resolveMediaUrl } from '@/services/api';
 
 export default function DeliveryHome() {
-  const { driver, dashboard, dashboardLoading, dashboardError, fetchDashboard, missions, fetchMissions, isAvailable, availabilityLoading, toggleAvailability, acceptMission } = useDelivery();
+  const { driver, dashboard, dashboardLoading, dashboardError, fetchDashboard, missions, fetchMissions, isAvailable, availabilityLoading, toggleAvailability, acceptMission, currentMission } = useDelivery();
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [refreshing, setRefreshing] = useState(false);
@@ -69,6 +69,14 @@ export default function DeliveryHome() {
     { label: t('deliveryHome.navHistory', 'Historique'), icon: History, path: '/delivery/history', color: '#10B981', bg: '#D1FAE5' },
     { label: t('deliveryHome.navSupport', 'Support 24/7'), icon: Headphones, path: '/delivery/support', color: '#EC4899', bg: '#FCE7F3' },
   ];
+
+  const handleQuickAction = useCallback((path: string) => {
+    if (path === '/delivery/navigation' && !currentMission) {
+      router.push('/delivery/(tabs)/missions' as any);
+      return;
+    }
+    router.push(path as any);
+  }, [currentMission]);
 
   return (
     <DeliveryScreen refreshing={refreshing} onRefresh={onRefresh} tabBar>
@@ -243,7 +251,7 @@ export default function DeliveryHome() {
           {quickActions.map(({ label, icon: Icon, path, color, bg }) => (
             <Pressable
               key={label}
-              onPress={() => router.push(path as any)}
+              onPress={() => handleQuickAction(path)}
               style={{
                 width: '48.5%', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
                 borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10,

@@ -50,13 +50,27 @@ export default function ProductDetailsScreen() {
   const heartStyle = useAnimatedStyle(() => ({ transform: [{ scale: heartScale.value }] }));
   const imageStyle = useAnimatedStyle(() => ({ transform: [{ scale: imageScale.value }] }));
 
+  const [selectedQuantity, setSelectedQuantity] = useState<number>(
+    product?.quantiteMinimale ?? (product?.uniteMesure === 'kg' ? 0.5 : 1)
+  );
+
+  const isKgProduct = product?.uniteMesure === 'kg' || (product?.pasQuantite ?? 1) < 1;
+
+  const WEIGHT_OPTIONS = [
+    { qty: 0.25, label: '250g (1/4 kg)' },
+    { qty: 0.5, label: '500g (1/2 kg)' },
+    { qty: 1, label: '1 kg' },
+    { qty: 1.5, label: '1,5 kg' },
+    { qty: 2, label: '2 kg' },
+  ];
+
   const handleAdd = () => {
     if (!product) return;
     btnScale.value = withSequence(
       withSpring(1.08, { damping: 10, stiffness: 200 }),
       withSpring(1, { damping: 15, stiffness: 200 })
     );
-    addToCart(product.id);
+    addToCart(product.id, selectedQuantity);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -190,6 +204,60 @@ export default function ProductDetailsScreen() {
               </View>
               <ChevronRight color={colors.textTertiary} size={18} />
             </Pressable>
+          </Animated.View>
+        )}
+
+        {/* Quantity / Weight portion selector */}
+        {isKgProduct ? (
+          <Animated.View entering={FadeInUp.duration(400).delay(480).springify()} style={{ marginTop: 24 }}>
+            <Text style={[styles.heading, { color: colors.text, marginBottom: 10 }]}>
+              Choisissez le poids souhaité :
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {WEIGHT_OPTIONS.map((opt) => {
+                const selected = selectedQuantity === opt.qty;
+                return (
+                  <Pressable
+                    key={opt.qty}
+                    onPress={() => setSelectedQuantity(opt.qty)}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 14,
+                      borderWidth: 1.5,
+                      borderColor: selected ? colors.primary : colors.border,
+                      backgroundColor: selected ? colors.primarySoft : colors.surface,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 13.5,
+                        fontWeight: selected ? '900' : '600',
+                        color: selected ? colors.primary : colors.text,
+                      }}
+                    >
+                      {opt.label}
+                    </Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginTop: 2 }}>
+                      {Math.round(product.price * opt.qty).toLocaleString('fr-FR')} FCFA
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Animated.View>
+        ) : (
+          <Animated.View entering={FadeInUp.duration(400).delay(480).springify()} style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={[styles.heading, { color: colors.text }]}>Quantité :</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
+              <Pressable onPress={() => setSelectedQuantity(Math.max(1, selectedQuantity - 1))}>
+                <Minus color={colors.primary} size={18} />
+              </Pressable>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: colors.text }}>{selectedQuantity}</Text>
+              <Pressable onPress={() => setSelectedQuantity(selectedQuantity + 1)}>
+                <Plus color={colors.primary} size={18} />
+              </Pressable>
+            </View>
           </Animated.View>
         )}
 

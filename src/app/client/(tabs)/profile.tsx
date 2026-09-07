@@ -10,7 +10,7 @@ import Animated, {
 import {
   User, MapPin, CreditCard, Package, Heart, Bell,
   Settings, HelpCircle, LogOut, ChevronRight, Mail, Phone,
-  Shield, Gift, Globe2, Users,
+  Shield, Gift, Globe2, Users, Crown, Award,
 } from 'lucide-react-native';
 import { BLUE, RED, GREEN } from '@/components/client-ui';
 import { useClient } from '@/contexts/client-context';
@@ -31,7 +31,7 @@ const MENU = [
   { icon: Users, label: 'Mes bénéficiaires', route: '/client/diaspora/beneficiaries-manage', color: '#7C3AED' },
   { icon: Heart, label: 'Mes favoris', route: '/client/favorites', color: RED },
   { icon: Bell, label: 'Notifications', route: '/client/notifications', color: '#9333EA' },
-{ icon: Gift, label: 'Code promo & avantages', route: '/client/promo', color: GREEN },
+  { icon: Gift, label: 'Code promo & avantages', route: '/client/promo', color: GREEN },
   { icon: Shield, label: 'Sécurité & confidentialité', route: '/client/security', color: '#1E40AF' },
   { icon: Settings, label: 'Paramètres', route: '/client/settings', color: '#475569' },
   { icon: HelpCircle, label: 'Aide et support', route: '/client/help', color: '#64748B' },
@@ -85,6 +85,18 @@ export default function ProfileScreen() {
     : 'BO';
   const resolvedPhoto = resolveMediaUrl(currentUser?.photo_profil);
 
+  // Déduction du statut de fidélité pour le client
+  const count = ordersCount || 0;
+  const fideliteInfo = count >= 10
+    ? { title: 'VIP', color: '#D97706', bg: '#FEF3C7', icon: Crown }
+    : count >= 5
+    ? { title: 'Fidèle', color: '#0284C7', bg: '#E0F2FE', icon: Award }
+    : count >= 1
+    ? { title: 'Régulier', color: '#475569', bg: '#F1F5F9', icon: Award }
+    : { title: 'Nouveau', color: '#059669', bg: '#ECFDF5', icon: Award };
+
+  const FidelityIcon = fideliteInfo.icon;
+
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -122,7 +134,7 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
 
-        {/* Stats */}
+        {/* Stats & Badge de Fidélité */}
         <Animated.View entering={FadeInDown.duration(400).delay(100).springify()} style={styles.statsRow}>
           <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.statValue, { color: colors.text }]}>{ordersCount === null ? '—' : String(ordersCount)}</Text>
@@ -132,9 +144,13 @@ export default function ProfileScreen() {
             <Text style={[styles.statValue, { color: colors.text }]}>{String(favorites.length)}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Favoris</Text>
           </View>
+          <View style={[styles.statCard, { backgroundColor: fideliteInfo.bg, borderColor: fideliteInfo.color + '40' }]}>
+            <FidelityIcon color={fideliteInfo.color} size={22} />
+            <Text style={[styles.statLabel, { color: fideliteInfo.color, fontWeight: '900', marginTop: 4 }]}>{fideliteInfo.title}</Text>
+          </View>
         </Animated.View>
 
-{/* Menu Items */}
+        {/* Menu Items */}
         <Animated.View entering={FadeInUp.duration(350).delay(150).springify()} style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {visibleMenu.map((item, index) => (
             <MenuItem key={item.label} item={item} index={index} colors={colors} />

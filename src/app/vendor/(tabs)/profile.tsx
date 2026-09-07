@@ -7,7 +7,7 @@ import { alert } from '@/contexts/alert-context';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import {
   Star, User, Settings, Bell, Lock, ChevronRight, LogOut,
-  Clock, Store, Tag, FileCheck, MessageSquareText, Headset, Wallet,
+  Clock, Store, Tag, FileCheck, MessageSquareText, Headset, Wallet, Crown,
 } from 'lucide-react-native';
 import { useVendor } from '@/contexts/vendor-context';
 import { useTheme } from '@/contexts/theme-context';
@@ -43,12 +43,12 @@ export default function VendorProfileScreen() {
   const ACCOUNT_MENU = [
     { icon: User, label: t('vendorProfile.personalInfo', 'Informations personnelles'), route: '/vendor/profile-info' },
     { icon: Wallet, label: t('vendorProfile.paymentInfo', 'Coordonnées de paiement'), route: '/vendor/banking' },
-    { icon: Settings, label: t('vendorProfile.storeStatus', 'Statut de la boutique'), route: '/vendor/settings/status' },
     { icon: Bell, label: t('vendorProfile.notifications', 'Notifications'), route: '/vendor/notifications' },
     { icon: Lock, label: t('vendorProfile.changePasswordLabel', 'Changer le mot de passe'), route: '/vendor/change-password' },
   ] as const;
 
   const STORE_MENU = [
+    { icon: Crown, label: t('vendorProfile.subscription', 'Mon Forfait Boutique'), route: '/vendor/settings/subscription' },
     { icon: Store, label: t('vendorProfile.storeStatus', 'Statut de la boutique'), route: '/vendor/settings/status' },
     { icon: Clock, label: t('vendorProfile.openingHours', "Horaires d'ouverture"), route: '/vendor/settings/hours' },
     { icon: Tag, label: t('vendorProfile.myPromotions', 'Mes promotions'), route: '/vendor/promotions' },
@@ -69,10 +69,12 @@ export default function VendorProfileScreen() {
       <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <Animated.View entering={FadeIn.duration(500)} style={styles.goodbyeWrap}>
-          <Text style={styles.goodbyeEmoji}>🏪</Text>
+          <View style={[styles.goodbyeIconWrap, { backgroundColor: colors.primarySoft }]}>
+            <Store color={colors.primary} size={40} />
+          </View>
           <Text style={[styles.goodbyeTitle, { color: colors.text }]}>{t('vendorProfile.goodbyeTitle', 'À bientôt !')}</Text>
           <Text style={[styles.goodbyeSub, { color: colors.textSecondary }]}>
-            {t('vendorProfile.goodbyeThanks', "Merci d'utiliser")} <Text style={{ fontWeight: '900' }}>Zando na Ndako</Text>{'\n'}{t('vendorProfile.goodbyeSub', 'Bonne continuation 👋')}
+            {t('vendorProfile.goodbyeThanks', "Merci d'utiliser")} <Text style={{ fontWeight: '900' }}>Zando na Ndako</Text>{'\n'}{t('vendorProfile.goodbyeSub', 'Bonne continuation')}
           </Text>
 <Pressable onPress={() => { clearAuthToken(); router.replace('/auth'); }} style={[styles.goodbyeBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
             <Text style={[styles.goodbyeBtnText, { color: colors.white }]}>{t('vendorProfile.logout', 'Se déconnecter')}</Text>
@@ -190,7 +192,7 @@ menuCard: {
 logoutText: { fontSize: 16, fontWeight: '800' },
 
   goodbyeWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
-  goodbyeEmoji: { fontSize: 90 },
+  goodbyeIconWrap: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   goodbyeTitle: { fontSize: 26, fontWeight: '900' },
   goodbyeSub: { fontSize: 14.5, textAlign: 'center', lineHeight: 22 },
   goodbyeBtn: {

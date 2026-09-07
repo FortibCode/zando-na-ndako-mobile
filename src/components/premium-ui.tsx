@@ -9,7 +9,7 @@ import { GlassSurface as DesignGlassSurface } from '@/design/components';
 export function PremiumPressable({ children, onPress, style, accessibilityLabel, disabled }: { children: ReactNode; onPress?: () => void; style?: any; accessibilityLabel?: string; disabled?: boolean }) {
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  return <Animated.View style={animatedStyle}><Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} disabled={disabled} onPress={onPress} onPressIn={() => { if (!disabled) scale.value = withSpring(.965, { damping: 18, stiffness: 260 }); }} onPressOut={() => { if (!disabled) scale.value = withSpring(1, { damping: 15, stiffness: 220 }); }} style={({ pressed }) => [style, pressed && !disabled && { opacity: .94 }]}>{children}</Pressable></Animated.View>;
+  return <Animated.View style={animatedStyle}><Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} disabled={disabled} onPress={onPress} onPressIn={() => { if (!disabled) scale.value = withSpring(.965, { damping: 25, stiffness: 400 }); }} onPressOut={() => { if (!disabled) scale.value = withSpring(1, { damping: 20, stiffness: 350 }); }} style={({ pressed }) => [style, pressed && !disabled && { opacity: .92 }]}>{children}</Pressable></Animated.View>;
 }
 
 export function PremiumButton({ children, onPress, tone = 'primary', icon }: { children: ReactNode; onPress?: () => void; tone?: 'primary' | 'success' | 'danger' | 'ghost'; icon?: ReactNode }) {

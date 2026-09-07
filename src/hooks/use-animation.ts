@@ -77,6 +77,12 @@ export const LIGHT_SPEED_IN = LightSpeedInRight.duration(500);
 export const STRETCH_IN_X = StretchInX.duration(400);
 export const FLIP_IN = FlipInXDown.duration(500);
 
+export const SPRING_FAST: WithSpringConfig = {
+  damping: 24,
+  stiffness: 380,
+  mass: 0.5,
+};
+
 // ---- Hook: Scale on Press ----
 export function useScalePress(scaleTo = 0.96) {
   const scale = useSharedValue(1);
@@ -86,11 +92,11 @@ export function useScalePress(scaleTo = 0.96) {
   }));
 
   const onPressIn = useCallback(() => {
-    scale.value = withSpring(scaleTo, SPRING_LIGHT);
+    scale.value = withSpring(scaleTo, SPRING_FAST);
   }, [scale, scaleTo]);
 
   const onPressOut = useCallback(() => {
-    scale.value = withSpring(1, SPRING_LIGHT);
+    scale.value = withSpring(1, SPRING_FAST);
   }, [scale]);
 
   return { animatedStyle, onPressIn, onPressOut };

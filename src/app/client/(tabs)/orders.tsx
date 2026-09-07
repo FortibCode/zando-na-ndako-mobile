@@ -47,7 +47,7 @@ const STATUS_COLORS = {
   'Annulée': Palette.faint,
 } as const;
 
-type TabId = 'Tous' | 'Terminés' | 'En cours' | 'Annulés';
+type TabId = 'Toutes' | 'Acceptées' | 'Refusées' | 'En cours' | 'Validées';
 
 function mapApiToUiOrder(c: ApiCommande): UiOrder {
   let status: 'En route' | 'Livrée' | 'Annulée' = 'En route';
@@ -128,34 +128,31 @@ function OrderCard({ order, index }: { order: UiOrder; index: number }) {
 }
 
 function tabLabel(tab: TabId, t: (key: string, fallback?: string) => string): string {
-  if (tab === 'Terminés') return t('ordersList.tabDone', 'Terminés');
+  if (tab === 'Acceptées') return t('ordersList.tabAccepted', 'Acceptées');
+  if (tab === 'Refusées') return t('ordersList.tabRefused', 'Refusées');
   if (tab === 'En cours') return t('ordersList.tabOngoing', 'En cours');
-  if (tab === 'Annulés') return t('ordersList.tabCancelled', 'Annulés');
-  return t('ordersList.tabAll', 'Tous');
+  if (tab === 'Validées') return t('ordersList.tabValidated', 'Validées');
+  return t('ordersList.tabAll', 'Toutes');
 }
 
 export default function OrdersScreen() {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<TabId>('Tous');
+  const [activeTab, setActiveTab] = useState<TabId>('Toutes');
   const [query, setQuery] = useState('');
   const [orders, setOrders] = useState<UiOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  const tabs: TabId[] = ['Tous', 'Terminés', 'En cours', 'Annulés'];
+  const tabs: TabId[] = ['Toutes', 'Acceptées', 'Refusées', 'En cours', 'Validées'];
 
   const loadOrders = async () => {
     setLoading(true);
     setLoadError(false);
     try {
       const apiOrders = await fetchClientCommandes();
-      // Une liste vide est un état réel légitime (nouveau client) : on l'affiche telle quelle,
-      // jamais masquée derrière de fausses commandes de démonstration.
       setOrders(apiOrders.map(mapApiToUiOrder));
     } catch (_err) {
-      // Échec réel de récupération : état d'erreur honnête (pas de commandes inventées),
-      // avec une action de réessai proposée à l'utilisateur.
       setOrders([]);
       setLoadError(true);
     } finally {
@@ -170,9 +167,10 @@ export default function OrdersScreen() {
   // Filtrage par onglet + recherche
   const filteredOrders = useMemo(() => {
     let result = orders;
-    if (activeTab === 'Terminés') result = result.filter((o) => o.status === 'Livrée');
+    if (activeTab === 'Acceptées') result = result.filter((o) => o.status === 'En route' && ['preparation', 'prete', 'en_livraison'].includes(o.statutCode));
+    else if (activeTab === 'Refusées') result = result.filter((o) => o.status === 'Annulée');
     else if (activeTab === 'En cours') result = result.filter((o) => o.status === 'En route');
-    else if (activeTab === 'Annulés') result = result.filter((o) => o.status === 'Annulée');
+    else if (activeTab === 'Validées') result = result.filter((o) => o.status === 'Livrée');
 
     if (query.trim()) {
       const q = query.trim().toLowerCase();
@@ -217,22 +215,21 @@ export default function OrdersScreen() {
           )}
         </Animated.View>
 
-        {/* Onglets */}
-        <Animated.View
-          entering={FadeInDown.duration(300).delay(100).springify()}
-          style={styles.tabs}
-        >
-          {tabs.map((tab) => (
-            <Pressable
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={[styles.tab, { backgroundColor: colors.surface, borderColor: colors.border }, activeTab === tab && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-            >
-              <Text style={[styles.tabText, { color: colors.text }, activeTab === tab && { color: colors.white }]}>
-                {tabLabel(tab, t)}
-              </Text>
-            </Pressable>
-          ))}
+        {/* Onglets sous forme de boutons déroulants */}
+        <Animated.View entering={FadeInDown.duration(300).delay(100).springify()}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+            {tabs.map((tab) => (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[styles.tab, { backgroundColor: colors.surface, borderColor: colors.border }, activeTab === tab && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              >
+                <Text style={[styles.tabText, { color: colors.text }, activeTab === tab && { color: colors.white }]}>
+                  {tabLabel(tab, t)}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </Animated.View>
 
         {/* Résultats / Loading */}

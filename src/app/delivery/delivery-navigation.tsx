@@ -164,8 +164,22 @@ export default function DeliveryNavigation() {
         ) : null}
 
         <Animated.View entering={FadeInUp.duration(350).delay(80).springify()}>
+          {/* Stepper Visuel de Suivi de livraison */}
           <Card style={{ marginTop: 14, borderRadius: 20, padding: 18 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: proofPhoto ? colors.freshSoft : colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: proofPhoto ? colors.fresh : colors.primary }}>
+                    {proofPhoto ? '2' : '1'}
+                  </Text>
+                </View>
+                <Text style={[styles.sectionTitle, { fontSize: 16, color: colors.text }]}>
+                  {proofPhoto ? t('deliveryToClient.step2Title', 'Remise & Preuve de livraison') : t('deliveryToClient.step1Title', 'Trajet vers le client')}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 16, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               {[
                 [distance, t('deliveryToClient.distance', 'Distance')],
                 [duree ? `${duree} min` : '—', t('deliveryToClient.estimatedTime', 'Temps estimé')],
@@ -178,35 +192,37 @@ export default function DeliveryNavigation() {
               ))}
             </View>
 
-            <PrimaryButton onPress={openGoogleMaps}>
-              <LocateFixed color="#FFF" size={18} strokeWidth={2.2} /> {t('deliveryToClient.launchGoogleMaps', 'Lancer Google Maps')}
-            </PrimaryButton>
+            {/* Étape 1 : Guidance & Départ */}
+            <View style={{ gap: 10 }}>
+              <PrimaryButton onPress={openGoogleMaps}>
+                <LocateFixed color="#FFF" size={18} strokeWidth={2.2} /> {t('deliveryToClient.launchGoogleMaps', 'Lancer Google Maps')}
+              </PrimaryButton>
 
-            <OutlineButton onPress={handleConfirmDepart}>
-              <Navigation2 color={colors.primary} size={18} strokeWidth={2.2} /> {departing ? t('deliveryToClient.confirming', 'Confirmation…') : t('deliveryToClient.confirmDeparture', 'Confirmer le départ')}
-            </OutlineButton>
+              {proofPhoto ? (
+                <Pressable
+                  onPress={handleTakeProofPhoto}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, borderWidth: 1.5, borderColor: colors.fresh, backgroundColor: colors.freshSoft }}
+                >
+                  <Image source={{ uri: proofPhoto }} style={{ width: 52, height: 52, borderRadius: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.text }]}>{t('deliveryToClient.proofOfDelivery', 'Preuve de livraison')}</Text>
+                    <Text style={{ fontSize: 11.5, marginTop: 2, color: colors.fresh, fontWeight: '800' }}>✓ Photo enregistrée · Touchez pour reprendre</Text>
+                  </View>
+                </Pressable>
+              ) : (
+                <OutlineButton onPress={handleTakeProofPhoto}>
+                  <Camera color={colors.primary} size={18} strokeWidth={2.2} /> {t('deliveryToClient.takeProofPhoto', 'Prendre la photo de preuve (Requis)')}
+                </OutlineButton>
+              )}
 
-            {proofPhoto ? (
-              <Pressable
-                onPress={handleTakeProofPhoto}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.backgroundAlt }}
-              >
-                <Image source={{ uri: proofPhoto }} style={{ width: 50, height: 50, borderRadius: 12 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.text }]}>{t('deliveryToClient.proofOfDelivery', 'Preuve de livraison')}</Text>
-                  <Text style={[styles.muted, { fontSize: 11.5, marginTop: 2, color: colors.fresh, fontWeight: '800' }]}>{t('deliveryToClient.photoReady', 'Photo prête · touchez pour reprendre')}</Text>
-                </View>
-              </Pressable>
-            ) : (
-              <OutlineButton onPress={handleTakeProofPhoto}>
-                <Camera color={colors.primary} size={18} strokeWidth={2.2} /> {t('deliveryToClient.takeProofPhoto', 'Prendre la photo de preuve')}
-              </OutlineButton>
-            )}
-
-            <View style={{ opacity: proofPhoto ? 1 : 0.45, marginTop: proofPhoto ? 10 : 0 }}>
-              <OutlineButton onPress={handleConfirmLivraison}>
-                <CheckCircle2 color={colors.fresh} size={18} strokeWidth={2.3} /> {delivering ? t('deliveryToClient.deliveringLabel', 'Livraison…') : t('deliveryToClient.confirmDelivery', 'Confirmer la livraison')}
-              </OutlineButton>
+              {/* Bouton Finalisation : actif uniquement quand la photo est capturée */}
+              {proofPhoto && (
+                <Animated.View entering={FadeInUp.duration(200)}>
+                  <PrimaryButton onPress={delivering ? undefined : handleConfirmLivraison}>
+                    <CheckCircle2 color="#FFF" size={18} strokeWidth={2.3} /> {delivering ? t('deliveryToClient.deliveringLabel', 'Validation en cours…') : t('deliveryToClient.confirmDelivery', 'Valider et Terminer la livraison')}
+                  </PrimaryButton>
+                </Animated.View>
+              )}
             </View>
           </Card>
         </Animated.View>

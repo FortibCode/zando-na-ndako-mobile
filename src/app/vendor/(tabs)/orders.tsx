@@ -37,14 +37,17 @@ export default function VendorOrdersScreen() {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
 
+  type VendorFilter = 'toutes' | 'acceptees' | 'refusees' | 'en_cours' | 'validees';
+
   const FILTERS = [
     { id: 'toutes' as const, label: t('vendorOrdersList.filterAll', 'Toutes') },
+    { id: 'acceptees' as const, label: t('vendorOrdersList.filterAccepted', 'Acceptées') },
+    { id: 'refusees' as const, label: t('vendorOrdersList.filterRefused', 'Refusées') },
     { id: 'en_cours' as const, label: t('vendorOrdersList.filterOngoing', 'En cours') },
-    { id: 'livree' as const, label: t('vendorOrdersList.filterDelivered', 'Livrées') },
-    { id: 'annulee' as const, label: t('vendorOrdersList.filterCancelled', 'Annulées') },
+    { id: 'validees' as const, label: t('vendorOrdersList.filterValidated', 'Validées') },
   ];
 
-  const [filter, setFilter] = useState<'toutes' | 'en_cours' | 'livree' | 'annulee'>('toutes');
+  const [filter, setFilter] = useState<VendorFilter>('toutes');
   const [query, setQuery] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,9 +65,10 @@ export default function VendorOrdersScreen() {
 
   const filtered = useMemo(() => {
     let list = orders;
-    if (filter === 'en_cours') list = list.filter((o) => isEnCours(o.statut));
-    else if (filter === 'livree') list = list.filter((o) => o.statut === 'livree');
-    else if (filter === 'annulee') list = list.filter((o) => o.statut === 'annulee' || o.statut === 'refusee');
+    if (filter === 'acceptees') list = list.filter((o) => ['preparation', 'prete', 'en_livraison'].includes(o.statut));
+    else if (filter === 'refusees') list = list.filter((o) => o.statut === 'refusee' || o.statut === 'annulee');
+    else if (filter === 'en_cours') list = list.filter((o) => isEnCours(o.statut));
+    else if (filter === 'validees') list = list.filter((o) => o.statut === 'livree');
 
     if (query.trim()) {
       const q = query.trim().toLowerCase();

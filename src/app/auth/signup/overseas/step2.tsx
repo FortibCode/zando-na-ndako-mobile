@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 
 import { BackButton, InputField, PrimaryButton, authStyles } from '@/components/auth-ui';
+import { PhoneInput } from '@/components/phone-input';
 import { SignupPickerField, DEVISE_OPTIONS } from '@/components/signup/signup-form-field';
 import { SignupStepper } from '@/components/signup/signup-stepper';
+import { getCountryByLabel, validatePhoneNumber } from '@/constants/countries';
 import { useLocalSignup } from '@/contexts/local-signup-context';
 import { BrandColors } from '@/constants/brand';
 import { AUTH_ICONS } from '@/constants/icons';
@@ -26,19 +28,21 @@ export default function OverseasSignupStep2Screen() {
   const [postalCode, setPostalCode] = useState(data.postalCode);
   const [phone, setPhone] = useState(data.phone);
   const [email, setEmail] = useState(data.email);
-  // Stocke l'id de l'option ('euro'/'franc_cfa'/'dollar'), pas son libellé affiché — c'est ce que
-  // l'écran de vérification convertit ensuite en code devise réel (EUR/USD/FCFA) envoyé au backend.
+  // Stocke l'id de l'option ('euro'/'franc_cfa'/'dollar'), pas son libellé affiché
   const [currency, setCurrency] = useState(data.currency || 'euro');
+
+  const countryInfo = getCountryByLabel(data.country);
+  const phoneValidation = validatePhoneNumber(phone, countryInfo);
 
   const isValid = Boolean(
     address.trim() &&
     addressCity.trim() &&
     postalCode.trim() &&
-    phone.replace(/\D/g, '').length >= 7,
+    phoneValidation.isValid,
   );
 
   const handleContinue = () => {
-    update({ address, addressCity, postalCode, phone, email, currency });
+    update({ address, addressCity, postalCode, phone, email, currency, dialCode: countryInfo.dialCode });
     router.push('/auth/signup/overseas/step3' as any);
   };
 
@@ -100,14 +104,13 @@ export default function OverseasSignupStep2Screen() {
             onChangeText={setEmail}
           />
 
-          <InputField
-            icon={AUTH_ICONS.phone}
-            keyboardType="phone-pad"
-            label="Téléphone international"
-            placeholder="ex: +33 6 12 34 56 78"
+          <PhoneInput
+            country={countryInfo}
+            label={`Téléphone (${countryInfo.label})`}
             required
             value={phone}
-            onChangeText={(val) => setPhone(val.replace(/[^0-9 +]/g, ''))}
+            onChangeText={setPhone}
+            error={phone.length > 0 && !phoneValidation.isValid ? phoneValidation.error : undefined}
           />
 
           <SignupPickerField

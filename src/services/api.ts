@@ -599,6 +599,8 @@ export interface ApiProduit {
   prix_max?: number;
   nombre_boutiques?: number;
   offres_vendeurs?: ApiVendeurOffre[];
+  pas_quantite?: number | string | null;
+  quantite_minimale?: number | string | null;
 }
 
 export interface ApiCategorie {
@@ -659,6 +661,11 @@ export interface ApiVendeur {
   horaires_ouverture?: string | null;
   message_boutique?: string | null;
   statut_boutique?: 'ouverte' | 'pause' | 'fermee';
+  formule_abonnement?: 'starter' | 'pro' | 'vip' | string;
+  badge_vendeur?: {
+    type: 'starter' | 'pro' | 'vip';
+    libelle: string;
+  } | null;
 }
 
 // Liste COMPLÈTE des types de boutique autorisés (pas seulement ceux déjà utilisés) — source
@@ -1713,5 +1720,76 @@ export async function repondreTicketSupport(ticketId: string, message: string): 
   if (response.data.success === false) throw new ApiError(response.data.message || "Erreur lors de l'envoi du message.");
 }
 
+// ============================================
+// ABONNEMENTS VENDEUR ("Forfaits Boutique Payants")
+// ============================================
+export interface ApiVendeurAbonnementInfo {
+  formule_actuelle: 'starter' | 'pro' | 'vip' | string;
+  statut_abonnement: 'actif' | 'expire' | 'suspendu' | string;
+  date_expiration: string | null;
+  est_actif: boolean;
+  limite_produits: number;
+  nombre_produits_actuel: number;
+  boutique: {
+    id: string;
+    nom_boutique: string;
+    badge_vendeur: {
+      type: 'starter' | 'pro' | 'vip';
+      libelle: string;
+    };
+  };
+}
+
+export async function fetchVendeurAbonnement(): Promise<ApiVendeurAbonnementInfo> {
+  const response = await api.get<ApiResponse<ApiVendeurAbonnementInfo>>('/vendeur/abonnement');
+  if (!response.data.data) throw new ApiError("Impossible de charger les informations d'abonnement.");
+  return response.data.data;
+}
+
+export async function souscrireVendeurAbonnement(payload: {
+  formule: 'starter' | 'pro' | 'vip';
+  moyen_paiement: 'momo_mtn' | 'momo_airtel' | 'solde_vendeur';
+  telephone?: string;
+}): Promise<ApiVendeurAbonnementInfo> {
+  const response = await api.post<ApiResponse<ApiVendeurAbonnementInfo>>('/vendeur/abonnement/souscrire', payload);
+  if (!response.data.data) throw new ApiError(response.data.message || "Erreur lors de la souscription à l'abonnement.");
+  return response.data.data;
+}
+
+export interface ApiBannierePublicitaire {
+  id: string;
+  vendeur_id?: string;
+  titre: string;
+  description?: string;
+  image_url: string;
+  type_cible: 'boutique' | 'produit' | 'categorie' | 'externe';
+  cible_id?: string;
+  statut: string;
+  priorite: number;
+  vendeur?: {
+    id: string;
+    nom_commerce: string;
+    logo?: string;
+  };
+}
+
+export async function fetchBannieres(): Promise<ApiBannierePublicitaire[]> {
+  try {
+    const response = await api.get<ApiResponse<ApiBannierePublicitaire[]>>('/bannieres');
+    return response.data.data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function trackBanniereClic(id: string): Promise<void> {
+  try {
+    await api.post(`/bannieres/${id}/clic`);
+  } catch {
+    // Ignorer silencieusement
+  }
+}
+
 export { STORAGE_KEYS };
 export default api;
+

@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 
 import { BackButton, InputField, PrimaryButton, StepProgress, authStyles } from '@/components/auth-ui';
+import { PhoneInput } from '@/components/phone-input';
+import { DEFAULT_COUNTRY, validatePhoneNumber } from '@/constants/countries';
 import { useDeliverySignup } from '@/contexts/delivery-signup-context';
 import { BrandColors } from '@/constants/brand';
 import { AUTH_ICONS } from '@/constants/icons';
@@ -32,9 +34,11 @@ export default function DeliverySignupStep2Screen() {
   const [license, setLicense] = useState(data.licenseNumber);
   const [vehicle, setVehicle] = useState(data.vehicleType || 'moto');
 
+  const phoneValidation = validatePhoneNumber(phone, DEFAULT_COUNTRY);
+
   const valid = Boolean(
     address.trim() &&
-    phone.replace(/\D/g, '').length >= 7 &&
+    phoneValidation.isValid &&
     license.trim() &&
     vehicle.trim(),
   );
@@ -84,26 +88,13 @@ export default function DeliverySignupStep2Screen() {
           onChangeText={setEmail}
         />
 
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>
-            Numéro de téléphone mobile <Text style={styles.requiredStar}>*</Text>
-          </Text>
-
-          <View style={styles.phoneBox}>
-            <View style={styles.prefixBadge}>
-              <Text style={styles.prefixText}>+242</Text>
-            </View>
-            <TextInput
-              keyboardType="phone-pad"
-              placeholder="ex: 06 987 65 43"
-              placeholderTextColor="#94A3B8"
-              style={styles.phoneInput}
-              value={phone}
-              onChangeText={(val) => setPhone(val.replace(/[^0-9 ]/g, ''))}
-            />
-          </View>
-          <Text style={styles.helperText}>Saisissez votre numéro local sans l'indicatif +242</Text>
-        </View>
+        <PhoneInput
+          country={DEFAULT_COUNTRY}
+          required
+          value={phone}
+          onChangeText={setPhone}
+          error={phone.length > 0 && !phoneValidation.isValid ? phoneValidation.error : undefined}
+        />
 
         <InputField
           icon={AUTH_ICONS.idCard}

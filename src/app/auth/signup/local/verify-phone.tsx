@@ -27,8 +27,9 @@ export default function LocalSignupVerifyPhoneScreen() {
   const [otpKey, setOtpKey] = useState(0);
   const registrationStarted = useRef(false);
 
-  const phoneDisplay = data.phone ? `+242 ${data.phone}` : '+242 06 123 45 67';
-  const phoneNumber = `+242${data.phone.replace(/\D/g, '')}`;
+  const dialCode = data.dialCode || '+242';
+  const phoneDisplay = data.phone ? `${dialCode} ${data.phone}` : `${dialCode} 06 123 45 67`;
+  const phoneNumber = `${dialCode}${data.phone.replace(/\D/g, '')}`;
   const canResend = resendTimer <= 0;
 
   useEffect(() => {

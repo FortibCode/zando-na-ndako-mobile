@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   FadeInDown, FadeInUp, SlideInDown,
 } from 'react-native-reanimated';
-import { ArrowLeft, Filter, ArrowUpDown, Check, X, Search, Star, MapPin, Clock, AlertTriangle, WifiOff, ShoppingCart, ArrowRight } from 'lucide-react-native';
+import { ArrowLeft, Filter, ArrowUpDown, Check, X, Search, Star, MapPin, Clock, AlertTriangle, WifiOff, ShoppingCart, ArrowRight, ShieldCheck, Crown } from 'lucide-react-native';
 import { useClient, mapApiProduitToProduct, type Product } from '@/contexts/client-context';
 import { fetchVendeurDetail, fetchProduitsBoutique, resolveMediaUrl, type ApiVendeur } from '@/services/api';
 import { ProductCard } from '@/components/client-ui';
@@ -324,7 +324,21 @@ export default function BoutiqueDetailScreen() {
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.boutiqueName, { color: colors.text }]}>{vendeur.nom_commerce}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Text style={[styles.boutiqueName, { color: colors.text }]}>{vendeur.nom_commerce}</Text>
+                  {vendeur.badge_vendeur?.type === 'vip' && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#F59E0B' }}>
+                      <Crown color="#D97706" size={12} />
+                      <Text style={{ color: '#B45309', fontSize: 11, fontWeight: '800' }}>VIP Gold</Text>
+                    </View>
+                  )}
+                  {vendeur.badge_vendeur?.type === 'pro' && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#3B82F6' }}>
+                      <ShieldCheck color="#2563EB" size={12} />
+                      <Text style={{ color: '#1D4ED8', fontSize: 11, fontWeight: '800' }}>PRO Verified</Text>
+                    </View>
+                  )}
+                </View>
                 <View style={styles.metaRow}>
                   <Star color={colors.gold} size={14} fill={vendeur.note_moyenne > 0 ? colors.gold : 'transparent'} />
                   <Text style={[styles.metaText, { color: colors.textSecondary }]}>

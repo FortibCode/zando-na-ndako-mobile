@@ -23,10 +23,21 @@ function CartItem({ product, quantity, index }: { product: Product; quantity: nu
   const { colors } = useTheme();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const lineTotal = product.price * quantity;
+  const lineTotal = Math.round(product.price * quantity);
+  const step = product.pasQuantite || (product.uniteMesure === 'kg' ? 0.5 : 1);
+
+  const displayQuantity = product.uniteMesure === 'kg'
+    ? quantity === 0.25
+      ? '250g (1/4 kg)'
+      : quantity === 0.5
+      ? '500g (1/2 kg)'
+      : quantity === 0.75
+      ? '750g (3/4 kg)'
+      : `${quantity.toString().replace('.', ',')} kg`
+    : `${quantity.toString().replace('.', ',')} ${product.uniteMesure || 'unité'}`;
 
   return (
-<Animated.View
+    <Animated.View
       entering={FadeInDown.duration(350).delay(index * 70).springify()}
       style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }, animStyle]}
     >
@@ -43,25 +54,25 @@ function CartItem({ product, quantity, index }: { product: Product; quantity: nu
             style={styles.productImage}
           />
         </View>
-<View style={styles.info}>
+        <View style={styles.info}>
           <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{product.name}</Text>
           <Text style={[styles.unitPrice, { color: colors.textSecondary }]}>{product.price.toLocaleString('fr-FR')} FCFA/{product.unit.replace(/^FCFA\/?/, '') || 'unité'}</Text>
 
           {/* Quantity control */}
           <View style={styles.quantityRow}>
             <Pressable
-              onPress={() => changeQuantity(product.id, -1)}
+              onPress={() => changeQuantity(product.id, -step)}
               style={[styles.qBtn, { borderColor: colors.border, backgroundColor: colors.backgroundAlt }]}
               accessibilityLabel="Réduire quantité"
             >
-              {quantity === 1
+              {quantity <= step
                 ? <Trash2 color={colors.error} size={14} />
                 : <Minus color={colors.primary} size={14} />
               }
             </Pressable>
-            <Text style={[styles.qValue, { color: colors.text }]}>{quantity}</Text>
+            <Text style={[styles.qValue, { color: colors.text }]}>{displayQuantity}</Text>
             <Pressable
-              onPress={() => changeQuantity(product.id, 1)}
+              onPress={() => changeQuantity(product.id, step)}
               style={[styles.qBtn, styles.qBtnPlus, { backgroundColor: colors.primary, borderColor: colors.primary }]}
               accessibilityLabel="Augmenter quantité"
             >

@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -37,6 +37,8 @@ import {
   MapPin,
   Star,
   ArrowRight,
+  ShieldCheck,
+  Crown,
 } from 'lucide-react-native';
 import { useClient, type Product } from '@/contexts/client-context';
 import { useDiaspora, formatEur, formatUsd } from '@/contexts/diaspora-context';
@@ -55,7 +57,7 @@ const RECENT_SEARCHES_KEY = '@zando_recent_searches';
 const MAX_RECENT = 5;
 
 // ─── Carte de comparaison multi-boutiques (Résultat Produit) ───
-function GroupedProductCard({
+const GroupedProductCard = memo(function GroupedProductCard({
   produit,
   index,
   onComparePress,
@@ -158,10 +160,10 @@ function GroupedProductCard({
       </Pressable>
     </Animated.View>
   );
-}
+});
 
 // ─── Carte résultat "boutique" (Affichée en 1er pour le parcours Boutique d'abord) ───
-function BoutiqueResultCard({ vendeur, index, query, onPress }: { vendeur: ApiVendeur; index: number; query?: string; onPress: () => void }) {
+const BoutiqueResultCard = memo(function BoutiqueResultCard({ vendeur, index, query, onPress }: { vendeur: ApiVendeur; index: number; query?: string; onPress: () => void }) {
   const { colors } = useTheme();
   const locationText = [vendeur.arrondissement, vendeur.ville].filter(Boolean).join(', ') || 'Congo';
 
@@ -183,10 +185,22 @@ function BoutiqueResultCard({ vendeur, index, query, onPress }: { vendeur: ApiVe
         </View>
 
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text numberOfLines={1} style={[styles.resultName, { color: colors.text, flex: 1 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text numberOfLines={1} style={[styles.resultName, { color: colors.text, flexShrink: 1 }]}>
               {vendeur.nom_commerce}
             </Text>
+            {vendeur.badge_vendeur?.type === 'vip' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B' }}>
+                <Crown color="#D97706" size={10} />
+                <Text style={{ color: '#B45309', fontSize: 10, fontWeight: '800' }}>VIP Gold</Text>
+              </View>
+            )}
+            {vendeur.badge_vendeur?.type === 'pro' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, borderWidth: 1, borderColor: '#3B82F6' }}>
+                <ShieldCheck color="#2563EB" size={10} />
+                <Text style={{ color: '#1D4ED8', fontSize: 10, fontWeight: '800' }}>PRO</Text>
+              </View>
+            )}
             {vendeur.note_moyenne > 0 && (
               <View style={styles.ratingChip}>
                 <Star size={11} color="#EAB308" fill="#EAB308" />
@@ -224,7 +238,7 @@ function BoutiqueResultCard({ vendeur, index, query, onPress }: { vendeur: ApiVe
       </Pressable>
     </Animated.View>
   );
-}
+});
 
 export default function SearchScreen() {
   const { q: initialQuery } = useLocalSearchParams<{ q?: string }>();
@@ -326,7 +340,7 @@ export default function SearchScreen() {
     }));
   }, [products, query]);
 
-  // 2. Recherche serveur indépendante et réactive (enrichissement en arrière-plan)
+  // 2. Recherche serveur indépendante et réactive (enrichissement en arrière-plan avec debounce 250ms)
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
@@ -338,17 +352,21 @@ export default function SearchScreen() {
     let cancelled = false;
     setIsSearching(true);
 
-    // Lancement immédiat sans délai bloquant
-    searchProduits(q)
-      .then((prods) => { if (!cancelled) setGroupedProducts(prods); })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setIsSearching(false); });
+    const debounceTimer = setTimeout(() => {
+      searchProduits(q)
+        .then((prods) => { if (!cancelled) setGroupedProducts(prods); })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setIsSearching(false); });
 
-    fetchVendeurs({ search: q })
-      .then((vends) => { if (!cancelled) setBoutiqueResults(vends); })
-      .catch(() => {});
+      fetchVendeurs({ search: q })
+        .then((vends) => { if (!cancelled) setBoutiqueResults(vends); })
+        .catch(() => {});
+    }, 250);
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(debounceTimer);
+    };
   }, [query]);
 
   // Liste finale affichée (produits serveur si disponibles, sinon produits locaux instantanés)

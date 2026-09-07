@@ -1,10 +1,7 @@
 // ─── Remplacement cross-platform de `Alert.alert` (React Native) ───
-// `Alert.alert` de react-native-web est un stub qui ne fait RIEN
-// (`class Alert { static alert() {} }`) : sur le web, aucun message d'erreur ni de succès ne
-// s'affiche, et toute navigation cachée dans le `onPress` d'un bouton (ex: après une publication
-// réussie) ne se déclenche jamais puisqu'aucun bouton n'existe jamais réellement à presser.
-// Ce module fournit `alert(...)` avec exactement la même signature que `Alert.alert` : sur
-// iOS/Android le comportement natif est inchangé, sur le web une vraie modale est affichée.
+// `Alert.alert` de react-native-web est un stub qui ne fait RIEN.
+// Ce module fournit `alert(...)` avec la même signature : sur native le comportement
+// natif est préservé, sur le web une modale premium adaptative est affichée.
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Alert as RNAlert, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from './theme-context';
@@ -19,8 +16,6 @@ export type AlertButton = {
 
 type AlertState = { title: string; message?: string; buttons: AlertButton[] };
 
-// Pont impératif : le Provider enregistre sa fonction d'affichage ici au montage, pour que
-// `alert(...)` reste appelable depuis n'importe quel fichier (services, contexts, écrans) sans hook.
 let showWebAlert: ((state: AlertState) => void) | null = null;
 
 export function alert(title: string, message?: string, buttons?: AlertButton[]): void {
@@ -32,15 +27,11 @@ export function alert(title: string, message?: string, buttons?: AlertButton[]):
   if (showWebAlert) {
     showWebAlert({ title, message, buttons: resolvedButtons });
   } else {
-    // Le Provider est monté à la racine de l'app (_layout.tsx) : ce repli ne devrait jamais
-    // s'exécuter en pratique, il évite juste un message totalement silencieux si jamais ça arrivait.
     window.alert(message ? `${title}\n\n${message}` : title);
     resolvedButtons.find((b) => b.style !== 'cancel')?.onPress?.();
   }
 }
 
-// Confirmation avant déconnexion, même formulation partout (client/vendeur/livreur, web admin) —
-// évite qu'un appui accidentel sur "Se déconnecter" ferme la session sans aucune confirmation.
 export function confirmLogout(onConfirm: () => void): void {
   alert(
     'Déconnexion',
@@ -74,33 +65,51 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     button.onPress?.();
   };
 
+  const buttons = state?.buttons ?? [];
+  // Si plus de 2 boutons OU si un bouton contient un texte long (> 12 caractères),
+  // on empile les boutons VERTICALEMENT pour éviter que le texte ne se retrouve étouffé en colonnes étroites.
+  const isVertical = buttons.length > 2 || buttons.some((b) => (b.text || '').length > 12);
+
   return (
     <AlertContext.Provider value={null}>
       {children}
       <Modal visible={!!state} transparent animationType="fade" onRequestClose={() => setState(null)}>
-        <View style={[styles.backdrop, { backgroundColor: colors.overlay }]}>
+        <View style={[styles.backdrop, { backgroundColor: colors.overlay || 'rgba(0, 0, 0, 0.55)' }]}>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.title, { color: colors.text }]}>{state?.title}</Text>
             {!!state?.message && <Text style={[styles.message, { color: colors.textSecondary }]}>{state.message}</Text>}
-            <View style={styles.buttonRow}>
-              {state?.buttons.map((button, index) => (
-                <Pressable
-                  key={index}
-                  onPress={() => handlePress(button)}
-                  style={[styles.button, { borderTopColor: colors.border }, index > 0 && styles.buttonBorderLeft, index > 0 && { borderLeftColor: colors.border }]}
-                >
-                  <Text
-                    style={[
-                      styles.buttonText,
-                      { color: colors.primary },
-                      button.style === 'destructive' && { color: colors.error },
-                      button.style === 'cancel' && { color: colors.textSecondary, fontWeight: '600' },
+
+            {/* Disposition des boutons : Verticale (stacked) si > 2 boutons ou texte long, sinon Horizontale */}
+            <View style={isVertical ? styles.buttonColumn : styles.buttonRow}>
+              {buttons.map((button, index) => {
+                const isDestructive = button.style === 'destructive';
+                const isCancel = button.style === 'cancel';
+
+                return (
+                  <Pressable
+                    key={index}
+                    onPress={() => handlePress(button)}
+                    style={({ pressed }) => [
+                      styles.button,
+                      isVertical ? styles.buttonVertical : styles.buttonHorizontal,
+                      { borderTopColor: colors.border || '#E2E8F0' },
+                      !isVertical && index > 0 ? { borderLeftWidth: 1, borderLeftColor: colors.border || '#E2E8F0' } : null,
+                      pressed && { backgroundColor: isDestructive ? '#FFF0F0' : '#F1F5F9' },
                     ]}
                   >
-                    {button.text || 'OK'}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        { color: colors.primary || '#0D347C' },
+                        isDestructive && styles.textDestructive,
+                        isCancel && styles.textCancel,
+                      ]}
+                    >
+                      {button.text || 'OK'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         </View>
@@ -109,19 +118,53 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Conservé pour cohérence avec les autres contextes du projet, même si aucune valeur n'est
-// consommée directement : `alert()` est l'API publique de ce module.
 export function useAlertContext() {
   return useContext(AlertContext);
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { width: '100%', maxWidth: 340, borderRadius: 18, borderWidth: 1, paddingTop: 22, overflow: 'hidden' },
-  title: { fontSize: 17, fontWeight: '800', textAlign: 'center', paddingHorizontal: 20 },
-  message: { fontSize: 14, lineHeight: 20, textAlign: 'center', paddingHorizontal: 20, marginTop: 8 },
-  buttonRow: { flexDirection: 'row', marginTop: 20 },
-  button: { flex: 1, height: 48, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1 },
-  buttonBorderLeft: { borderLeftWidth: 1 },
-  buttonText: { fontSize: 15, fontWeight: '700' },
+  backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  card: {
+    width: '100%',
+    maxWidth: 350,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingTop: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  title: { fontSize: 18, fontWeight: '800', textAlign: 'center', paddingHorizontal: 20 },
+  message: { fontSize: 14, lineHeight: 21, textAlign: 'center', paddingHorizontal: 20, marginTop: 8 },
+  buttonRow: { flexDirection: 'row', marginTop: 22 },
+  buttonColumn: { flexDirection: 'column', marginTop: 22 },
+  button: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+  },
+  buttonHorizontal: {
+    flex: 1,
+    height: 50,
+  },
+  buttonVertical: {
+    width: '100%',
+    height: 52,
+  },
+  buttonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  textDestructive: {
+    color: '#E30613',
+    fontWeight: '800',
+  },
+  textCancel: {
+    color: '#64748B',
+    fontWeight: '600',
+  },
 });
