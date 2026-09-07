@@ -239,7 +239,56 @@ export default function SearchScreen() {
     try { await AsyncStorage.removeItem(RECENT_SEARCHES_KEY); } catch { /* ignore */ }
   }, []);
 
-  // Recherche serveur dynamique (Produits regroupés & Boutiques)
+  // 1. Filtrage local INSTANTANÉ (0 ms de latence pour le client)
+  const localGroupedProducts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || q.length < 2) return [];
+
+    const matched = products.filter((p) => {
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        (p.vendorName || '').toLowerCase().includes(q)
+      );
+    });
+
+    return matched.map((p): ApiProduit => ({
+      id: p.id,
+      categorie_id: '',
+      vendeur_id: p.vendorId || '',
+      nom_produit: p.name,
+      description: p.description || null,
+      prix_unitaire: p.price,
+      unite_mesure: p.unit ? p.unit.replace('FCFA/', '') : 'unité',
+      quantite_stock: p.stock ? 10 : 0,
+      statut_disponibilite: p.stock ? 'disponible' : 'rupture',
+      photo_produit: p.image || null,
+      type_fraicheur: p.fraicheur || null,
+      vendeur: p.vendorName ? { id: p.vendorId || '', nom_commerce: p.vendorName } : null,
+      prix_min: p.price,
+      prix_max: p.price,
+      nombre_boutiques: 1,
+      offres_vendeurs: [
+        {
+          produit_id: p.id,
+          vendeur_id: p.vendorId || '',
+          nom_commerce: p.vendorName || 'Boutique partenaire',
+          photo_boutique: null,
+          note_moyenne: p.rating || 0,
+          ville: null,
+          prix_unitaire: p.price,
+          prix_effectif: p.price,
+          est_en_promotion: false,
+          quantite_stock: p.stock ? 10 : 0,
+          unite_mesure: p.unit ? p.unit.replace('FCFA/', '') : 'unité',
+          photo_produit: p.image || null,
+        },
+      ],
+    }));
+  }, [products, query]);
+
+  // 2. Recherche serveur indépendante et réactive (enrichissement en arrière-plan)
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
@@ -251,24 +300,21 @@ export default function SearchScreen() {
     let cancelled = false;
     setIsSearching(true);
 
-    const timer = setTimeout(() => {
-      Promise.all([
-        searchProduits(q).catch(() => []),
-        fetchVendeurs({ search: q }).catch(() => []),
-      ]).then(([prods, vends]) => {
-        if (!cancelled) {
-          setGroupedProducts(prods);
-          setBoutiqueResults(vends);
-          setIsSearching(false);
-        }
-      });
-    }, 300);
+    // Lancement immédiat sans délai bloquant
+    searchProduits(q)
+      .then((prods) => { if (!cancelled) setGroupedProducts(prods); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setIsSearching(false); });
 
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+    fetchVendeurs({ search: q })
+      .then((vends) => { if (!cancelled) setBoutiqueResults(vends); })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
   }, [query]);
+
+  // Liste finale affichée (produits serveur si disponibles, sinon produits locaux instantanés)
+  const displayProducts = groupedProducts.length > 0 ? groupedProducts : localGroupedProducts;
 
   const handleSearch = useCallback((term: string) => {
     const trimmed = term.trim();
@@ -429,8 +475,8 @@ export default function SearchScreen() {
           {/* Métadonnées de résultats */}
           <View style={styles.resultMeta}>
             <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
-              {groupedProducts.length > 0
-                ? `${groupedProducts.length} produit${groupedProducts.length > 1 ? 's' : ''} comparé${groupedProducts.length > 1 ? 's' : ''} pour "${query}"`
+              {displayProducts.length > 0
+                ? `${displayProducts.length} produit${displayProducts.length > 1 ? 's' : ''} trouvé${displayProducts.length > 1 ? 's' : ''} pour "${query}"`
                 : boutiqueResults.length === 0 && !isSearching
                 ? 'Aucun résultat'
                 : ''}
@@ -438,9 +484,9 @@ export default function SearchScreen() {
           </View>
 
           {/* Grille / Liste des produits regroupés avec comparateur de boutiques */}
-          {groupedProducts.length > 0 && (
+          {displayProducts.length > 0 && (
             <View style={styles.resultsGrid}>
-              {groupedProducts.map((produit, index) => (
+              {displayProducts.map((produit, index) => (
                 <GroupedProductCard
                   key={produit.id}
                   produit={produit}
@@ -451,7 +497,7 @@ export default function SearchScreen() {
             </View>
           )}
 
-          {groupedProducts.length === 0 && boutiqueResults.length === 0 && !isSearching && (
+          {displayProducts.length === 0 && boutiqueResults.length === 0 && !isSearching && (
             <Animated.View entering={FadeIn.duration(300)} style={styles.noResult}>
               <Search color={colors.textTertiary} size={48} strokeWidth={1.5} />
               <Text style={[styles.noResultTitle, { color: colors.text }]}>Aucun produit trouvé</Text>
