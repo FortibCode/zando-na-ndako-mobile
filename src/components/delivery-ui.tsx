@@ -74,7 +74,7 @@ export function OutlineButton({ children, onPress, red = false }: { children: Re
 export function BottomNav({ active }: { active: 'home' | 'missions' | 'revenue' | 'profile' }) {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
-  const items = [{ key: 'home', label: t('deliveryUi.home', 'Accueil'), icon: Home, path: '/delivery/(tabs)' }, { key: 'missions', label: t('deliveryUi.navMissions', 'Missions'), icon: ListChecks, path: '/delivery/(tabs)/missions' }, { key: 'revenue', label: t('deliveryUi.navRevenue', 'Revenus'), icon: Wallet, path: '/delivery/(tabs)/revenue' }, { key: 'profile', label: t('vendorNav.profileShort', 'Profil'), icon: UserRound, path: '/delivery/(tabs)/profile' }] as const;
+  const items = [{ key: 'home', label: t('deliveryUi.home', 'Accueil'), icon: Home, path: '/delivery' }, { key: 'missions', label: t('deliveryUi.navMissions', 'Missions'), icon: ListChecks, path: '/delivery/missions' }, { key: 'revenue', label: t('deliveryUi.navRevenue', 'Revenus'), icon: Wallet, path: '/delivery/revenue' }, { key: 'profile', label: t('vendorNav.profileShort', 'Profil'), icon: UserRound, path: '/delivery/profile' }] as const;
   const renderItem = ({ key, label, icon: Icon, path }: typeof items[number]) => <Pressable key={key} accessibilityLabel={label} style={styles.navItem} onPress={() => router.push(path as any)}><Icon size={25} color={active === key ? colors.primary : colors.textTertiary} strokeWidth={active === key ? 2.6 : 2} /><Text style={[styles.navLabel, { color: active === key ? colors.primary : colors.textTertiary }]}>{label}</Text>{active === key && <View style={[deliveryStyles.navIndicator, { backgroundColor: colors.primary, opacity: 1 }]} />}</Pressable>;
   return <View style={[styles.nav, { backgroundColor: isDark ? 'rgba(18, 22, 32, 0.96)' : 'rgba(255, 255, 255, 0.94)', borderTopColor: colors.border }]}><View style={deliveryStyles.navGroup}>{items.slice(0, 2).map(renderItem)}</View><PremiumPressable onPress={() => router.push('/delivery/mission' as any)} style={[deliveryStyles.centerFab, { backgroundColor: colors.primary, borderColor: colors.background, shadowColor: colors.primary }]}><Package color={colors.white} size={25} strokeWidth={2.4} /></PremiumPressable><View style={deliveryStyles.navGroup}>{items.slice(2).map(renderItem)}</View></View>;
 }
@@ -365,10 +365,10 @@ function DeliveryDrawer({ visible, onClose }: { visible: boolean; onClose: () =>
   const isOnline = driver?.statut_disponibilite === 'disponible';
 
   const items = [
-    { label: t('deliveryUi.home', 'Accueil'), icon: Home, path: '/delivery/(tabs)' },
-    { label: t('deliveryUi.myMissions', 'Mes missions'), icon: ListChecks, path: '/delivery/(tabs)/missions' },
-    { label: t('deliveryUi.myRevenueDrawer', 'Mes revenus'), icon: Wallet, path: '/delivery/(tabs)/revenue' },
-    { label: t('deliveryUi.myProfileDrawer', 'Mon profil'), icon: UserRound, path: '/delivery/(tabs)/profile' },
+    { label: t('deliveryUi.home', 'Accueil'), icon: Home, path: '/delivery' },
+    { label: t('deliveryUi.myMissions', 'Mes missions'), icon: ListChecks, path: '/delivery/missions' },
+    { label: t('deliveryUi.myRevenueDrawer', 'Mes revenus'), icon: Wallet, path: '/delivery/revenue' },
+    { label: t('deliveryUi.myProfileDrawer', 'Mon profil'), icon: UserRound, path: '/delivery/profile' },
     { label: t('deliveryUi.helpSupport', 'Aide et support'), icon: Headphones, path: '/delivery/support' },
   ] as const;
 

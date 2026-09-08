@@ -65,14 +65,14 @@ export default function DeliveryHome() {
 
   const quickActions = [
     { label: t('deliveryHome.navGps', 'GPS Navigation'), icon: Navigation, path: '/delivery/navigation', color: '#0EA5E9', bg: '#E0F2FE' },
-    { label: t('deliveryHome.navMissions', 'Mes missions'), icon: Bike, path: '/delivery/(tabs)/missions', color: '#6366F1', bg: '#EEF2FF' },
+    { label: t('deliveryHome.navMissions', 'Mes missions'), icon: Bike, path: '/delivery/missions', color: '#6366F1', bg: '#EEF2FF' },
     { label: t('deliveryHome.navHistory', 'Historique'), icon: History, path: '/delivery/history', color: '#10B981', bg: '#D1FAE5' },
     { label: t('deliveryHome.navSupport', 'Support 24/7'), icon: Headphones, path: '/delivery/support', color: '#EC4899', bg: '#FCE7F3' },
   ];
 
   const handleQuickAction = useCallback((path: string) => {
     if (path === '/delivery/navigation' && !currentMission) {
-      router.push('/delivery/(tabs)/missions' as any);
+      router.push('/delivery/missions' as any);
       return;
     }
     router.push(path as any);
@@ -166,7 +166,7 @@ export default function DeliveryHome() {
           </View>
         </View>
 
-        <Pressable onPress={() => router.push('/delivery/(tabs)/missions' as any)}>
+        <Pressable onPress={() => router.push('/delivery/missions' as any)}>
           <Text style={{ fontSize: 12.5, fontWeight: '800', color: colors.primary }}>Voir tout ›</Text>
         </Pressable>
       </View>

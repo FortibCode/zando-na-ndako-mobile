@@ -60,7 +60,7 @@ export default function EmailOtpScreen() {
 
       const role = result.user?.type_utilisateur;
       if (role === 'livreur') {
-        router.replace('/delivery/(tabs)' as any);
+        router.replace('/delivery' as any);
       } else if (role === 'vendeur') {
         router.replace('/vendor' as any);
       } else if (role === 'client') {

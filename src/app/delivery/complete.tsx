@@ -118,7 +118,7 @@ export default function Complete() {
 
   const handleBackToDashboard = useCallback(() => {
     clearCurrentMission();
-    router.replace('/delivery/(tabs)' as any);
+    router.replace('/delivery' as any);
   }, [clearCurrentMission]);
 
   return (

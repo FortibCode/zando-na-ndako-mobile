@@ -38,7 +38,7 @@ export default function EmailLoginScreen() {
       registerForPushNotificationsAsync(); // jeton push : ne bloque pas la navigation si ça échoue
 
       if (user.type_utilisateur === 'livreur') {
-        router.replace('/delivery/(tabs)' as any);
+        router.replace('/delivery' as any);
       } else if (user.type_utilisateur === 'client') {
         router.replace('/client' as any);
       } else if (user.type_utilisateur === 'vendeur') {

@@ -64,7 +64,7 @@ export default function GooglePickerScreen() {
   });
 
   const routeAfterLogin = useCallback((user: LoginUser) => {
-    if (user.type_utilisateur === 'livreur') router.replace('/delivery/(tabs)' as any);
+    if (user.type_utilisateur === 'livreur') router.replace('/delivery' as any);
     else if (user.type_utilisateur === 'vendeur') router.replace('/vendor' as any);
     else router.replace('/client/(tabs)' as any);
   }, []);
