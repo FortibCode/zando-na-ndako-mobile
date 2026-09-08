@@ -26,7 +26,10 @@ import {
   resolveMediaUrl,
   viderPanier,
   ajouterAuPanier,
+  modifierLignePanier as apiModifierLignePanier,
+  supprimerLignePanier as apiSupprimerLignePanier,
   assignerBeneficiairePanier,
+  retirerBeneficiairePanier as apiRetirerBeneficiairePanier,
   validerCommande,
   commanderPourProche,
   ApiError,
@@ -177,6 +180,10 @@ type ClientContextValue = {
   changeQuantity: (id: string, amount: number) => void;
   setQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
+  // Synchronisation serveur du panier (ligneId = ID de ligne renvoyé par le backend)
+  updateCartLine: (ligneId: string, quantite: number) => Promise<void>;
+  removeCartLine: (ligneId: string) => Promise<void>;
+  removeCartBeneficiaire: () => Promise<void>;
   cartCount: number;
   subtotal: number;
 
@@ -296,6 +303,22 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     });
 
   const clearCart = () => setCart({});
+
+  // ─── Synchronisation serveur du panier ───
+  // Ces fonctions appellent directement le backend pour les modifications granulaires.
+  // Elles ne mettent pas à jour `cart` (local) car le ligneId est un ID de ligne serveur
+  // inconnu du state local — l'écran appelant doit réconcilier si nécessaire.
+  const updateCartLine = useCallback(async (ligneId: string, quantite: number) => {
+    await apiModifierLignePanier(ligneId, quantite);
+  }, []);
+
+  const removeCartLine = useCallback(async (ligneId: string) => {
+    await apiSupprimerLignePanier(ligneId);
+  }, []);
+
+  const removeCartBeneficiaire = useCallback(async () => {
+    await apiRetirerBeneficiairePanier();
+  }, []);
 
   // Survit à un redémarrage de l'app, comme les favoris ci-dessous — un panier perdu à chaque
   // fermeture de l'app est une vraie perte de vente, jamais souhaitable. `cartHydrated` évite
@@ -827,6 +850,9 @@ const userFirstName = useMemo(() => {
       changeQuantity,
       setQuantity,
       clearCart,
+      updateCartLine,
+      removeCartLine,
+      removeCartBeneficiaire,
       cartCount,
       subtotal,
       favorites,

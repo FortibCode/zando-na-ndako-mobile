@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ArrowLeft, Filter, ArrowUpDown, Check, X, Search, Star, MapPin, Clock, AlertTriangle, WifiOff, ShoppingCart, ArrowRight, ShieldCheck, Crown } from 'lucide-react-native';
 import { useClient, mapApiProduitToProduct, type Product } from '@/contexts/client-context';
-import { fetchVendeurDetail, fetchProduitsBoutique, resolveMediaUrl, type ApiVendeur } from '@/services/api';
+import { fetchVendeurDetail, fetchProduitsBoutique, fetchAvisVendeurPublic, resolveMediaUrl, type ApiVendeur, type ApiAvisResume } from '@/services/api';
 import { ProductCard } from '@/components/client-ui';
 import { useTheme } from '@/contexts/theme-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -18,6 +18,7 @@ import { alert } from '@/contexts/alert-context';
 
 const BOUTIQUE_DETAIL_CACHE_PREFIX = '@zando_client_boutique_detail_cache:';
 const BOUTIQUE_PRODUCTS_CACHE_PREFIX = '@zando_client_boutique_products_cache:';
+const BOUTIQUE_AVIS_CACHE_PREFIX = '@zando_client_boutique_avis_cache:';
 
 type SortMode = 'relevance' | 'price_asc' | 'price_desc' | 'rating';
 type PriceBand = 'all' | 'under1000' | '1000to3000' | 'over3000';
@@ -184,6 +185,7 @@ export default function BoutiqueDetailScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [offline, setOffline] = useState(false);
+  const [avis, setAvis] = useState<ApiAvisResume | null>(null);
 
   const [category, setCategory] = useState('all');
   const [priceBand, setPriceBand] = useState<PriceBand>('all');
@@ -240,6 +242,20 @@ export default function BoutiqueDetailScreen() {
         } catch { setProducts([]); }
       })
       .finally(() => setLoadingProducts(false));
+
+    // Charger les avis publics du vendeur en parallèle (GET /vendeurs/{id}/avis)
+    const avisCacheKey = BOUTIQUE_AVIS_CACHE_PREFIX + id;
+    fetchAvisVendeurPublic(id)
+      .then((data) => {
+        setAvis(data);
+        AsyncStorage.setItem(avisCacheKey, JSON.stringify(data)).catch(() => {});
+      })
+      .catch(async () => {
+        try {
+          const raw = await AsyncStorage.getItem(avisCacheKey);
+          if (raw) setAvis(JSON.parse(raw));
+        } catch { /* silencieux — les avis ne sont pas bloquants */ }
+      });
   }, [id]);
 
   // Catégories produit disponibles DANS cette boutique — remplace le rayon-catégorie global : ici
@@ -385,6 +401,45 @@ export default function BoutiqueDetailScreen() {
             </Animated.View>
           )}
 
+          {/* ─── Section Avis Clients ─── */}
+          {avis && avis.nombre_avis > 0 && (
+            <Animated.View entering={FadeInUp.duration(350).delay(120).springify()} style={[styles.avisSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.avisSectionHeader}>
+                <Star color={colors.gold} size={16} fill={colors.gold} />
+                <Text style={[styles.avisSectionTitle, { color: colors.text }]}>
+                  {avis.note_moyenne.toFixed(1)} · {avis.nombre_avis} avis
+                </Text>
+              </View>
+              {avis.avis.slice(0, 3).map((entry) => (
+                <View key={entry.id} style={[styles.avisRow, { borderTopColor: colors.border }]}>
+                  <View style={styles.avisRowTop}>
+                    <View style={[styles.avisAvatar, { backgroundColor: colors.primarySoft }]}>
+                      <Text style={[styles.avisAvatarInitial, { color: colors.primary }]}>
+                        {entry.client?.nom?.[0]?.toUpperCase() || '?'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.avisName, { color: colors.text }]}>{entry.client?.nom || 'Client'}</Text>
+                      <View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star key={star} size={11} color={colors.gold} fill={entry.note >= star ? colors.gold : 'transparent'} />
+                        ))}
+                      </View>
+                    </View>
+                    <Text style={[styles.avisDate, { color: colors.textTertiary }]}>
+                      {new Date(entry.date_notation).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                    </Text>
+                  </View>
+                  {!!entry.commentaire && (
+                    <Text style={[styles.avisComment, { color: colors.textSecondary }]} numberOfLines={3}>
+                      {entry.commentaire}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </Animated.View>
+          )}
+
           {hasActiveFilters && (
             <Pressable onPress={resetFilters} style={styles.clearFilterRow}>
               <Text style={[styles.clearFilterText, { color: colors.error }]}>{t('catalogFilter.reset', 'Réinitialiser les filtres')}</Text>
@@ -491,6 +546,18 @@ const styles = StyleSheet.create({
 
   banner: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 14, borderWidth: 1, padding: 14, marginTop: 12 },
   bannerText: { flex: 1, fontSize: 13, fontWeight: '700', lineHeight: 18 },
+
+  // ─── Avis Clients ───
+  avisSection: { borderRadius: 20, borderWidth: 1, padding: 16, marginTop: 14 },
+  avisSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 4 },
+  avisSectionTitle: { fontSize: 16, fontWeight: '900' },
+  avisRow: { paddingTop: 14, marginTop: 10, borderTopWidth: 1 },
+  avisRowTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avisAvatar: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  avisAvatarInitial: { fontSize: 15, fontWeight: '900' },
+  avisName: { fontSize: 13, fontWeight: '800' },
+  avisDate: { fontSize: 11, fontWeight: '600' },
+  avisComment: { fontSize: 13, lineHeight: 19, marginTop: 8 },
 
   clearFilterRow: { alignSelf: 'flex-end', marginTop: 14 },
   clearFilterText: { fontSize: 12, fontWeight: '800' },

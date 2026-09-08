@@ -43,7 +43,7 @@ function GoogleLogo({ size = 44 }: { size?: number }) {
 // console.cloud.google.com), la connexion Google reste annoncée honnêtement comme indisponible
 // plutôt que de simuler une connexion réussie — même convention que les autres fonctionnalités pas
 // encore branchées (ex: photo de signalement livreur).
-const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB;
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || '39050037461-h5i5aro5qd82dj907fud80vkdt1atnvu.apps.googleusercontent.com';
 
 export default function GooglePickerScreen() {
   const [loading, setLoading] = useState(false);

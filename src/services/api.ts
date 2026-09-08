@@ -690,6 +690,13 @@ export async function fetchVendeurTypesLogos(): Promise<ApiTypeBoutiqueLogo[]> {
   return response.data.data || [];
 }
 
+// Renvoie les vendeurs les mieux notés / les plus actifs (GET /vendeurs/top).
+// Idéal pour un widget "Top Boutiques" sur l'écran d'accueil.
+export async function fetchVendeursTop(limit?: number): Promise<ApiVendeur[]> {
+  const response = await api.get<ApiResponse<ApiVendeur[]>>('/vendeurs/top', { params: limit ? { limit } : undefined });
+  return response.data.data || [];
+}
+
 export async function fetchVendeurs(params?: { type?: string; search?: string; arrondissement?: string }): Promise<ApiVendeur[]> {
   const response = await api.get<ApiResponse<{ data: ApiVendeur[] }> & { data: any }>('/vendeurs', { params });
   const payload = response.data.data;
@@ -733,8 +740,25 @@ export async function viderPanier(): Promise<void> {
   await api.delete<ApiResponse>('/panier/vider');
 }
 
+// Modifie la quantité d'une ligne de panier existante (PUT /panier/modifier/{ligneId}).
+// Préférable à vider+re-ajouter : conserve l'ordre des lignes et évite une double opération réseau.
+export async function modifierLignePanier(ligneId: string, quantite: number): Promise<void> {
+  await api.put<ApiResponse>(`/panier/modifier/${ligneId}`, { quantite });
+}
+
+// Supprime un seul article du panier par son ID de ligne (DELETE /panier/supprimer/{ligneId}).
+// Distinct de viderPanier() qui efface tout — permet de retirer un article précis.
+export async function supprimerLignePanier(ligneId: string): Promise<void> {
+  await api.delete<ApiResponse>(`/panier/supprimer/${ligneId}`);
+}
+
 export async function assignerBeneficiairePanier(beneficiaireId: string): Promise<void> {
   await api.post<ApiResponse>(`/panier/beneficiaire/${beneficiaireId}`);
+}
+
+// Retire le bénéficiaire diaspora actuellement assigné au panier (DELETE /panier/beneficiaire).
+export async function retirerBeneficiairePanier(): Promise<void> {
+  await api.delete<ApiResponse>('/panier/beneficiaire');
 }
 
 // ─── Commandes ───
@@ -852,6 +876,14 @@ export async function fetchVendeurAvis(): Promise<ApiAvisResume> {
   return response.data.data;
 }
 
+// Avis publics d'un vendeur vu par un client depuis sa fiche boutique
+// (GET /vendeurs/{id}/avis). Distinct de fetchVendeurAvis() (espace vendeur privé) :
+// celui-ci est public et ne nécessite pas d'être connecté comme vendeur.
+export async function fetchAvisVendeurPublic(vendeurId: string): Promise<ApiAvisResume> {
+  const response = await api.get<ApiResponse<ApiAvisResume>>(`/vendeurs/${vendeurId}/avis`);
+  return response.data.data || { note_moyenne: 0, nombre_avis: 0, avis: [] };
+}
+
 // ─── Paiements ───
 export interface ApiPaiement {
   id: string;
@@ -952,6 +984,24 @@ export async function confirmerPayPal(commandeId: string, paypalOrderId: string)
   await api.post<ApiResponse>('/payment/paypal/confirm', { commande_id: commandeId, paypal_order_id: paypalOrderId });
 }
 
+// Consulte le statut d'un paiement spécifique par son ID (GET /payment/{id}/statut).
+// Utile pour le vendeur qui veut vérifier si une commande manuelle est payée, ou pour
+// diagnostiquer un paiement en attente sans relancer tout le flow de confirmation.
+export interface ApiPaiementStatut {
+  id: string;
+  statut: 'en_attente' | 'valide' | 'echoue' | 'rembourse';
+  methode: string;
+  montant: number;
+  devise: string;
+  updated_at: string;
+}
+
+export async function fetchPaiementStatut(paiementId: string): Promise<ApiPaiementStatut> {
+  const response = await api.get<ApiResponse<ApiPaiementStatut>>(`/payment/${paiementId}/statut`);
+  if (!response.data.data) throw new ApiError('Statut de paiement indisponible.');
+  return response.data.data;
+}
+
 // ─── Bénéficiaires diaspora ───
 export interface ApiBeneficiaire {
   id: string;
@@ -1020,6 +1070,14 @@ export async function fetchDiasporaSuivi(numeroCommande: string): Promise<ApiDia
   const response = await api.get<ApiResponse<ApiDiasporaSuivi>>(`/diaspora/suivi/${numeroCommande}`);
   if (!response.data.data) throw new ApiError(response.data.message || 'Suivi indisponible.');
   return response.data.data;
+}
+
+// Confirme le paiement d'une commande diaspora après transfert manuel ou mobile money
+// (POST /diaspora/paiement/confirmer). Complète le flow diaspora : sans cet appel, une commande
+// passée via commanderPourProche() reste bloquée au statut "en attente de paiement".
+export async function confirmerPaiementDiaspora(commandeId: string): Promise<void> {
+  const response = await api.post<ApiResponse>('/diaspora/paiement/confirmer', { commande_id: commandeId });
+  if (!response.data.success) throw new ApiError(response.data.message || 'Impossible de confirmer le paiement.');
 }
 
 export interface ApiConversionDevise {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "30239581510",
+    "project_id": "zando-na-ndako-6e7f2",
+    "storage_bucket": "zando-na-ndako-6e7f2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:30239581510:android:76d0c7678df5932e2fb147",
+        "android_client_info": {
+          "package_name": "com.zandonandako.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKXE0Y0c2RiKYH6sC5sMKSOm9gxMlQ30c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

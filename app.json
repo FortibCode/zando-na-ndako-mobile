@@ -24,7 +24,8 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.zandonandako.mobile"
+      "package": "com.zandonandako.mobile",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
