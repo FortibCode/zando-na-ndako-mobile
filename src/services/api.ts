@@ -407,12 +407,25 @@ const { token, user } = response.data.data;
 // cette fonction avec typeUtilisateur + telephone pour créer le compte.
 export async function loginWithGoogle(
   idToken: string,
-  extra?: { typeUtilisateur?: 'client'; telephone?: string },
+  extra?: {
+    typeUtilisateur?: 'client' | 'vendeur' | 'livreur';
+    estDiaspora?: boolean;
+    telephone?: string;
+    nomCommerce?: string;
+    categoriePrincipale?: string;
+    typeVehicule?: string;
+    immatriculation?: string;
+  },
 ): Promise<LoginUser> {
   const response = await api.post<LoginResponse>('/auth/google', {
     id_token: idToken,
     ...(extra?.typeUtilisateur ? { type_utilisateur: extra.typeUtilisateur } : {}),
+    ...(typeof extra?.estDiaspora === 'boolean' ? { est_diaspora: extra.estDiaspora } : {}),
     ...(extra?.telephone ? { telephone: extra.telephone } : {}),
+    ...(extra?.nomCommerce ? { nom_commerce: extra.nomCommerce } : {}),
+    ...(extra?.categoriePrincipale ? { categorie_principale: extra.categoriePrincipale } : {}),
+    ...(extra?.typeVehicule ? { type_vehicule: extra.typeVehicule } : {}),
+    ...(extra?.immatriculation ? { immatriculation: extra.immatriculation } : {}),
   });
 
   const { token, user } = response.data.data;
