@@ -56,9 +56,11 @@ export default function GooglePickerScreen() {
   // En Expo Go, ce redirectUri prend la forme exp://127.0.0.1:8081/--/ — cette adresse exacte doit
   // être ajoutée aux "URI de redirection autorisés" du Client ID OAuth Web sur Google Cloud Console,
   // sans quoi Google refuse la redirection après connexion.
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'mobile' });
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: WEB_CLIENT_ID,
-    redirectUri: AuthSession.makeRedirectUri(),
+    redirectUri,
   });
 
   const routeAfterLogin = useCallback((user: LoginUser) => {
