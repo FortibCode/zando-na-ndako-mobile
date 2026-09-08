@@ -15,7 +15,8 @@ export default function Profile() {
   const { colors } = useTheme();
   const { t } = useLanguage();
 
-  if (dashboardLoading && !driver) {
+  // Afficher le skeleton tant que le profil du livreur n'est pas disponible
+  if (!driver) {
     return (
       <DeliveryScreen scroll={false}>
         <DashboardSkeleton />

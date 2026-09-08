@@ -37,7 +37,8 @@ export default function DeliveryHome() {
     }
   }, [toggleAvailability]);
 
-  if (dashboardLoading && !dashboard && !refreshing) {
+  // Afficher le skeleton tant que le dashboard n'est pas chargé (état initial ou loading)
+  if (!dashboard && !dashboardError) {
     return (
       <DeliveryScreen>
         <DashboardSkeleton />
