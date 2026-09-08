@@ -58,6 +58,10 @@ const api = axios.create({
   },
 });
 
+// Requête enrichie du jeton effectivement envoyé, pour que l'intercepteur de réponse puisse
+// distinguer un 401 « ma session a expiré » d'un 401 « cette requête était partie sans jeton ».
+type RequestAvecJeton = InternalAxiosRequestConfig & { jetonEnvoye?: string };
+
 // ─── Request Interceptor: Attach Auth Token ───
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
@@ -65,6 +69,9 @@ api.interceptors.request.use(
       const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
+        // Mémorise le jeton réellement envoyé : l'intercepteur de réponse s'en sert pour ne
+        // déconnecter que si le 401 concerne bien la session encore en cours (voir plus bas).
+        (config as RequestAvecJeton).jetonEnvoye = token;
       }
     } catch (error) {
       console.warn('[API] Failed to read auth token:', error);
@@ -79,9 +86,24 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<{ message?: string; success?: boolean; error_code?: string }>) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid — clear storage
-      await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-      await AsyncStorage.removeItem(STORAGE_KEYS.DELIVERY_USER);
+      // Ne déconnecter que si la requête portait le jeton qui est ENCORE en place.
+      //
+      // Les quatre contextes de rôle (client, vendeur, livreur, diaspora) sont montés pour tout le
+      // monde et lancent leurs appels dès l'ouverture de l'app, donc avant toute connexion. Ces
+      // appels-là partent sans jeton et reviennent en 401 — or l'API met parfois 20 à 50 s à
+      // répondre (démarrage à froid de l'hébergeur), si bien que leur réponse arrive APRÈS que
+      // l'utilisateur s'est connecté. Effacer le stockage sans distinction supprimait alors le
+      // jeton tout juste obtenu : le livreur atterrissait sur un tableau de bord
+      // « Unauthenticated » alors que sa session venait d'être ouverte, de façon intermittente
+      // selon la lenteur du réseau. Un 401 dont la requête n'avait pas de jeton, ou en portait un
+      // déjà remplacé depuis, ne dit rien sur la session courante : on l'ignore.
+      const jetonEnvoye = (error.config as RequestAvecJeton | undefined)?.jetonEnvoye;
+      const jetonActuel = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+
+      if (jetonEnvoye && jetonEnvoye === jetonActuel) {
+        await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+        await AsyncStorage.removeItem(STORAGE_KEYS.DELIVERY_USER);
+      }
     }
 
     // Extract meaningful error message
@@ -1840,7 +1862,6 @@ export interface ApiBannierePublicitaire {
   vendeur?: {
     id: string;
     nom_commerce: string;
-    logo?: string;
   };
 }
 

@@ -37,6 +37,19 @@ export default function DeliveryHome() {
     }
   }, [toggleAvailability]);
 
+  // Déclaré ici, AVANT les retours anticipés ci-dessous. Placé après eux, ce hook n'était
+  // exécuté que sur certains rendus : 7 hooks pendant le chargement, 8 une fois le tableau de
+  // bord reçu. React refuse ce changement (« Rendered more hooks than during the previous
+  // render ») et démonte l'écran — le livreur voyait son accueil devenir entièrement blanc au
+  // moment précis où ses données arrivaient.
+  const handleQuickAction = useCallback((path: string) => {
+    if (path === '/delivery/navigation' && !currentMission) {
+      router.push('/delivery/missions' as any);
+      return;
+    }
+    router.push(path as any);
+  }, [currentMission]);
+
   // Afficher le skeleton tant que le dashboard n'est pas chargé (état initial ou loading)
   if (!dashboard && !dashboardError) {
     return (
@@ -70,14 +83,6 @@ export default function DeliveryHome() {
     { label: t('deliveryHome.navHistory', 'Historique'), icon: History, path: '/delivery/history', color: '#10B981', bg: '#D1FAE5' },
     { label: t('deliveryHome.navSupport', 'Support 24/7'), icon: Headphones, path: '/delivery/support', color: '#EC4899', bg: '#FCE7F3' },
   ];
-
-  const handleQuickAction = useCallback((path: string) => {
-    if (path === '/delivery/navigation' && !currentMission) {
-      router.push('/delivery/missions' as any);
-      return;
-    }
-    router.push(path as any);
-  }, [currentMission]);
 
   return (
     <DeliveryScreen refreshing={refreshing} onRefresh={onRefresh} tabBar>

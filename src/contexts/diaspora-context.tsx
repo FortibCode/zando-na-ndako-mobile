@@ -272,6 +272,15 @@ export function DiasporaProvider({ children }: { children: ReactNode }) {
   // de compte pendant que l'app tourne déjà laissait bénéficiaires/réglages/historique de l'ancien
   // compte affichés.
   const bootstrap = useCallback(async () => {
+    // Comme le provider vendeur, celui-ci est monté pour tout le monde alors que ses appels visent
+    // /diaspora/*, réservés aux clients. Pour un vendeur ou un livreur ils repartaient en 403 tout
+    // en occupant la file d'attente du serveur. On ne charge donc que pour un compte client.
+    // Y compris quand personne n'est connecté : un visiteur n'a ni bénéficiaires ni historique, et
+    // les taux de change ne servent qu'au mode diaspora. Une connexion ultérieure relance de toute
+    // façon ce bootstrap via onSessionChange().
+    const utilisateur = await getUser();
+    if (utilisateur?.type_utilisateur !== 'client') return;
+
     (async () => {
       // Bénéficiaires : source de vérité = API. Le cache local ne sert que de repli
       // (hors-ligne ou backend indisponible en dev), jamais affiché s'il y a une réponse serveur.

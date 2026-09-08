@@ -593,6 +593,10 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     } catch { /* garde les stats de démo */ }
   }, []);
 
+  // Renseigné par bootstrap() ci-dessous : sert à empêcher les effets périodiques de ce provider
+  // de tourner chez un utilisateur qui n'est pas vendeur.
+  const [estVendeur, setEstVendeur] = useState(false);
+
   // ─── Chargement initial depuis l'API réelle (repli sur les données de démo en cas d'échec) ───
   // Extrait en fonction nommée (plutôt qu'inline dans le useEffect) pour pouvoir la relancer à
   // chaque connexion : VendorProvider est monté une seule fois pour toute la durée de vie de l'app
@@ -600,12 +604,17 @@ export function VendorProvider({ children }: { children: ReactNode }) {
   // déconnecte puis se reconnecte (ou si un autre compte s'était connecté avant lui) sans redémarrage
   // complet de l'app — l'écran continuait alors d'afficher le prénom/les données du compte précédent.
   const bootstrap = useCallback(async () => {
-    refreshCategories();
-
+    // Ce provider est monté pour TOUT LE MONDE (voir _layout.tsx), mais chacun de ses appels vise
+    // /vendeur/* : pour un client ou un livreur, ils reviennent tous en 403 sans jamais rien
+    // apporter. Ils coûtaient pourtant leur place dans la file d'attente du serveur, retardant
+    // d'autant l'affichage de l'écran réellement demandé. On ne charge donc que pour un vendeur.
     const user = await getUser();
-    if (user) {
-      setVendorFirstName(user.prenom || user.nom_complet?.split(' ')[0] || 'Vendeur');
-    }
+    const vendeur = user?.type_utilisateur === 'vendeur';
+    setEstVendeur(vendeur);
+    if (!vendeur || !user) return;
+
+    refreshCategories();
+    setVendorFirstName(user.prenom || user.nom_complet?.split(' ')[0] || 'Vendeur');
 
     setProductsLoading(true);
     try {
@@ -645,6 +654,10 @@ export function VendorProvider({ children }: { children: ReactNode }) {
   // nouvelle commande client sans avoir à redémarrer l'app. Rafraîchit aussi au retour au premier
   // plan (même logique que le polling missions côté livreur).
   useEffect(() => {
+    // Sans cette garde, ce polling tournait aussi chez un client ou un livreur : toutes les 20 s,
+    // un appel à /vendeur/commandes qui ne pouvait que revenir en 403, indéfiniment.
+    if (!estVendeur) return;
+
     let active = true;
     const tick = async () => {
       if (!active) return;
@@ -659,7 +672,7 @@ export function VendorProvider({ children }: { children: ReactNode }) {
       clearInterval(interval);
       sub.remove();
     };
-  }, [fetchOrders]);
+  }, [fetchOrders, estVendeur]);
 
   // ─── Revenu et commandes du jour, calculés à partir des vraies commandes chargées ───
   useEffect(() => {
