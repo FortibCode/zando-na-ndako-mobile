@@ -34,7 +34,7 @@ function handleNotificationTap(data: PushNotificationData) {
   } else if (data.type === 'nouvelle_commande' && commandeId) {
     router.push(`/vendor/orders/${commandeId}` as any);
   } else if (data.type === 'mission_disponible' || data.type === 'mission_assignee') {
-    router.push('/delivery/(tabs)/missions' as any);
+    router.push('/delivery/missions' as any);
   }
 }
 
